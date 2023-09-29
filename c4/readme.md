@@ -27,16 +27,24 @@ A little slower (but stronger)
 docker run --rm -ti xiejw/connect_4_pt
 ```
 
-### Local Python
+### Local Python (macOS with MPS torch backend)
 
 - Download the pytorch (binary) state file, if absent, from
   [here](https://github.com/xiejw/z/releases).
 
-- Sanity check python dependencies and compiler:
+- Place state files at `~/Desktop`.
+
+- Ensure a c compiler is avaiable (`clang`).
+
+- Ensure Python dependencies are installed
+
+        conda install torch numpy pybind11
+
+- Sanity check:
 
         make check
 
-- Then run:
+- Then play:
 
         make run
 
