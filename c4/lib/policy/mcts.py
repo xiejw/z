@@ -167,6 +167,8 @@ class MCTSPolicy(Policy):
         self._root = None
         self._last_known_move_count = 0
 
+        print(f"[debug] iterations ${iterations}")
+
     def next_position(self):
         if self._root is None:
             # Creates the if necessary (Just started the game)

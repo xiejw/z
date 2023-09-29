@@ -11,8 +11,6 @@ endif
 PY            = python3
 PY_LIB_PATH   = PYTHONPATH="lib:cc"
 
-DOCKER_ASSETS = .docker_assets
-
 PYBIND_CC_MOD = cc/xai_c4${shell python3-config --extension-suffix}
 PYBIND_CC_SRC = cc/c4.cc
 
@@ -29,6 +27,9 @@ play:
 play_par: check_python_c_ext
 	${PY_LIB_PATH} ${PY} cmd/play_with_human.py --par
 
+#
+# maintenance
+#
 check:
 	@echo "[makefile] checking..." && \
 		python3 -c "import pybind11" && \
@@ -38,7 +39,7 @@ check:
 		echo "[makefile] passed..."
 
 clean:
-	rm -rf ${DOCKER_ASSETS} && make -C cc clean
+	make -C misc/docker clean && make -C cc clean && find . -name 'a.out' -exec rm {} \;
 
 #
 # python c extension
@@ -52,10 +53,4 @@ ${PYBIND_CC_MOD}: ${PYBIND_CC_SRC}
 # docker
 #
 build_docker:
-	mkdir -p ${DOCKER_ASSETS} && \
-		cp -r lib cmd misc ${DOCKER_ASSETS} && \
-		cp ${C4_STATE_FILE} ${DOCKER_ASSETS}/resnet.pt.state && \
-	docker build -t xiejw/connect_4_pt \
-		--build-arg WEIGHT_FILE=resnet.pt.state \
-		-f misc/docker/Dockerfile \
-		${DOCKER_ASSETS}
+	make -C misc/docker C4_STATE_FILE=${C4_STATE_FILE} build_docker

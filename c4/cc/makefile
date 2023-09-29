@@ -37,7 +37,7 @@ policy.o: policy.cc policy.h base.h
 		-I. -o policy.o -c policy.cc
 
 clean:
-	rm *`python3-config --extension-suffix` *.o
+	rm -rf *`python3-config --extension-suffix` *.o
 
 
 fmt:
