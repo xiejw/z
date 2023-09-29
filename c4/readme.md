@@ -46,5 +46,5 @@ docker run --rm -ti xiejw/connect_4_pt
 
 - Then play:
 
-        make run
+        make play
 
