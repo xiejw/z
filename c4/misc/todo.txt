@@ -1,0 +1,6 @@
+# vim: ft=help
+
+Few things as next steps
+
+- Use c to write more efficient code.
+- Use c to implement parallel algorithrm
