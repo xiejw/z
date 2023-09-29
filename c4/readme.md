@@ -48,3 +48,6 @@ docker run --rm -ti xiejw/connect_4_pt
 
         make play
 
+- [Experimental] play with parallel version
+
+        make play_par
