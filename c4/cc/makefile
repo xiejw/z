@@ -2,11 +2,18 @@
 #
 #     pip install pybind11
 
-TORCH_DIR = $(shell python -c 'import torch; print(torch.__path__[0])')
 
-CXXFLAGS  += -O3 -Wall -std=c++17
+UNAME := $(shell uname)
 
+TORCH_DIR = $(shell python3 -c 'import torch; print(torch.__path__[0])')
+
+CXXFLAGS  += -O3 -Wall -std=c++17 -fPIC
+
+ifndef ${C4_FILE_PATH}
 MODEL_CXXFLAGS   += -DC4_FILE_PATH='"${HOME}/Desktop/traced_resnet_model.pt"'
+else
+MODEL_CXXFLAGS   += -DC4_FILE_PATH='"${C4_FILE_PATH}"'
+endif
 
 TORCH_CXXFLAGS   += -I${TORCH_DIR}/include/
 TORCH_CXXFLAGS   += -I${TORCH_DIR}/include/torch/csrc/api/include
@@ -19,21 +26,29 @@ PY_EXT     = $(shell python3-config --extension-suffix)
 # LDFLAGS  += -Wl,-rpath,${TORCH_DIR}/lib
 # LDFLAGS  += -ltorch_cpu -ltorch -lc10
 
-LDFLAGS   += -fPIC -undefined dynamic_lookup -shared
+LDFLAGS   += -shared
+
+ifeq ($(UNAME), Darwin)
+LDFLAGS   += -undefined dynamic_lookup
+CXX        = clang++
+else
+CXXFLAGS  += -D_GLIBCXX_USE_CXX11_ABI=0
+CXX        = g++
+endif
 
 MODS       = model.o policy.o
 
 
 compile: ${MODS}
-	clang++ ${CXXFLAGS} ${PYBIND_CXXFLAGS} \
+	${CXX} ${CXXFLAGS} ${PYBIND_CXXFLAGS} \
 		c4.cc ${MODS} ${LDFLAGS} -o xai_c4${PY_EXT}
 
 model.o: model.cc model.h base.h
-	clang++ ${CXXFLAGS} ${MODEL_CXXFLAGS} ${TORCH_CXXFLAGS} \
+	${CXX} ${CXXFLAGS} ${MODEL_CXXFLAGS} ${TORCH_CXXFLAGS} \
 		-I. -o model.o -c model.cc
 
 policy.o: policy.cc policy.h base.h
-	clang++ ${CXXFLAGS} \
+	${CXX} ${CXXFLAGS} \
 		-I. -o policy.o -c policy.cc
 
 clean:

@@ -2,6 +2,8 @@
 #define C4_BASE_H_
 
 #include <iostream>
+#include <vector>
+#include <cassert>
 
 typedef float f32_t;
 

@@ -8,6 +8,10 @@ ifndef ${C4_STATE_FILE}
 	C4_STATE_FILE = ${HOME}/Desktop/c4-resnet-5x5.pt.state
 endif
 
+ifndef ${C4_FILE_PATH}
+	C4_FILE_PATH = ${HOME}/Desktop/traced_resnet_model.pt
+endif
+
 PY            = python3
 PY_LIB_PATH   = PYTHONPATH="lib:cc"
 
@@ -54,3 +58,6 @@ ${PYBIND_CC_MOD}: ${PYBIND_CC_SRC}
 #
 build_docker:
 	make -C misc/docker C4_STATE_FILE=${C4_STATE_FILE} build_docker
+
+build_docker_par:
+	make -C misc/docker C4_FILE_PATH=${C4_FILE_PATH} build_docker_par
