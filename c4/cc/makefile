@@ -9,10 +9,14 @@ TORCH_DIR = $(shell python3 -c 'import torch; print(torch.__path__[0])')
 
 CXXFLAGS  += -O3 -Wall -std=c++17 -fPIC
 
-ifndef ${C4_FILE_PATH}
+ifndef C4_FILE_PATH
 MODEL_CXXFLAGS   += -DC4_FILE_PATH='"${HOME}/Desktop/traced_resnet_model.pt"'
 else
 MODEL_CXXFLAGS   += -DC4_FILE_PATH='"${C4_FILE_PATH}"'
+endif
+
+ifdef C4_MODEL_ON_CPU
+CXXFLAGS += -DC4_MODEL_ON_CPU=1
 endif
 
 TORCH_CXXFLAGS   += -I${TORCH_DIR}/include/
@@ -21,10 +25,15 @@ TORCH_CXXFLAGS   += -I${TORCH_DIR}/include/torch/csrc/api/include
 PYBIND_CXXFLAGS  += $(shell python3 -m pybind11 --includes)
 PY_EXT     = $(shell python3-config --extension-suffix)
 
-# We dont need torch libraries as python/torch has that already (in runtime)
-# LDFLAGS  += -L${TORCH_DIR}/lib
-# LDFLAGS  += -Wl,-rpath,${TORCH_DIR}/lib
-# LDFLAGS  += -ltorch_cpu -ltorch -lc10
+# On macOS, we dont need torch libraries as python/torch has that already (in
+# runtime)
+#
+# However, on Linux, we need.
+ifeq ($(UNAME), Linux)
+LDFLAGS  += -L${TORCH_DIR}/lib
+LDFLAGS  += -Wl,-rpath,${TORCH_DIR}/lib
+LDFLAGS  += -ltorch_cpu -ltorch -lc10
+endif
 
 LDFLAGS   += -shared
 
@@ -32,6 +41,7 @@ ifeq ($(UNAME), Darwin)
 LDFLAGS   += -undefined dynamic_lookup
 CXX        = clang++
 else
+# print(torch._C._GLIBCXX_USE_CXX11_ABI)
 CXXFLAGS  += -D_GLIBCXX_USE_CXX11_ABI=0
 CXX        = g++
 endif

@@ -4,7 +4,12 @@
 #include <torch/torch.h>
 
 const static auto deviceCPU          = torch::kCPU;
+
+#ifdef C4_MODEL_ON_CPU
+const static auto deviceForInference = torch::kCPU;
+#else
 const static auto deviceForInference = torch::kMPS;
+#endif
 
 const static auto tensor_opt_for_placeholder =
     torch::TensorOptions().dtype(torch::kFloat32).device(deviceCPU);

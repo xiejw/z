@@ -4,11 +4,11 @@
 #
 # configs
 #
-ifndef ${C4_STATE_FILE}
+ifndef C4_STATE_FILE
 	C4_STATE_FILE = ${HOME}/Desktop/c4-resnet-5x5.pt.state
 endif
 
-ifndef ${C4_FILE_PATH}
+ifndef C4_FILE_PATH
 	C4_FILE_PATH = ${HOME}/Desktop/traced_resnet_model.pt
 endif
 
