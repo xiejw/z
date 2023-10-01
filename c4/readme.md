@@ -17,15 +17,19 @@ Let's Play
 
 ### Docker on arm64
 
-A little faster (but not so strong)
-```
-docker run --rm -ti xiejw/connect_4_pt_medium
-```
+Few choices
 
-A little slower (but stronger)
-```
-docker run --rm -ti xiejw/connect_4_pt
-```
+- Super fast but only look ahead one step.
+
+        docker run --rm -ti xiejw/connect_4_par_pt_lookahead_onestep
+
+- A little slow, but should be a good player
+
+        docker run --rm -ti xiejw/connect_4_pt_medium
+
+- Quite slow, but qutie strong
+
+        docker run --rm -ti xiejw/connect_4_pt
 
 ### Local Python (macOS with MPS torch backend)
 
