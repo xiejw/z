@@ -1,5 +1,6 @@
 # To create tar.gz for release
-#   tar -czvf c4-resnet.pt.tar.gz c4-resnet.pt.state traced_resnet_model.pt
+#
+#   tar -czvf c4-resnet.pt.tar.gz c4-resnet-5x5.pt.state traced_resnet_model.pt
 
 #
 # configs
