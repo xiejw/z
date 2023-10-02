@@ -1,4 +1,4 @@
-DOCKER_ASSETS    = .docker_assets
+DOCKER_ASSETS    = ../../.docker_assets
 
 ROOT_DIR         = ../..
 
@@ -15,7 +15,6 @@ build_docker: clean
 	DOCKER_SCAN_SUGGEST=false DOCKER_CLI_HINTS=false docker         \
 	        build -t xiejw/connect_4_pt                             \
 		--build-arg WEIGHT_FILE=resnet.pt.state                 \
-		--progress=plain                                        \
 		-f Dockerfile                                           \
 		${DOCKER_ASSETS}
 
@@ -26,7 +25,6 @@ build_docker_par: clean
 	DOCKER_SCAN_SUGGEST=false DOCKER_CLI_HINTS=false docker               \
 	        build -t xiejw/connect_4_par_pt_lookahead_onestep             \
 		--build-arg WEIGHT_FILE=traced_resnet_model.pt                \
-		--progress=plain                                              \
 		-f Dockerfile.par                                             \
 		${DOCKER_ASSETS}
 

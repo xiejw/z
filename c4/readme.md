@@ -19,19 +19,22 @@ Let's Play
 
 See [Youtube here](https://youtu.be/tGG8I9GnisM)
 
-### Docker on arm64
+### Docker on arm64/amd64
 
 Few choices
 
-- Super fast but only look ahead one step.
+- [arm64] Super fast but only look ahead one step.
 
         docker run --rm -ti xiejw/connect_4_par_pt_lookahead_onestep
 
-- A little slow, but should be a good player
+- [arm64/amd64] A little slow, but should be a good player
 
+        [arm64]
         docker run --rm -ti xiejw/connect_4_pt_medium
+        [x86_64]
+        docker run --rm -ti xiejw/connect_4_pt_medium_x86_64
 
-- Quite slow, but qutie strong
+- [arm64] Quite slow, but qutie strong
 
         docker run --rm -ti xiejw/connect_4_pt
 
