@@ -17,7 +17,8 @@ except ImportError:
 #
 
 makefile_tpl = Template(""
-"TORCH_DIR = $torch_dir\n"
+"TORCH_DIR         = $torch_dir\n"
+"C4_CONFIGURE_DONE = done\n"
 )
 
 cfg = {

@@ -3,9 +3,19 @@
 #   tar -czvf c4-resnet.pt.tar.gz c4-resnet-5x5.pt.state traced_resnet_model.pt
 
 #
+# configs from configure
+#
+-include ./configure.mk
+
+ifndef C4_CONFIGURE_DONE
+$(error "Project is not configured. Run 'python configure.py' in top level folder")
+endif
+
+#
 # configs
 #
 # ok to be provided by command line arguments.
+
 C4_STATE_FILE = ${HOME}/Desktop/c4-resnet-5x5.pt.state
 C4_FILE_PATH  = ${HOME}/Desktop/traced_resnet_model.pt
 
