@@ -3,7 +3,7 @@
 #   tar -czvf c4-resnet.pt.tar.gz c4-resnet-5x5.pt.state traced_resnet_model.pt
 
 #
-# configs from configure
+# configs from configure.py
 #
 -include ./configure.mk
 
@@ -14,15 +14,11 @@ endif
 #
 # configs
 #
-# ok to be provided by command line arguments.
-
-C4_STATE_FILE = ${HOME}/Desktop/c4-resnet-5x5.pt.state
-C4_FILE_PATH  = ${HOME}/Desktop/traced_resnet_model.pt
 
 PY            = python3
 PY_LIB_PATH   = PYTHONPATH="lib:cc"
 
-PYBIND_CC_MOD = cc/xai_c4${shell python3-config --extension-suffix}
+PYBIND_CC_MOD = cc/xai_c4${PY_EXT_SUFFIX}
 PYBIND_CC_SRC = cc/c4.cc
 
 #
@@ -41,16 +37,12 @@ play_par: check_python_c_ext
 #
 # maintenance
 #
-check:
-	@echo "[makefile] checking..." && \
-		python3 -c "import pybind11" && \
-		python3 -c "import numpy"    && \
-		python3 -c "import torch as t; assert t.backends.mps.is_available()" && \
-		clang --version > /dev/null  && \
-		echo "[makefile] passed..."
-
 clean:
-	make -C misc/docker clean && make -C cc clean && find . -name 'a.out' -exec rm {} \;
+	@echo "deep clean"                          && \
+		make --silent -C misc/docker clean  && \
+		make --silent -C cc clean           && \
+		find . -name 'a.out' -exec rm {} \; && \
+		rm -rf configure.mk
 
 #
 # python c extension
@@ -67,4 +59,4 @@ build_docker:
 	make -C misc/docker C4_STATE_FILE=${C4_STATE_FILE} build_docker
 
 build_docker_par:
-	make -C misc/docker C4_FILE_PATH=${C4_FILE_PATH} build_docker_par
+	make -C misc/docker C4_TRACED_MODEL_FILE=${C4_TRACED_MODEL_FILE} build_docker_par

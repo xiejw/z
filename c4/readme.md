@@ -52,10 +52,6 @@ Few choices
 
         python configure.py
 
-- Sanity check:
-
-        make check
-
 - Then play:
 
         make play
