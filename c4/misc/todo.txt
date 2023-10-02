@@ -2,5 +2,8 @@
 
 Few things as next steps
 
+- detect state file path and give hint
+  - write them into configure.mk
+- move dependency check into configure.py
 - Use c to write more efficient code.
 - Use c to implement parallel algorithrm

@@ -5,7 +5,12 @@
 
 UNAME := $(shell uname)
 
-TORCH_DIR = $(shell python3 -c 'import torch; print(torch.__path__[0])')
+-include ../configure.mk
+
+ifndef TORCH_DIR
+$(error "TORCH_DIR is undefined. Run 'python configure.py' in top level folder")
+endif
+
 
 CXXFLAGS  += -O3 -Wall -std=c++17 -fPIC
 

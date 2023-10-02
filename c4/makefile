@@ -5,13 +5,9 @@
 #
 # configs
 #
-ifndef C4_STATE_FILE
-	C4_STATE_FILE = ${HOME}/Desktop/c4-resnet-5x5.pt.state
-endif
-
-ifndef C4_FILE_PATH
-	C4_FILE_PATH = ${HOME}/Desktop/traced_resnet_model.pt
-endif
+# ok to be provided by command line arguments.
+C4_STATE_FILE = ${HOME}/Desktop/c4-resnet-5x5.pt.state
+C4_FILE_PATH  = ${HOME}/Desktop/traced_resnet_model.pt
 
 PY            = python3
 PY_LIB_PATH   = PYTHONPATH="lib:cc"

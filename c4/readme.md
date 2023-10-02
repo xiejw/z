@@ -48,6 +48,10 @@ Few choices
 
         conda install torch numpy pybind11
 
+- Run bootstrap configure process (one time only)
+
+        python configure.py
+
 - Sanity check:
 
         make check

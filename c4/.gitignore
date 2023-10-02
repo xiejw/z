@@ -1,2 +1,9 @@
+# make
+
+configure.mk
+
+# py
 __pycache__
+
+# docker
 .docker_assets/
