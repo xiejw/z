@@ -22,6 +22,10 @@ endif
 LDFLAGS          += -shared
 CXXFLAGS         += -O3 -Wall -std=c++17 -fPIC
 
+ifeq ($(UNAME), Linux)
+C4_MODEL_ON_CPU    = 1
+endif
+
 ifdef C4_MODEL_ON_CPU
 CXXFLAGS         += -DC4_MODEL_ON_CPU=1
 endif

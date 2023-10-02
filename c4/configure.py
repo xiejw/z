@@ -1,5 +1,6 @@
 #/usr/bin/env python3
 
+import argparse
 import os
 import platform
 import subprocess
@@ -9,10 +10,37 @@ from distutils.spawn import find_executable
 from pathlib import Path
 from string import Template
 
+#
+# flags
+#
+parser = argparse.ArgumentParser()
+parser.add_argument("--model_dir",
+                    help="specify where to find model weights")
+args = parser.parse_args()
+
+#
+# constants
+#
 MK_FILE     = "configure.mk"
 HOME        = str(Path.home())
-C4_FILE_DIR = os.path.join(HOME, "Desktop")
 UNAME       = platform.system()
+C4_FILE_DIR = args.model_dir or os.path.join(HOME, "Desktop")
+
+#
+# check model weight files
+#
+def check_file_exists(f_path):
+    if not os.path.isfile(f_path):
+        print(
+                f'[model file] failed to find the model file. try --model_dir:',
+                f_path)
+        sys.exit(1)
+    return f_path
+
+c4_state_file        = check_file_exists(
+        os.path.join(C4_FILE_DIR, "c4-resnet-5x5.pt.state"))
+c4_traced_model_file = check_file_exists(
+        os.path.join(C4_FILE_DIR, "traced_resnet_model.pt"))
 
 #
 # check python dependencies
@@ -76,8 +104,8 @@ cfg = {
     "pybind_cxxflags":      pybind_cxxflags,
     "torch_dir":            torch.__path__[0],
     "torch_cxx11_abi":      torch_cxx11_abi,
-    "c4_state_file":        os.path.join(C4_FILE_DIR, "c4-resnet-5x5.pt.state"),
-    "c4_traced_model_file": os.path.join(C4_FILE_DIR, "traced_resnet_model.pt"),
+    "c4_state_file":        c4_state_file,
+    "c4_traced_model_file": c4_traced_model_file,
 }
 
 mk_str = makefile_tpl.substitute(cfg)

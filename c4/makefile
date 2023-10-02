@@ -41,8 +41,7 @@ clean:
 	@echo "deep clean"                          && \
 		make --silent -C misc/docker clean  && \
 		make --silent -C cc clean           && \
-		find . -name 'a.out' -exec rm {} \; && \
-		rm -rf configure.mk
+		find . -name 'a.out' -exec rm {} \;
 
 #
 # python c extension
