@@ -26,10 +26,9 @@ class HumanPolicy(Policy):
                     continue
 
                 return Position(row, column)
-            except KeyboardInterrupt:
-                print("Aborted due to Ctrl-C.")
-                import sys
-                sys.exit()
+            except KeyboardInterrupt as e:
+                print("\033[31mAborted due to Ctrl-C.\033[0m")
+                raise e
             except:
                 print("Unexpected error due to invalid input. Try again.")
 

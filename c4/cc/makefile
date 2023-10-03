@@ -20,7 +20,7 @@ CXX               = g++
 endif
 
 LDFLAGS          += -shared
-CXXFLAGS         += -O3 -Wall -std=c++17 -fPIC
+CXXFLAGS         += -O3 -Wall -std=c++17 -fPIC -DNDEBUG
 
 ifeq ($(UNAME), Linux)
 C4_MODEL_ON_CPU    = 1

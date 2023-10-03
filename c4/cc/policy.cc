@@ -25,6 +25,7 @@ policy_lookahead_onestep(const std::vector<int> &b, int next_player_color)
             /*prob=*/&probs_ptr,
             /*value=*/&value);
         assert(err == OK);
+        (void) err;
 
         DEBUG() << "[debug] winning probabilty from model: " << value << "\n";
 
