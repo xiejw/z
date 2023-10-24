@@ -4,3 +4,8 @@
 
 A MCTS based AI agent which can play c4. It is quite strong. Click
 [here](c4/readme.md) to get started.
+
+### Tic-tac-toe (ttt)
+
+A MCTS based AI agent which play ttt. Click [here](ttt/readme.md) to get
+started.
