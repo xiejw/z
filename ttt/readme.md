@@ -8,3 +8,10 @@ According to Wikipedia:
 
 ![TTT](./misc/images/ttt.svg)
 
+Let's Play
+==========
+
+Run (note: the log file is located at `/tmp/tictactoe_log.txt`)
+```
+make run
+```

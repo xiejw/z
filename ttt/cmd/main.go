@@ -7,10 +7,11 @@ package main
 
 import (
 	"log"
+	"math/rand"
 	"os"
 
-	"ttt/cmd/internal/drawing"
 	"ttt/cmd/internal/board"
+	"ttt/cmd/internal/drawing"
 	"ttt/cmd/internal/policy"
 )
 
@@ -29,10 +30,13 @@ func main() {
 	// 	AIFirst:      true,
 	// }
 
+	aiFirst := rand.Int()&1 == 0
+	log.Printf("aiFirst %v", aiFirst)
+
 	policy2 := &policy.MCPolicy{
 		SimulationCount: 1000,
 		Seed:            123,
-		AIFirst:         true,
+		AIFirst:         aiFirst,
 	}
 	policy2.Init()
 
