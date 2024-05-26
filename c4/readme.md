@@ -40,16 +40,23 @@ Few choices
 
 ### Local Python (macOS with MPS torch backend)
 
+_Last Test: macOS 13.6 + brew Python on May 2024_.
+
 - Download the pytorch (binary) state file, if absent, from
   [here](https://github.com/xiejw/z/releases).
 
 - Place state files at `~/Desktop`.
 
-- Ensure a c compiler is avaiable (`clang`).
+- Ensure a `C` compiler is available (`clang`).
 
-- Ensure Python dependencies are installed
+- With macOS, ensure install python via brew.
 
-        conda install torch numpy pybind11
+        brew install python
+        brew ls python
+
+- Ensure Python 3 dependencies are installed
+
+        pip install torch numpy pybind11 setuptools
 
 - Run bootstrap configure process (one time only)
 
