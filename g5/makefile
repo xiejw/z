@@ -7,7 +7,8 @@ fmt:
 compile:
 	go build -o /dev/null cmd/bot/main.go
 
-test: compile
+test:
+	go test g5/...
 
 clean:
 

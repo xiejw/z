@@ -8,6 +8,8 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
+	_ "g5/go/lib/game"
 	_ "github.com/xiejw/y/ann/luna/errors"
 )
 
