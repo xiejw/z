@@ -1,3 +1,9 @@
 # vim
 *.swp
 *.swo
+
+# config generated files.
+configure.mk
+
+# cc
+.build
