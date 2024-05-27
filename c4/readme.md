@@ -56,7 +56,7 @@ _Last Test: macOS 13.6 + brew Python on May 2024_.
 
 - Ensure Python 3 dependencies are installed
 
-        pip install torch numpy pybind11 setuptools
+        pip install torch numpy setuptools
 
 - Run bootstrap configure process (one time only)
 
@@ -66,6 +66,3 @@ _Last Test: macOS 13.6 + brew Python on May 2024_.
 
         make play
 
-- [Experimental] play with parallel version
-
-        make play_par

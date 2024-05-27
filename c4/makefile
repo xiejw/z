@@ -16,23 +16,17 @@ endif
 #
 
 PY            = python3
-PY_LIB_PATH   = PYTHONPATH="lib:cc"
-
-PYBIND_CC_MOD = cc/xai_c4${PY_EXT_SUFFIX}
-PYBIND_CC_SRC = cc/c4.cc
+PY_LIB_PATH   = PYTHONPATH="lib"
 
 #
 # actions
 #
-.PHONY: play check check_python_c_ext build_docker clean default
+.PHONY: play check build_docker clean default
 
 default: check play
 
 play:
 	${PY_LIB_PATH} C4_STATE_FILE=${C4_STATE_FILE} ${PY} cmd/play_with_human.py
-
-play_par: check_python_c_ext
-	${PY_LIB_PATH} ${PY} cmd/play_with_human.py --par
 
 #
 # maintenance
@@ -42,14 +36,6 @@ clean:
 		make --silent -C misc/docker clean  && \
 		make --silent -C cc clean           && \
 		find . -name 'a.out' -exec rm {} \;
-
-#
-# python c extension
-#
-check_python_c_ext: ${PYBIND_CC_MOD}
-
-${PYBIND_CC_MOD}: ${PYBIND_CC_SRC}
-	make -C cc
 
 #
 # docker

@@ -33,7 +33,7 @@ def check_file_exists(f_path):
     if not os.path.isfile(f_path):
         print(f'[model file] failed to find the model file:', f_path)
         print(f'[model file] -> default search path is ~/Desktop.')
-        print(f'[model file] -> try --model_dir flag to specify another diri.')
+        print(f'[model file] -> try --model_dir flag to specify another dir.')
         sys.exit(1)
     return f_path
 
@@ -60,12 +60,6 @@ except ImportError:
     print("[python] package numpy is required.")
     sys.exit(1)
 
-try:
-    import pybind11;
-except ImportError:
-    print("[python] package pybind11 is required.")
-    sys.exit(1)
-
 #
 # check system configs
 #
@@ -79,19 +73,11 @@ else:
 # next line only matters for Linux
 torch_cxx11_abi = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
 
-def get_cmd_output(cmd_w_args):
-    return str(subprocess.check_output(cmd_w_args).decode('utf-8').strip())
-
-py_ext_suffix = get_cmd_output(['python3-config', '--extension-suffix'])
-pybind_cxxflags = get_cmd_output(['python3', '-m', 'pybind11', '--includes'])
-
 #
 # write configure into MK_FILE
 #
 
 makefile_tpl = Template(""
-"PY_EXT_SUFFIX          = $py_ext_suffix\n"
-"PYBIND_CXXFLAGS        = $pybind_cxxflags\n"
 "TORCH_DIR              = $torch_dir\n"
 "TORCH_CXX11_ABI        = $torch_cxx11_abi\n"
 "C4_STATE_FILE          = $c4_state_file\n"
@@ -100,8 +86,6 @@ makefile_tpl = Template(""
 )
 
 cfg = {
-    "py_ext_suffix":        py_ext_suffix,
-    "pybind_cxxflags":      pybind_cxxflags,
     "torch_dir":            torch.__path__[0],
     "torch_cxx11_abi":      torch_cxx11_abi,
     "c4_state_file":        c4_state_file,
