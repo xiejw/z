@@ -55,7 +55,7 @@ MODS              = ${BUILD}/main.o ${BUILD}/model.o
 compile: ${MODS} ${BUILD}/main
 
 ${BUILD}/main: ${MODS}
-	${CXX} -o $@ ${LDFLAGS} ${MODS}
+	${CXX} -o $@ ${MODS} ${LDFLAGS}
 
 ${BUILD}/main.o: main.cc model.h base.h | ${BUILD}
 	${CXX} ${CXXFLAGS} ${TORCH_CXXFLAGS} -o $@ -c main.cc
