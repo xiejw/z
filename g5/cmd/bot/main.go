@@ -9,6 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"g5/cmd/bot/human"
+
 	_ "g5/go/lib/game"
 	_ "github.com/xiejw/y/ann/luna/errors"
 )
@@ -18,15 +20,6 @@ var rootCmd = &cobra.Command{
 	Short: "bot is the cli to play the g5",
 }
 
-var gameCmd = &cobra.Command{
-	Use:   "game",
-	Short: "Start a game between human and bot",
-	Args:  cobra.NoArgs,
-	Run: func(cmd *cobra.Command, args []string) {
-		log.Info().Msgf("game cmd: %v", humanFirst)
-	},
-}
-
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
@@ -34,14 +27,9 @@ func Execute() {
 	}
 }
 
-var (
-	humanFirst bool
-)
-
 func init() {
-	gameCmd.Flags().BoolVarP(&humanFirst, "humanfirst", "u", false, "Human starts with black.")
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
-	rootCmd.AddCommand(gameCmd)
+	rootCmd.AddCommand(human.GameCmd)
 }
 
 func main() {
