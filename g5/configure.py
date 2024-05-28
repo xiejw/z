@@ -24,7 +24,7 @@ args = parser.parse_args()
 MK_FILE     = "configure.mk"
 HOME        = str(Path.home())
 UNAME       = platform.system()
-C4_FILE_DIR = args.model_dir or os.path.join(HOME, "Desktop")
+G5_FILE_DIR = args.model_dir or os.path.join(HOME, "Desktop")
 
 #
 # check model weight files
@@ -37,10 +37,10 @@ def check_file_exists(f_path):
         sys.exit(1)
     return f_path
 
-#c4_state_file        = check_file_exists(
-#        os.path.join(C4_FILE_DIR, "c4-resnet-5x5.pt.state"))
-c4_traced_model_file = check_file_exists(
-        os.path.join(C4_FILE_DIR, "g5_traced_resnet_model.pt"))
+#g5_state_file        = check_file_exists(
+#        os.path.join(G5_FILE_DIR, "g5-resnet-5x5.pt.state"))
+g5_traced_model_file = check_file_exists(
+        os.path.join(G5_FILE_DIR, "g5_traced_resnet_model.pt"))
 
 #
 # check python dependencies
@@ -80,14 +80,14 @@ torch_cxx11_abi = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
 makefile_tpl = Template(""
 "TORCH_DIR              = $torch_dir\n"
 "TORCH_CXX11_ABI        = $torch_cxx11_abi\n"
-"C4_TRACED_MODEL_FILE   = $c4_traced_model_file\n"
-"C4_CONFIGURE_DONE      = done\n"
+"G5_TRACED_MODEL_FILE   = $g5_traced_model_file\n"
+"G5_CONFIGURE_DONE      = done\n"
 )
 
 cfg = {
     "torch_dir":            torch.__path__[0],
     "torch_cxx11_abi":      torch_cxx11_abi,
-    "c4_traced_model_file": c4_traced_model_file,
+    "g5_traced_model_file": g5_traced_model_file,
 }
 
 mk_str = makefile_tpl.substitute(cfg)

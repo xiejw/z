@@ -5,7 +5,7 @@
 
 const static auto deviceCPU = torch::kCPU;
 
-#ifdef C4_MODEL_ON_CPU
+#ifdef G5_MODEL_ON_CPU
 const static auto deviceForInference = torch::kCPU;
 #else
 const static auto deviceForInference = torch::kMPS;
@@ -91,9 +91,9 @@ call_model( torch::Tensor &input, f32_t **prob, f32_t *value )
     // Lazy loading model once.
     if ( !module_loaded ) {
         try {
-            std::cout << "[sys] load model (once) from " << C4_FILE_PATH
+            std::cout << "[sys] load model (once) from " << G5_FILE_PATH
                       << "\n";
-            module = torch::jit::load( C4_FILE_PATH );
+            module = torch::jit::load( G5_FILE_PATH );
             module.to( deviceForInference );
             module.eval( );
             module_loaded = true;

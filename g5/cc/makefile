@@ -1,70 +1,88 @@
-#
+# ------------------------------------------------------------------------------
 # configs from configure.py
 #
--include configure.mk
+-include ../configure.mk
 
-ifndef C4_CONFIGURE_DONE
-$(error "Project is not configured. Run 'python configure.py' in top level folder")
+ifndef G5_CONFIGURE_DONE
+$(error "Project is not configured. Run 'python configure.py' in top level dir")
 endif
 
-BUILD                  = .build
-#
+# ------------------------------------------------------------------------------
 # configs
 #
+
+BUILD                  = .build
+
+CXXFLAGS               = -I.
+CXXFLAGS              += -O3 -Wall -std=c++20 -DNDEBUG
+
+LDFLAGS               += -L${TORCH_DIR}/lib
+LDFLAGS               += -Wl,-rpath,${TORCH_DIR}/lib
+LDFLAGS               += -ltorch_cpu -ltorch -lc10
+
 UNAME := $(shell uname)
 
 ifeq ($(UNAME), Darwin)
-CXX               = clang++
+CXX                    = clang++
 else
-CXX               = g++
+CXX                    = g++
 endif
 
-CXXFLAGS          = -I.
-CXXFLAGS         += -O3 -Wall -std=c++20 -DNDEBUG
 
 ifeq ($(UNAME), Linux)
-C4_MODEL_ON_CPU    = 1
+G5_MODEL_ON_CPU    = 1
 endif
 
-ifdef C4_MODEL_ON_CPU
-CXXFLAGS         += -DC4_MODEL_ON_CPU=1
+ifdef G5_MODEL_ON_CPU
+CXXFLAGS         += -DG5_MODEL_ON_CPU=1
 endif
 
-MODEL_CXXFLAGS   += -DC4_FILE_PATH='"${C4_TRACED_MODEL_FILE}"'
+MODEL_CXXFLAGS   += -DG5_FILE_PATH='"${G5_TRACED_MODEL_FILE}"'
 
-TORCH_CXXFLAGS   += -I${TORCH_DIR}/include/
-TORCH_CXXFLAGS   += -I${TORCH_DIR}/include/torch/csrc/api/include
 
-LDFLAGS          += -L${TORCH_DIR}/lib
-LDFLAGS          += -Wl,-rpath,${TORCH_DIR}/lib
-LDFLAGS          += -ltorch_cpu -ltorch -lc10
-
+# ------------------------------------------------------------------------------
+# torch flags
 #
-# Torch flags
-#
+
+TORCH_CXXFLAGS        += -I${TORCH_DIR}/include/
+TORCH_CXXFLAGS        += -I${TORCH_DIR}/include/torch/csrc/api/include
+
 ifeq ($(UNAME), Darwin)
 else
-CXXFLAGS         += -D_GLIBCXX_USE_CXX11_ABI=${TORCH_CXX11_ABI}
+CXXFLAGS              += -D_GLIBCXX_USE_CXX11_ABI=${TORCH_CXX11_ABI}
 endif
 
-#
+# ------------------------------------------------------------------------------
 # actions
 #
+
 MODS              = ${BUILD}/main.o ${BUILD}/model.o
 
-compile: ${MODS} ${BUILD}/main
+run: compile
+	${BUILD}/main
+
+compile: ${BUILD}/main
+
+${BUILD}:
+	mkdir -p ${BUILD}
 
 ${BUILD}/main: ${MODS}
 	${CXX} -o $@ ${MODS} ${LDFLAGS}
 
 ${BUILD}/main.o: main.cc model.h base.h | ${BUILD}
-	${CXX} ${CXXFLAGS} ${TORCH_CXXFLAGS} -o $@ -c main.cc
+	${CXX} ${CXXFLAGS} ${TORCH_CXXFLAGS} -o $@ -c $<
 
 ${BUILD}/model.o: model.cc model.h base.h | ${BUILD}
-	${CXX} ${CXXFLAGS} ${MODEL_CXXFLAGS} ${TORCH_CXXFLAGS} -o $@ -c model.cc
+	${CXX} ${CXXFLAGS} ${MODEL_CXXFLAGS} ${TORCH_CXXFLAGS} -o $@ -c $<
 
-${BUILD}:
-	mkdir -p ${BUILD}
+
+# ------------------------------------------------------------------------------
+# house keeping
+#
+
+release: clean compile
+
+test: compile
 
 clean:
 	rm -rf ${BUILD}
