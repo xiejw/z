@@ -23,8 +23,9 @@ jobs:
           cache: 'pip'
       - working-directory: ${{ github.workspace }}/z/${{ github.workflow }}
         run:  |
-          pip install -r requirements.txt
-          python configure.py
+          pip install -r requirements.txt --index-url https://download.pytorch.org/whl/cpu
+          python py/sm.py
+          python configure.py --model_dir /tmp
 
       # ------------------------------------------------------------------------
       # workflow
