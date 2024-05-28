@@ -24,7 +24,9 @@ clean:
 
 release: clean compile
 
-fmt: fmt_cc
+fmt: fmt_go fmt_cc
+
+fmt_go:
 	go fmt g5/...
 
 compile_cc:

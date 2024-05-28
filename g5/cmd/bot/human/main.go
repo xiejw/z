@@ -17,6 +17,8 @@ var GameCmd = &cobra.Command{
 		log.Info().Msgf("Start game with human. Cfg: Human first = %v", humanFirst)
 
 		b := game.NewBoard()
+		b.NewMove(game.NewPos(1, 2), game.CLR_WHITE)
+		b.NewMove(game.NewPos(1, 3), game.CLR_BLACK)
 		b.Draw(os.Stdout)
 
 	},

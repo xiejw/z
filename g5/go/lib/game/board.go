@@ -1,8 +1,13 @@
 package game
 
 import (
+	"errors"
 	"fmt"
 	"io"
+)
+
+var (
+	ERROR_ILLEGAL_MOVE = errors.New("illgal move")
 )
 
 type Board interface {
@@ -23,8 +28,8 @@ func NewBoard() Board {
 }
 
 type termBoard struct {
-	bState [16]byte
-	wState [16]byte
+	bState [32]byte
+	wState [32]byte
 	winner Color
 }
 
@@ -63,15 +68,72 @@ func (b *termBoard) Draw(w io.Writer) {
 	for x := range W {
 		fmt.Fprintf(w, "%2d ", x)
 		vFn()
-		for _ = range H {
-			fmt.Fprintf(w, " %v ", "x")
+		for y := range H {
+			c := b.getMove(NewPos(x, y))
+			switch c {
+			case CLR_BLACK:
+				fmt.Fprintf(w, " %v ", "x")
+			case CLR_WHITE:
+				fmt.Fprintf(w, " %v ", "o")
+			default:
+				fmt.Fprintf(w, " %v ", " ")
+			}
 			vFn()
 		}
 		fmt.Fprintf(w, "\n")
 		bFn()
 	}
 }
-func (b *termBoard) NewMove(Pos, Color) (winner bool, err error) { return false, nil }
-func (b *termBoard) GetLastMove() (Pos, Color)                   { return NewPos(0, 0), CLR_NA }
-func (b *termBoard) GetWiner() Color                             { return CLR_NA }
-func (b *termBoard) AttachHook(Hook) error                       { return nil }
+func (b *termBoard) NewMove(pos Pos, color Color) (winner bool, err error) {
+	if color == CLR_NA {
+		panic("CLR_NA is not supported by NewMove")
+	}
+
+	// TODO winner is not set
+	c := b.getMove(pos)
+	if c != CLR_NA {
+		return false, ERROR_ILLEGAL_MOVE
+	}
+
+	b.setMove(pos, color)
+	return false, nil
+}
+func (b *termBoard) GetLastMove() (Pos, Color) { return NewPos(0, 0), CLR_NA }
+func (b *termBoard) GetWiner() Color           { return CLR_NA }
+func (b *termBoard) AttachHook(Hook) error     { return nil }
+
+func (b *termBoard) getMove(pos Pos) Color {
+	idx := int(pos)
+	bytePos := idx / 8
+	byteBit := byte(1 << (idx % 8))
+
+	isBOnBoard := b.bState[bytePos] & byteBit
+	if isBOnBoard != 0 {
+		return CLR_BLACK
+	}
+
+	isWOnBoard := b.wState[bytePos] & byteBit
+	if isWOnBoard != 0 {
+		return CLR_WHITE
+	}
+
+	return CLR_NA
+}
+
+func (b *termBoard) setMove(pos Pos, c Color) {
+	if c == CLR_NA {
+		panic("CLR_NA is not supported by setMove")
+	}
+
+	idx := int(pos)
+	bytePos := idx / 8
+	byteBit := byte(1 << (idx % 8))
+
+	if c == CLR_BLACK {
+		byt := b.bState[bytePos] | byteBit
+		b.bState[bytePos] = byt
+	} else {
+		byt := b.wState[bytePos] | byteBit
+		b.wState[bytePos] = byt
+	}
+}
