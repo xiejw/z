@@ -33,7 +33,7 @@ def check_file_exists(f_path):
     if not os.path.isfile(f_path):
         print(f'[model file] failed to find the model file:', f_path)
         print(f'[model file] -> default search path is ~/Desktop.')
-        print(f'[model file] -> try --model_dir flag to specify another diri.')
+        print(f'[model file] -> try --model_dir flag to specify another dir.')
         sys.exit(1)
     return f_path
 

@@ -1,5 +1,5 @@
 Prepare the virtual env and install deps.
 ```
-pip install -r requirements.txt
+pip install -r py/requirements.txt
 python configure.py
 ```
