@@ -37,7 +37,13 @@ jobs:
 
       # ------------------------------------------------------------------------
       # cc
-
+      #
       - name: Run ${{ github.workflow }} CC
         run: make -C ${{ github.workspace }}/z/${{ github.workflow }}/cc run
+
+      # ------------------------------------------------------------------------
+      # game
+      #
+      - name: Run ${{ github.workflow }} Game
+        run: make -C ${{ github.workspace }}/z/${{ github.workflow }}/ game
 
