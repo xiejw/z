@@ -30,6 +30,5 @@ error_t c4_model_predict(
     /* outputs */
     f32_t **prob, f32_t *value );
 
-error_t call_model( torch::Tensor &input, f32_t **prob, f32_t *value );
-
-void c4_model_cleanup( );
+error_t call_model( torch::jit::script::Module &module, torch::Tensor &input,
+                    f32_t **prob, f32_t *value );

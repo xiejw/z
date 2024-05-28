@@ -70,7 +70,7 @@ ${BUILD}/main: ${MODS}
 	${CXX} -o $@ ${MODS} ${LDFLAGS}
 
 ${BUILD}/main.o: main.cc model.h base.h | ${BUILD}
-	${CXX} ${CXXFLAGS} ${TORCH_CXXFLAGS} -o $@ -c $<
+	${CXX} ${CXXFLAGS} ${MODEL_CXXFLAGS} ${TORCH_CXXFLAGS} -o $@ -c $<
 
 ${BUILD}/model.o: model.cc model.h base.h | ${BUILD}
 	${CXX} ${CXXFLAGS} ${MODEL_CXXFLAGS} ${TORCH_CXXFLAGS} -o $@ -c $<
