@@ -14,6 +14,9 @@ compile: compile_cc
 run:
 	go run cmd/bot/main.go
 
+game:
+	go run cmd/bot/main.go game
+
 test:
 	go test g5/...
 
@@ -25,8 +28,8 @@ fmt: fmt_cc
 	go fmt g5/...
 
 compile_cc:
-	make -C cc compile
+	make --no-print-directory -C cc compile
 
 fmt_cc:
-	make -C cc fmt
+	make --no-print-directory -C cc fmt
 

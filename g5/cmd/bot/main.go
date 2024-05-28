@@ -11,7 +11,6 @@ import (
 
 	"g5/cmd/bot/human"
 
-	_ "g5/go/lib/game"
 	_ "github.com/xiejw/y/ann/luna/errors"
 )
 

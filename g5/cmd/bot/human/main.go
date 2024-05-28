@@ -1,8 +1,12 @@
 package human
 
 import (
+	"os"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+
+	"g5/go/lib/game"
 )
 
 var GameCmd = &cobra.Command{
@@ -10,7 +14,11 @@ var GameCmd = &cobra.Command{
 	Short: "Start a game between human and bot",
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.Info().Msgf("game cmd: %v", humanFirst)
+		log.Info().Msgf("Start game with human. Cfg: Human first = %v", humanFirst)
+
+		b := game.NewBoard()
+		b.Draw(os.Stdout)
+
 	},
 }
 
