@@ -44,6 +44,6 @@ jobs:
       # ------------------------------------------------------------------------
       # game
       #
-      - name: Run ${{ github.workflow }} Game
-        run: make -C ${{ github.workspace }}/z/${{ github.workflow }}/ game
+      # - name: Run ${{ github.workflow }} Game
+      #   run: make -C ${{ github.workspace }}/z/${{ github.workflow }}/ game
 
