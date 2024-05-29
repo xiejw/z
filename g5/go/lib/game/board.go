@@ -24,6 +24,12 @@ type Hook interface {
 }
 
 func NewBoard() Board {
+	if W <= 0 || W >= 16 {
+		panic("the impl assumes W is in [1, 15]")
+	}
+	if H <= 0 || H >= 16 {
+		panic("the impl assumes H is in [1, 15]")
+	}
 	return &termBoard{}
 }
 
