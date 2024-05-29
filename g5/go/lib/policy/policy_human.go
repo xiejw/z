@@ -95,3 +95,6 @@ func (p *HumanPolicy) readInt() (int, error) {
 	text, _ := p.reader.ReadString('\n')
 	return strconv.Atoi(strings.Trim(text, " \r\n"))
 }
+
+// For testing now
+func (p *HumanPolicy) attachNewReader(r *bufio.Reader) { p.reader = r }
