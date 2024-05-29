@@ -19,6 +19,7 @@ type Board interface {
 }
 
 type Hook interface {
+	GetName() string
 	ActOnMove(Pos, Color) error
 	ActOnLogWinner(Color) error
 }
