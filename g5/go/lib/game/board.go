@@ -24,10 +24,10 @@ type Hook interface {
 }
 
 func NewBoard() Board {
-	if W <= 0 || W >= 16 {
-		panic("the impl assumes W is in [1, 15]")
+	if NumRows <= 0 || NumRows >= 16 {
+		panic("the impl assumes NumRows is in [1, 15]")
 	}
-	if H <= 0 || H >= 16 {
+	if NumCols <= 0 || NumCols >= 16 {
 		panic("the impl assumes H is in [1, 15]")
 	}
 	return &termBoard{}
@@ -51,7 +51,7 @@ const (
 func (b *termBoard) Draw(w io.Writer) {
 	// Header
 	fmt.Fprintf(w, "x\\y ")
-	for y := range H {
+	for y := range NumCols {
 		fmt.Fprintf(w, "%2d  ", y)
 	}
 	fmt.Fprintf(w, "\n")
@@ -60,7 +60,7 @@ func (b *termBoard) Draw(w io.Writer) {
 	bFn := func() { // draw a horizontal boarder line
 		fmt.Fprintf(w, BASH_CLR_GREY)
 		fmt.Fprintf(w, "   +")
-		for _ = range H {
+		for _ = range NumCols {
 			fmt.Fprintf(w, "---+")
 		}
 		fmt.Fprintf(w, "\n")
@@ -75,10 +75,10 @@ func (b *termBoard) Draw(w io.Writer) {
 		fmt.Fprintf(w, "|")
 		fmt.Fprintf(w, BASH_CLR_NONE)
 	}
-	for x := range W {
+	for x := range NumRows {
 		fmt.Fprintf(w, "%2d ", x)
 		vFn()
-		for y := range H {
+		for y := range NumCols {
 			c := b.getMove(NewPos(x, y))
 
 			lastMove := b.lastMoveColor != CLR_NA && b.lastMovePos.X() == x && b.lastMovePos.Y() == y

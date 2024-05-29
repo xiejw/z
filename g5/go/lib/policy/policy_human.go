@@ -53,7 +53,7 @@ func (p *HumanPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game.Color
 			log.Error().Err(err).Msgf("Invalid int number. Try again.")
 			continue
 		}
-		if !p.isMoveValid(x, game.W) {
+		if !p.isMoveValid(x, game.NumRows) {
 			log.Error().Msgf("Invalid input. Try again.")
 			continue
 		}
@@ -64,7 +64,7 @@ func (p *HumanPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game.Color
 			log.Error().Err(err).Msgf("Invalid int number. Try again.")
 			continue
 		}
-		if !p.isMoveValid(y, game.H) {
+		if !p.isMoveValid(y, game.NumCols) {
 			log.Error().Msgf("Invalid input. Try again.")
 			continue
 		}

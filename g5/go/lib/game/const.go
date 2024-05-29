@@ -1,6 +1,6 @@
 package game
 
 const (
-	W = 15
-	H = 15
+	NumRows = 15
+	NumCols = 15
 )
