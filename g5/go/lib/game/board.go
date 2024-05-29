@@ -28,14 +28,18 @@ func NewBoard() Board {
 }
 
 type termBoard struct {
-	bState [32]byte
-	wState [32]byte
-	winner Color
+	bState        [32]byte
+	wState        [32]byte
+	winner        Color
+	lastMovePos   Pos
+	lastMoveColor Color
 }
 
 const (
-	GREY = "\033[1;30m"
-	NC   = "\033[0m"
+	BASH_CLR_GREY   = "\033[1;30m"
+	BASH_CLR_GREEN  = "\033[1;32m"
+	BASH_CLR_PURPLE = "\033[1;35m"
+	BASH_CLR_NONE   = "\033[0m"
 )
 
 func (b *termBoard) Draw(w io.Writer) {
@@ -48,28 +52,38 @@ func (b *termBoard) Draw(w io.Writer) {
 
 	// Top Boarder
 	bFn := func() { // draw a horizontal boarder line
-		fmt.Fprintf(w, GREY)
+		fmt.Fprintf(w, BASH_CLR_GREY)
 		fmt.Fprintf(w, "   +")
 		for _ = range H {
 			fmt.Fprintf(w, "---+")
 		}
 		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, NC)
+		fmt.Fprintf(w, BASH_CLR_NONE)
 
 	}
 	bFn()
 
 	// Board
 	vFn := func() { // draw a vertical | char
-		fmt.Fprintf(w, GREY)
+		fmt.Fprintf(w, BASH_CLR_GREY)
 		fmt.Fprintf(w, "|")
-		fmt.Fprintf(w, NC)
+		fmt.Fprintf(w, BASH_CLR_NONE)
 	}
 	for x := range W {
 		fmt.Fprintf(w, "%2d ", x)
 		vFn()
 		for y := range H {
 			c := b.getMove(NewPos(x, y))
+
+			lastMove := b.lastMoveColor != CLR_NA && b.lastMovePos.X() == x && b.lastMovePos.Y() == y
+
+			if lastMove {
+				if b.lastMoveColor == CLR_BLACK {
+					fmt.Fprintf(w, "%v", BASH_CLR_GREEN)
+				} else {
+					fmt.Fprintf(w, "%v", BASH_CLR_PURPLE)
+				}
+			}
 			switch c {
 			case CLR_BLACK:
 				fmt.Fprintf(w, " %v ", "x")
@@ -78,6 +92,10 @@ func (b *termBoard) Draw(w io.Writer) {
 			default:
 				fmt.Fprintf(w, " %v ", " ")
 			}
+			if lastMove {
+				fmt.Fprintf(w, "%v", BASH_CLR_NONE)
+			}
+
 			vFn()
 		}
 		fmt.Fprintf(w, "\n")
@@ -95,10 +113,12 @@ func (b *termBoard) NewMove(pos Pos, color Color) (winner bool, err error) {
 		return false, ERROR_ILLEGAL_MOVE
 	}
 
+	b.lastMovePos = pos
+	b.lastMoveColor = color
 	b.setMove(pos, color)
 	return false, nil
 }
-func (b *termBoard) GetLastMove() (Pos, Color) { return NewPos(0, 0), CLR_NA }
+func (b *termBoard) GetLastMove() (Pos, Color) { return b.lastMovePos, b.lastMoveColor }
 func (b *termBoard) GetWiner() Color           { return CLR_NA }
 func (b *termBoard) AttachHook(Hook) error     { return nil }
 
