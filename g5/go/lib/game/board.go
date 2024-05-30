@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
+	"github.com/rs/zerolog/log"
 )
 
 var (
@@ -110,11 +112,13 @@ func (b *termBoard) Draw(w io.Writer) {
 	}
 }
 func (b *termBoard) NewMove(pos Pos, color Color) (winner bool, err error) {
+	if b.winner != CLR_NA {
+		log.Panic().Msgf("NewMove cannot be called if there is winner already")
+	}
 	if color == CLR_NA {
-		panic("CLR_NA is not supported by NewMove")
+		log.Panic().Msgf("CLR_NA is not supported by NewMove")
 	}
 
-	// TODO winner is not set
 	c := b.getMove(pos)
 	if c != CLR_NA {
 		return false, ERROR_ILLEGAL_MOVE
@@ -123,11 +127,12 @@ func (b *termBoard) NewMove(pos Pos, color Color) (winner bool, err error) {
 	b.lastMovePos = pos
 	b.lastMoveColor = color
 	b.setMove(pos, color)
-	return false, nil
+	winnerFound := b.findWinner()
+	return winnerFound, nil
 }
 func (b *termBoard) GetLastMove() (Pos, Color) { return b.lastMovePos, b.lastMoveColor }
-func (b *termBoard) GetWiner() Color           { return CLR_NA }
-func (b *termBoard) AttachHook(Hook) error     { return nil }
+func (b *termBoard) GetWiner() Color           { return b.winner }
+func (b *termBoard) AttachHook(Hook) error     { log.Panic().Msgf("AttachHook unimpl"); return nil }
 
 func (b *termBoard) getMove(pos Pos) Color {
 	idx := int(pos)
@@ -163,4 +168,48 @@ func (b *termBoard) setMove(pos Pos, c Color) {
 		byt := b.wState[bytePos] | byteBit
 		b.wState[bytePos] = byt
 	}
+}
+
+func (b *termBoard) findWinner() (winner bool) {
+	if b.lastMoveColor == CLR_NA {
+		log.Panic().Msgf("findWinner cannot be call if there is no move at all")
+	}
+	if b.winner != CLR_NA {
+		log.Panic().Msgf("findWinner cannot be call if there is winner already")
+	}
+
+	x := b.lastMovePos.X()
+	y := b.lastMovePos.Y()
+	colorToMatch := b.lastMoveColor
+
+	countMoveWithSameColor := func(currX, currY int, incFn func(x, y int) (int, int)) int {
+		c := 0
+		for {
+			currX, currY = incFn(currX, currY)
+			if currX < 0 || currX >= NumRows {
+				return c
+			}
+			if currY < 0 || currY >= NumCols {
+				return c
+			}
+			if b.getMove(NewPos(currX, currY)) != colorToMatch {
+				return c
+			}
+			c++
+
+		}
+	}
+
+	xRightCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x, y + 1 })
+	xLeftCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x, y - 1 })
+	if xRightCount+1+xLeftCount >= NumMovesToWin {
+		return true
+	}
+
+	yUpCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x - 1, y })
+	yDownCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x + 1, y })
+	if yUpCount+1+yDownCount >= NumMovesToWin {
+		return true
+	}
+	return false
 }
