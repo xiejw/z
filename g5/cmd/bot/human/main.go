@@ -9,7 +9,7 @@ import (
 	"g5/go/lib/policy"
 )
 
-var GameCmd = &cobra.Command{
+var HumanCmd = &cobra.Command{
 	Use:   "game",
 	Short: "Start a game between human and bot",
 	Args:  cobra.NoArgs,
@@ -21,14 +21,14 @@ var (
 )
 
 func init() {
-	GameCmd.Flags().BoolVarP(&humanFirst, "humanfirst", "u", false, "Human starts with black.")
+	HumanCmd.Flags().BoolVarP(&humanFirst, "humanfirst", "u", false, "Human starts with black.")
 }
 
 func startHumanGame(cmd *cobra.Command, args []string) {
 	log.Info().Msgf("Start game with human. Cfg: Human first = %v", humanFirst)
 
-	p1 := policy.NewHumanPolicy("black", game.CLR_BLACK)
-	p2 := policy.NewHumanPolicy("white", game.CLR_WHITE)
+	p1 := policy.NewHumanPolicy("human", game.CLR_BLACK)
+	p2 := policy.NewRandomPolicy("random", game.CLR_WHITE)
 
 	err := control.StartGame(p1, p2, nil)
 	if err != nil {

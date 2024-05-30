@@ -9,9 +9,8 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 
+	"g5/cmd/bot/ai"
 	"g5/cmd/bot/human"
-
-	_ "github.com/xiejw/y/ann/luna/errors"
 )
 
 var rootCmd = &cobra.Command{
@@ -28,7 +27,8 @@ func Execute() {
 
 func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
-	rootCmd.AddCommand(human.GameCmd)
+	rootCmd.AddCommand(human.HumanCmd)
+	rootCmd.AddCommand(ai.AiCmd)
 }
 
 func main() {

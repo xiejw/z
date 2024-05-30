@@ -17,6 +17,9 @@ run:
 game:
 	go run cmd/bot/main.go game
 
+ai:
+	go run cmd/bot/main.go ai
+
 test:
 	go test g5/...
 
