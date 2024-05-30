@@ -10,6 +10,7 @@ import (
 
 var (
 	ERROR_ILLEGAL_MOVE = errors.New("illgal move")
+	ERROR_GAME_OVER    = errors.New("game is over")
 )
 
 type Board interface {
@@ -50,6 +51,10 @@ const (
 	BASH_CLR_PURPLE = "\033[1;35m"
 	BASH_CLR_NONE   = "\033[0m"
 )
+
+// -----------------------------------------------------------------------------
+// Conform Board Interface
+//
 
 func (b *termBoard) Draw(w io.Writer) {
 	// Header
@@ -128,11 +133,24 @@ func (b *termBoard) NewMove(pos Pos, color Color) (winner bool, err error) {
 	b.lastMoveColor = color
 	b.setMove(pos, color)
 	winnerFound := b.findWinner()
+	if winnerFound {
+		b.winner = color
+	}
 	return winnerFound, nil
 }
 func (b *termBoard) GetLastMove() (Pos, Color) { return b.lastMovePos, b.lastMoveColor }
 func (b *termBoard) GetWiner() Color           { return b.winner }
-func (b *termBoard) AttachHook(Hook) error     { log.Panic().Msgf("AttachHook unimpl"); return nil }
+func (b *termBoard) AttachHook(Hook) error {
+	if b.winner != CLR_NA {
+		return ERROR_GAME_OVER
+	}
+	log.Panic().Msgf("AttachHook unimpl")
+	return nil
+}
+
+// -----------------------------------------------------------------------------
+// Helper methods
+//
 
 func (b *termBoard) getMove(pos Pos) Color {
 	idx := int(pos)
@@ -200,16 +218,36 @@ func (b *termBoard) findWinner() (winner bool) {
 		}
 	}
 
-	xRightCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x, y + 1 })
-	xLeftCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x, y - 1 })
-	if xRightCount+1+xLeftCount >= NumMovesToWin {
-		return true
+	{
+		xRightCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x, y + 1 })
+		xLeftCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x, y - 1 })
+		if xRightCount+1+xLeftCount >= NumMovesToWin {
+			return true
+		}
 	}
 
-	yUpCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x - 1, y })
-	yDownCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x + 1, y })
-	if yUpCount+1+yDownCount >= NumMovesToWin {
-		return true
+	{
+		yUpCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x - 1, y })
+		yDownCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x + 1, y })
+		if yUpCount+1+yDownCount >= NumMovesToWin {
+			return true
+		}
+	}
+
+	{
+		xyUpRightCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x - 1, y + 1 })
+		xyDownLeftCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x + 1, y - 1 })
+		if xyUpRightCount+1+xyDownLeftCount >= NumMovesToWin {
+			return true
+		}
+	}
+
+	{
+		xyUpLeftCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x - 1, y - 1 })
+		xyDownRightCount := countMoveWithSameColor(x, y, func(x, y int) (int, int) { return x + 1, y + 1 })
+		if xyUpLeftCount+1+xyDownRightCount >= NumMovesToWin {
+			return true
+		}
 	}
 	return false
 }

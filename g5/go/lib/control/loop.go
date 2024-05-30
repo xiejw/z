@@ -26,6 +26,7 @@ func StartGame(blackPolicy, whitePolicy policy.Policy, hooks []game.Hook) error 
 	var lastMoveColor game.Color
 	var lastPos game.Pos
 	var err error
+	var foundWinner bool
 
 	b := game.NewBoard()
 	for _, h := range hooks {
@@ -40,12 +41,17 @@ func StartGame(blackPolicy, whitePolicy policy.Policy, hooks []game.Hook) error 
 	for {
 		log.Info().Msgf(">>> Next Player (%v): %v", p.GetColor(), p.GetName())
 		lastPos = p.GetNextMove(lastPos, lastMoveColor)
-		_, err = b.NewMove(lastPos, p.GetColor())
+		foundWinner, err = b.NewMove(lastPos, p.GetColor())
 		if err != nil {
 			log.Panic().Err(err).Msgf("unexpected error")
 		}
 
 		b.Draw(os.Stdout)
+
+		if foundWinner {
+			log.Info().Msgf(">>> Found Winner (%v): %v", p.GetColor(), p.GetName())
+			return nil
+		}
 
 		switch lastMoveColor {
 		case game.CLR_NA:
