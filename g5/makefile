@@ -30,7 +30,7 @@ release: clean compile
 fmt: fmt_go fmt_cc
 
 fmt_go:
-	go fmt g5/...
+	go fmt g5/... && go mod tidy
 
 compile_cc:
 	make --no-print-directory -C cc compile

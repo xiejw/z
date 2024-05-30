@@ -19,6 +19,9 @@ type Board interface {
 	GetLastMove() (Pos, Color) // CLR_NA means no move yet.
 	GetWiner() Color           // CLR_NA means no winner.
 	AttachHook(Hook) error
+
+	SetTryMove(pos Pos, color Color)
+	ClearTryMove()
 }
 
 type Hook interface {
@@ -37,18 +40,26 @@ func NewBoard() Board {
 	return &termBoard{}
 }
 
+type boardMove struct {
+	Pos   Pos
+	Color Color
+}
+
 type termBoard struct {
 	bState        [32]byte
 	wState        [32]byte
 	winner        Color
 	lastMovePos   Pos
 	lastMoveColor Color
+	tryMove       *boardMove
 }
 
 const (
-	BASH_CLR_GREY   = "\033[1;30m"
-	BASH_CLR_GREEN  = "\033[1;32m"
-	BASH_CLR_PURPLE = "\033[1;35m"
+	BASH_CLR_GREY   = "\033[1;30m" // Boader
+	BASH_CLR_GREEN  = "\033[1;32m" // For last Move with X
+	BASH_CLR_PURPLE = "\033[1;35m" // For last Move with O
+	BASH_CLR_RED    = "\033[1;31m" // For invalid try Move
+	BASH_CLR_BLUE   = "\033[1;34m" // For valid try Move
 	BASH_CLR_NONE   = "\033[0m"
 )
 
@@ -91,23 +102,49 @@ func (b *termBoard) Draw(w io.Writer) {
 
 			lastMove := b.lastMoveColor != CLR_NA && b.lastMovePos.X() == x && b.lastMovePos.Y() == y
 
-			if lastMove {
-				if b.lastMoveColor == CLR_BLACK {
-					fmt.Fprintf(w, "%v", BASH_CLR_GREEN)
+			if b.tryMove != nil && b.tryMove.Pos.X() == x && b.tryMove.Pos.Y() == y {
+				if c == CLR_NA {
+					// A valid try Move
+					fmt.Fprintf(w, "%v", BASH_CLR_BLUE)
+					switch b.tryMove.Color {
+					case CLR_BLACK:
+						fmt.Fprintf(w, " %v ", "x")
+					case CLR_WHITE:
+						fmt.Fprintf(w, " %v ", "o")
+					}
+					fmt.Fprintf(w, "%v", BASH_CLR_NONE)
 				} else {
-					fmt.Fprintf(w, "%v", BASH_CLR_PURPLE)
+					// A invalid try Move
+					fmt.Fprintf(w, "%v", BASH_CLR_RED)
+					switch b.tryMove.Color {
+					case CLR_BLACK:
+						fmt.Fprintf(w, " %v ", "x")
+					case CLR_WHITE:
+						fmt.Fprintf(w, " %v ", "o")
+					}
+					fmt.Fprintf(w, "%v", BASH_CLR_NONE)
 				}
-			}
-			switch c {
-			case CLR_BLACK:
-				fmt.Fprintf(w, " %v ", "x")
-			case CLR_WHITE:
-				fmt.Fprintf(w, " %v ", "o")
-			default:
-				fmt.Fprintf(w, " %v ", " ")
-			}
-			if lastMove {
-				fmt.Fprintf(w, "%v", BASH_CLR_NONE)
+			} else {
+				// This is not same as try Move. Do special
+				// logic for last Move
+				if lastMove {
+					if b.lastMoveColor == CLR_BLACK {
+						fmt.Fprintf(w, "%v", BASH_CLR_GREEN)
+					} else {
+						fmt.Fprintf(w, "%v", BASH_CLR_PURPLE)
+					}
+				}
+				switch c {
+				case CLR_BLACK:
+					fmt.Fprintf(w, " %v ", "x")
+				case CLR_WHITE:
+					fmt.Fprintf(w, " %v ", "o")
+				default:
+					fmt.Fprintf(w, " %v ", " ")
+				}
+				if lastMove {
+					fmt.Fprintf(w, "%v", BASH_CLR_NONE)
+				}
 			}
 
 			vFn()
@@ -147,6 +184,16 @@ func (b *termBoard) AttachHook(Hook) error {
 	log.Panic().Msgf("AttachHook unimpl")
 	return nil
 }
+
+// -----------------------------------------------------------------------------
+// Public methods
+func (b *termBoard) SetTryMove(pos Pos, color Color) {
+	b.tryMove = &boardMove{
+		Pos:   pos,
+		Color: color,
+	}
+}
+func (b *termBoard) ClearTryMove() { b.tryMove = nil }
 
 // -----------------------------------------------------------------------------
 // Helper methods
