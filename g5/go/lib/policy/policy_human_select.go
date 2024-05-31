@@ -13,18 +13,20 @@ import (
 )
 
 type HumanSelectPolicy struct {
-	name   string
-	color  game.Color
-	states map[[2]int]bool
-	board  game.Board
+	name         string
+	color        game.Color
+	states       map[[2]int]bool
+	board        game.Board
+	lastRoundPos game.Pos
 }
 
 func NewHumanSelectPolicy(name string, color game.Color) Policy {
 	return &HumanSelectPolicy{
-		name:   name,
-		color:  color,
-		states: make(map[[2]int]bool),
-		board:  game.NewBoard(),
+		name:         name,
+		color:        color,
+		states:       make(map[[2]int]bool),
+		board:        game.NewBoard(),
+		lastRoundPos: game.NewPos(game.NumRows/2, game.NumCols/2),
 	}
 }
 
@@ -46,15 +48,15 @@ func (p *HumanSelectPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game
 		p.board.NewMove(lastMovePos, lastMoveColor)
 	}
 
-	var x int = game.NumRows / 2
-	var y int = game.NumCols / 2
+	var x int = p.lastRoundPos.X()
+	var y int = p.lastRoundPos.Y()
 	var shouldExist bool
 
 	p.board.SetTryMove(game.NewPos(x, y), p.GetColor())
 	p.board.Draw(os.Stdout)
 
 	keyboard.Listen(func(key keys.Key) (stop bool, err error) {
-		if key.Code == keys.CtrlC {
+		if key.Code == keys.CtrlC || key.Code == keys.Escape {
 			shouldExist = true
 			return true, nil // Stop listener by returning true on Ctrl+C
 		}
@@ -104,7 +106,8 @@ func (p *HumanSelectPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game
 	if shouldExist {
 		os.Exit(1)
 	}
-	return game.NewPos(x, y)
+	p.lastRoundPos = game.NewPos(x, y)
+	return p.lastRoundPos
 }
 
 func (p *HumanSelectPolicy) isMoveLegal(x, y int) bool {

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -67,7 +68,10 @@ const (
 // Conform Board Interface
 //
 
-func (b *termBoard) Draw(w io.Writer) {
+func (b *termBoard) Draw(in io.Writer) {
+	// Use a local buffer first to avoid blinking output.
+	var w = new(bytes.Buffer)
+
 	// Header
 	fmt.Fprintf(w, "x\\y ")
 	for y := range NumCols {
@@ -152,7 +156,9 @@ func (b *termBoard) Draw(w io.Writer) {
 		fmt.Fprintf(w, "\n")
 		bFn()
 	}
+	fmt.Fprintf(in, "%v", w.String())
 }
+
 func (b *termBoard) NewMove(pos Pos, color Color) (winner bool, err error) {
 	if b.winner != CLR_NA {
 		log.Panic().Msgf("NewMove cannot be called if there is winner already")
