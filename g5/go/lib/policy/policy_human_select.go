@@ -16,20 +16,26 @@ import (
 )
 
 type HumanSelectPolicy struct {
-	name         string
-	color        game.Color
-	states       map[[2]int]bool
-	board        game.Board
-	lastRoundPos game.Pos
+	name  string
+	color game.Color
+
+	// Internal states
+	states       map[game.Pos]bool // Record which positions are taken.
+	lastRoundPos game.Pos          // Record the pos user typed for this policy last round.
+
+	// Draw the current board with potential selection (but not committed).
+	// This is a separated copy so the main board used by the game loop is
+	// not populated.
+	internalBoard game.Board
 }
 
 func NewHumanSelectPolicy(name string, color game.Color) Policy {
 	return &HumanSelectPolicy{
-		name:         name,
-		color:        color,
-		states:       make(map[[2]int]bool),
-		board:        game.NewBoard(),
-		lastRoundPos: game.NewPos(game.NumRows/2, game.NumCols/2),
+		name:          name,
+		color:         color,
+		states:        make(map[game.Pos]bool),
+		internalBoard: game.NewBoard(),
+		lastRoundPos:  game.NewPos(game.NumRows/2, game.NumCols/2),
 	}
 }
 
@@ -41,39 +47,37 @@ func (p *HumanSelectPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game
 		if lastMoveColor == p.color {
 			panic("should not be same color")
 		}
-
-		x := lastMovePos.X()
-		y := lastMovePos.Y()
-
-		if !p.isMoveLegal(x, y) {
+		if p.states[lastMovePos] {
+			x := lastMovePos.X()
+			y := lastMovePos.Y()
 			log.Panic().Msgf("Pos(%v,%v) is occupied already", x, y)
 		}
-		p.states[[2]int{x, y}] = true
-		p.board.NewMove(lastMovePos, lastMoveColor)
+		p.states[lastMovePos] = true
+		p.internalBoard.NewMove(lastMovePos, lastMoveColor)
 	}
 
-	var x int = p.lastRoundPos.X()
-	var y int = p.lastRoundPos.Y()
 	var shouldExit bool
 	var escapePressedCount int
+	var x int = p.lastRoundPos.X()
+	var y int = p.lastRoundPos.Y()
 
-	p.board.SetTryMove(game.NewPos(x, y), p.GetColor())
-	p.board.Draw(os.Stdout)
+	p.internalBoard.SetTryMove(game.NewPos(x, y), p.GetColor())
+	p.internalBoard.Draw(os.Stdout)
 
 	keyboard.Listen(func(key keys.Key) (stop bool, err error) {
 		if key.Code == keys.CtrlC {
-			log.Warn().Msgf("Got Ctrl-C. Quiting")
+			log.Warn().Msgf("Got \"Ctrl-C\". Quiting")
 			shouldExit = true
 			return true, nil
 		}
 
 		if key.Code == keys.Escape {
 			if escapePressedCount >= 1 {
-				log.Warn().Msgf("Got Escape key twice. Quiting")
+				log.Warn().Msgf("Got \"Escape\" key twice. Quiting")
 				shouldExit = true
 				return true, nil
 			}
-			log.Info().Msgf("Got Escape key once. Press again to Quit.")
+			log.Info().Msgf("Got \"Escape\" key once. Press twice to Quit.")
 			escapePressedCount++
 		} else {
 			escapePressedCount = 0
@@ -82,37 +86,38 @@ func (p *HumanSelectPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game
 		if key.Code == keys.Up {
 			if x > 0 {
 				x--
-				p.board.SetTryMove(game.NewPos(x, y), p.GetColor())
-				p.board.Draw(os.Stdout)
+				p.internalBoard.SetTryMove(game.NewPos(x, y), p.GetColor())
+				p.internalBoard.Draw(os.Stdout)
 			}
 		}
 
 		if key.Code == keys.Down {
 			if x < game.NumRows-1 {
 				x++
-				p.board.SetTryMove(game.NewPos(x, y), p.GetColor())
-				p.board.Draw(os.Stdout)
+				p.internalBoard.SetTryMove(game.NewPos(x, y), p.GetColor())
+				p.internalBoard.Draw(os.Stdout)
 			}
 		}
 		if key.Code == keys.Left {
 			if y > 0 {
 				y--
-				p.board.SetTryMove(game.NewPos(x, y), p.GetColor())
-				p.board.Draw(os.Stdout)
+				p.internalBoard.SetTryMove(game.NewPos(x, y), p.GetColor())
+				p.internalBoard.Draw(os.Stdout)
 			}
 		}
 		if key.Code == keys.Right {
 			if y < game.NumCols-1 {
 				y++
-				p.board.SetTryMove(game.NewPos(x, y), p.GetColor())
-				p.board.Draw(os.Stdout)
+				p.internalBoard.SetTryMove(game.NewPos(x, y), p.GetColor())
+				p.internalBoard.Draw(os.Stdout)
 			}
 		}
 
 		if key.Code == keys.Enter {
-			if p.isMoveLegal(x, y) {
-				p.states[[2]int{x, y}] = true
-				p.board.NewMove(game.NewPos(x, y), p.GetColor())
+			newPos := game.NewPos(x, y)
+			if !p.states[newPos] {
+				p.states[newPos] = true
+				p.internalBoard.NewMove(newPos, p.GetColor())
 				return true, nil
 			}
 
@@ -126,9 +131,4 @@ func (p *HumanSelectPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game
 	}
 	p.lastRoundPos = game.NewPos(x, y)
 	return p.lastRoundPos
-}
-
-func (p *HumanSelectPolicy) isMoveLegal(x, y int) bool {
-	pos := [2]int{x, y}
-	return !p.states[pos]
 }
