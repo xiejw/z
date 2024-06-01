@@ -27,9 +27,7 @@ func init() {
 func startHumanGame(cmd *cobra.Command, args []string) {
 	log.Info().Msgf("Start game with human. Cfg: Human first = %v", humanFirst)
 
-	//p1 := policy.NewHumanPolicy("human", game.CLR_BLACK)
-	//p2 := policy.NewRandomPolicy("random", game.CLR_WHITE)
-	p1 := policy.NewHumanSelectPolicy("human", game.CLR_BLACK)
+	p1 := policy.NewHumanVisPolicy("human", game.CLR_BLACK)
 	p2 := policy.NewRandomPolicy("random", game.CLR_WHITE)
 
 	err := control.StartGame(p1, p2, nil)

@@ -1,7 +1,7 @@
-// Human Select is an improved Human policy allowing users to select the move
+// HumanVis is an improved Human policy allowing users to select the move
 // with visualization. The HumanPolicy prompts users to type x and y as input
 // in stdin. It works but it is very easy to type incorrectly.
-// HumanSelectPolicy provides a visualized board to select the move on the
+// HumanVisPolicy provides a visualized board to select the move on the
 // board.
 package policy
 
@@ -15,7 +15,7 @@ import (
 	"g5/go/lib/game"
 )
 
-type HumanSelectPolicy struct {
+type HumanVisPolicy struct {
 	name  string
 	color game.Color
 
@@ -29,8 +29,8 @@ type HumanSelectPolicy struct {
 	internalBoard game.Board
 }
 
-func NewHumanSelectPolicy(name string, color game.Color) Policy {
-	return &HumanSelectPolicy{
+func NewHumanVisPolicy(name string, color game.Color) Policy {
+	return &HumanVisPolicy{
 		name:          name,
 		color:         color,
 		states:        make(map[game.Pos]bool),
@@ -39,10 +39,10 @@ func NewHumanSelectPolicy(name string, color game.Color) Policy {
 	}
 }
 
-func (p *HumanSelectPolicy) GetName() string      { return p.name }
-func (p *HumanSelectPolicy) GetColor() game.Color { return p.color }
+func (p *HumanVisPolicy) GetName() string      { return p.name }
+func (p *HumanVisPolicy) GetColor() game.Color { return p.color }
 
-func (p *HumanSelectPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game.Color) game.Pos {
+func (p *HumanVisPolicy) GetNextMove(lastMovePos game.Pos, lastMoveColor game.Color) game.Pos {
 	if lastMoveColor != game.CLR_NA {
 		if lastMoveColor == p.color {
 			panic("should not be same color")
