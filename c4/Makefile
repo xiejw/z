@@ -34,7 +34,7 @@ play:
 clean:
 	@echo "deep clean"                          && \
 		make --silent -C misc/docker clean  && \
-		make --silent -C cc clean           && \
+		rm -rf .build                       && \
 		find . -name 'a.out' -exec rm {} \;
 
 #

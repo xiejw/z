@@ -6,7 +6,6 @@ import platform
 import subprocess
 import sys
 
-from distutils.spawn import find_executable
 from pathlib import Path
 from string import Template
 
@@ -23,7 +22,6 @@ args = parser.parse_args()
 #
 MK_FILE     = "configure.mk"
 HOME        = str(Path.home())
-UNAME       = platform.system()
 C4_FILE_DIR = args.model_dir or os.path.join(HOME, "Desktop")
 
 #
@@ -51,9 +49,6 @@ except ImportError:
     print("[python] package torch is required.")
     sys.exit(1)
 
-if UNAME == 'Darwin':
-    assert torch.backends.mps.is_available(), "macOS requires mps in torch"
-
 try:
     import numpy;
 except ImportError:
@@ -63,12 +58,6 @@ except ImportError:
 #
 # check system configs
 #
-
-# find compiler
-if UNAME == 'Darwin':
-    assert find_executable('clang++'), "clang++ is required on macOS"
-else:
-    assert find_executable('g++'), "clang++ is required on Linux"
 
 # next line only matters for Linux
 torch_cxx11_abi = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
