@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/bash
 #
 # vim: ft=bash
 #
@@ -42,7 +42,8 @@ pip_install() {
     pip install https://files.pythonhosted.org/packages/a0/ef/c09d5e8739f99ed99c821a468830b06ac0af0d21e443afda8d2459fdc50a/torch-2.2.0-cp312-none-macosx_10_9_x86_64.whl
     pip install 'numpy<2'
   else
-    pip install torch numpy
+    pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
+    pip install torch numpy==2.2.1
   fi
 }
 
