@@ -3,7 +3,11 @@
 -include ./configure.mk
 
 ifndef C4_CONFIGURE_DONE
-$(error "Project is not configured. Run 'python configure.py' first")
+$(error "Project is not configured. Run './bootstrap.sh' instead.")
+endif
+
+ifndef VIRTUAL_ENV
+$(error "Project is expected to be run in virtural env. Run './bootstrap.sh'.")
 endif
 
 # === --- Configs ---------------------------------------------------------- ===

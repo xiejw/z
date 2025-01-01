@@ -9,7 +9,9 @@ def build_resnet_model(input_shape, num_classes, **kwargs):
     state_file_to_load = kwargs.get("state_file_to_load")
     if state_file_to_load:
         print("[sys] loading module state from path:", state_file_to_load)
-        m.load_state_dict(torch.load(state_file_to_load), strict=True)
+        m.load_state_dict(
+                torch.load(state_file_to_load, weights_only=True),
+                strict=True)
     return m
 
 

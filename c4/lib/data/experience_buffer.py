@@ -1,3 +1,5 @@
+import os
+
 from game import Color
 
 from .state import State
@@ -73,21 +75,26 @@ class ExperienceBuffer(object):
         self._current_epoch_moves.append(move)
 
     def report(self):
-        writer = self._writer if self._writer else print
-        for state in self._states:
-            writer(state.__str__())
+        if self._writer:
+            writer = self._writer
+            for state in self._states:
+                writer(state.__str__())
 
-        self._num_states_reported += len(self._states)
+            self._num_states_reported += len(self._states)
 
         # Reset
         self._states = []
 
     def summary(self):
+        if not self._writer:
+            return
+
         print("Report %d epochs in total." % self._num_epochs)
         print("Wins: B (%d) - W (%d) -Tie (%d)." % (
             self._num_black_wins,
             self._num_white_wins,
             self._num_ties))
+
         print("Report %d states in total." % self._num_states_reported)
         print("On average %.3f states/epoch." % (
             self._num_states_reported / self._num_epochs))
