@@ -26,7 +26,7 @@ test:
 # === --- Housekeeping ----------------------------------------------------- ===
 #
 clean:
-	go run ~/Workspace/y/tools/delete_unused_dirs.go
+	make -C .. clean
 
 # === --- Docker ----------------------------------------------------------- ===
 #

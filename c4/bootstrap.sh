@@ -33,6 +33,7 @@ select_py() {
 
 # Install deps.
 pip_install() {
+  # Special ones.
   if [ "$(uname)" == "Darwin" ] && [ "$(uname -p)" == "i386" ]; then
     echo "${PMT} Install old torch for macos x64_64"
     # See
@@ -45,6 +46,9 @@ pip_install() {
     pip install torch==2.5.1 --index-url https://download.pytorch.org/whl/cpu
     pip install torch numpy==2.2.1
   fi
+
+  # Common ones.
+  pip install tqdm
 }
 
 # Prepare venv and install deps.

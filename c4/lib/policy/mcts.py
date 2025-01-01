@@ -4,6 +4,7 @@ import copy
 import os
 
 import numpy as np
+from tqdm import tqdm
 
 from data import InferenceState
 from game import Color
@@ -231,7 +232,7 @@ _game_is_over = object()
 # Write as free funciton for isolation.
 def _run_simulations(iterations, root_node, root_board, inject_noise):
 
-        for i in range(iterations):
+        for i in tqdm(range(iterations)):
             current_node = root_node
             current_board = root_board
 
