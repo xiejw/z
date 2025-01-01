@@ -4,30 +4,13 @@ name: 'z-action'
 #     https://github.com/actions/runner-images
 description: 'Common Action'
 inputs:
-  checkout_y:
-    default: false
-  compile_eva:
-    default: false
   require_clang:
     default: false
   clang_version:
     default: 15
-  require_go:
-    default: false
-  go_version:
-    default: 1.22
-  require_rs:
-    default: false
 runs:
   using: "composite"
   steps:
-    - name: Checkout y
-      if: ${{ inputs.checkout_y == 'true' }}
-      uses: actions/checkout@v4
-      with:
-        repository: xiejw/y
-        path: y
-
     # --------------------------------------------------------------------------
     # Clang related
     #
@@ -47,47 +30,4 @@ runs:
       shell: bash
       run: ${CC} --version
 
-    # --------------------------------------------------------------------------
-    # Eva related
-    #
-    - name: Prepare Eva
-      if: ${{ inputs.checkout_y == 'true' && inputs.compile_eva == 'true' }}
-      shell: bash
-      run: |
-        echo "NO_CLANG_FLAGS=1" >> $GITHUB_ENV
-    - name: Build Eva
-      if: ${{ inputs.checkout_y == 'true' && inputs.compile_eva == 'true' }}
-      shell: bash
-      run: |
-        make -C ${{ github.workspace }}/y/ann/eva release
-
-    # --------------------------------------------------------------------------
-    # Go related
-    #
-    - name: Set environmental variables for Go
-      if: ${{ inputs.require_go == 'true' }}
-      shell: bash
-      run: |
-        echo "GO=/usr/lib/go-${{ inputs.go_version }}/bin/go" >> $GITHUB_ENV
-    - name: Install Go
-      if: ${{ inputs.require_go == 'true' }}
-      shell: bash
-      run: sudo apt-get install -y --no-install-recommends golang-${{ inputs.go_version }}
-    - name: Display Go version
-      if: ${{ inputs.require_go == 'true' }}
-      shell: bash
-      run: ${GO} version
-
-    # --------------------------------------------------------------------------
-    # Rust related
-    #
-    - name: Install Rust
-      if: ${{ inputs.require_rs == 'true' }}
-      uses: hecrj/setup-rust-action@v2
-      with:
-        rust-version: stable
-    - name: Display Rust version
-      if: ${{ inputs.require_rs == 'true' }}
-      shell: bash
-      run: rustc --version
 
