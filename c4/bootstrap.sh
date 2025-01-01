@@ -53,7 +53,12 @@ install_venv_locally() {
     echo "${PMT} Create venv dir: ${VENV_DIR}"
     mkdir -p ${VENV_DIR}
     ${PY} -m venv ${VENV_DIR}
+    source ${VENV_DIR}/bin/activate
+    select_py
     pip_install
+  else
+    source ${VENV_DIR}/bin/activate
+    select_py
   fi
 }
 
@@ -80,8 +85,6 @@ generate_configure_mk() {
 select_py
 install_venv_locally
 install_weights_locally
-source ${VENV_DIR}/bin/activate
-select_py                         # Run again to pick up venv
 generate_configure_mk
 
 # === --- Play or Sanity check --------------------------------------------- ===
