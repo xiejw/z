@@ -275,6 +275,12 @@ class ResNetModelWrapper(ResNetModel):
     def __init__(self):
         super(ResNetModelWrapper, self).__init__()
 
+        try:
+            if torch.backends.mps.is_available():
+                self.to('mps')
+        except:
+            pass
+
         device = next(self.parameters()).device
         print(f"[sys] model is on {device}")
         self.device = device

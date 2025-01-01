@@ -19,50 +19,60 @@ Let's Play
 
 See [Youtube here](https://youtu.be/tGG8I9GnisM)
 
-### Docker on arm64/amd64
+### How to Start
+```
+./bootstrap.py    # For the first time
+make play         # Afterwards
+```
 
-Few choices
+### Other Ways
+<details>
+  <summary>Click me</summary>
 
-- [arm64] Super fast but only look ahead one step.
+  #### Docker on arm64/amd64
 
-        docker run --rm -ti xiejw/connect_4_par_pt_lookahead_onestep
+  Few choices
 
-- [arm64/amd64] A little slow, but should be a good player
+  - [arm64] Super fast but only look ahead one step.
 
-        [arm64]
-        docker run --rm -ti xiejw/connect_4_pt_medium
-        [x86_64]
-        docker run --rm -ti xiejw/connect_4_pt_medium_x86_64
+          docker run --rm -ti xiejw/connect_4_par_pt_lookahead_onestep
 
-- [arm64] Quite slow, but qutie strong
+  - [arm64/amd64] A little slow, but should be a good player
 
-        docker run --rm -ti xiejw/connect_4_pt
+          [arm64]
+          docker run --rm -ti xiejw/connect_4_pt_medium
+          [x86_64]
+          docker run --rm -ti xiejw/connect_4_pt_medium_x86_64
 
-### Local Python (macOS with MPS torch backend)
+  - [arm64] Quite slow, but qutie strong
 
-_Last Test: macOS 13.6 + brew Python on May 2024_.
+          docker run --rm -ti xiejw/connect_4_pt
 
-- Download the pytorch (binary) state file, if absent, from
-  [here](https://github.com/xiejw/z/releases).
+  #### Local Python (macOS with MPS torch backend)
 
-- Place state files at `~/Desktop`.
+  _Last Test: macOS 13.6 + brew Python on May 2024_.
 
-- Ensure a `C` compiler is available (`clang`).
+  - Download the pytorch (binary) state file, if absent, from
+    [here](https://github.com/xiejw/z/releases).
 
-- With macOS, ensure install python via brew.
+  - Place state files at `~/Desktop`.
 
-        brew install python
-        brew ls python
+  - Ensure a `C` compiler is available (`clang`).
 
-- Ensure Python 3 dependencies are installed
+  - With macOS, ensure install python via brew.
 
-        pip install torch numpy setuptools
+          brew install python
+          brew ls python
 
-- Run bootstrap configure process (one time only)
+  - Ensure Python 3 dependencies are installed
 
-        python configure.py
+          pip install torch numpy setuptools
 
-- Then play:
+  - Run bootstrap configure process (one time only)
 
-        make play
+          python configure.py
 
+  - Then play:
+
+          make play
+ </details>
