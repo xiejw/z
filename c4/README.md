@@ -21,8 +21,7 @@ See [Youtube here](https://youtu.be/tGG8I9GnisM)
 
 ### How to Start
 ```
-./bootstrap.py    # For the first time
-make play         # Afterwards
+./bootstrap.py
 ```
 
 ### Other Ways
