@@ -28,6 +28,7 @@ make play         # Afterwards
 ### Other Ways
 <details>
   <summary>Click me</summary>
+
   #### Docker on arm64/amd64
 
   Few choices
