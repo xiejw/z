@@ -24,9 +24,9 @@ PMT="==>"
 # Select the best Python based on platform
 select_py() {
   if [ "$(uname)" == "Darwin" ]; then
-    PY=$(which python3.12 || which python)
+    PY=$(which python3.12 || which python3 || which python)
   else
-    PY=$(which python)
+    PY=$(which python3 || which python)
   fi
   echo "${PMT} Python: ${PY}"
 }
