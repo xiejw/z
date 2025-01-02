@@ -22,4 +22,4 @@ jobs:
       #
       - working-directory: ${{ github.workspace }}/z/${{ github.workflow }}
         run:  |
-          C4_SANITY_CHECK=1 ./bootstrap.sh
+          C4_SANITY_CHECK=1 ./run.sh
