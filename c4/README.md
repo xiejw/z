@@ -21,7 +21,7 @@ See [Youtube here](https://youtu.be/tGG8I9GnisM)
 
 ### How to Start
 ```
-./bootstrap.py
+./run.py   # For both bootstrap and daily run.
 ```
 
 ### Other Ways

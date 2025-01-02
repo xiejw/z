@@ -54,6 +54,7 @@ pip_install() {
 # Prepare venv and install deps.
 install_venv_locally() {
   if [ ! -d ${VENV_DIR} ]; then
+    select_py
     echo "${PMT} Create venv dir: ${VENV_DIR}"
     mkdir -p ${VENV_DIR}
     ${PY} -m venv ${VENV_DIR}
@@ -86,7 +87,6 @@ generate_configure_mk() {
 
 # === --- Set up the Python venv, weights file, and configure.mk ----------- ===
 #
-select_py
 install_venv_locally
 install_weights_locally
 generate_configure_mk

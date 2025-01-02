@@ -3,11 +3,11 @@
 -include ./configure.mk
 
 ifndef C4_CONFIGURE_DONE
-$(error "Project is not configured. Run './bootstrap.sh' instead.")
+$(error "Project is not configured. Run './run.sh' instead.")
 endif
 
 ifndef VIRTUAL_ENV
-$(error "Project is expected to be run in virtural env. Run './bootstrap.sh'.")
+$(error "Project is expected to be run in virtural env. Run './run.sh'.")
 endif
 
 # === --- Configs ---------------------------------------------------------- ===
