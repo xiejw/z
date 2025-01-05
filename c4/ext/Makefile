@@ -24,7 +24,7 @@ else
 CXX               = clang++
 endif
 
-LDFLAGS          += -shared
+EXT_LD_FLAGS     += -shared
 CXXFLAGS         += -O3 -std=gnu++23 -fPIC
 CXXFLAGS         += -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 
@@ -49,6 +49,7 @@ ifeq ($(UNAME), Linux)
 LDFLAGS          += -L${TORCH_DIR}/lib
 LDFLAGS          += -Wl,-rpath,${TORCH_DIR}/lib
 LDFLAGS          += -ltorch_cpu -ltorch -lc10
+LDFLAGS          += -fuse-ld=lld
 endif
 
 ifeq ($(UNAME), Darwin)
@@ -61,8 +62,18 @@ endif
 #
 BUILD = .build
 
-compile: | ${BUILD}
-	${CXX} ${CXXFLAGS} model.cc ${LDFLAGS} -o ${BUILD}/c4_sys.so
+EXT_MODS = ${BUILD}/model.o
+MODS     = ${BUILD}/main.o ${EXT_MODS}
+
+${BUILD}/%.o: %.cc
+	${CXX} ${CXXFLAGS} -c $< -o $@
+
+main: ${MODS} | ${BUILD}
+	${CXX} ${LDFLAGS} $^ -o ${BUILD}/main
+
+compile: ${EXT_MODS} | ${BUILD}
+	${CXX} ${EXT_LD_FLAGS} ${LDFLAGS} $^ -o ${BUILD}/c4_sys.so
+
 
 ${BUILD}:
 	mkdir -p ${BUILD}

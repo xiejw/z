@@ -100,8 +100,9 @@ model_deinit( )
 }
 
 error_t
-mode_predict( const color_t next_player_color, const color_t *board,
-              const int board_size, f32_t **_C4_Out prob, f32_t *_C4_Out value )
+model_predict( const color_t next_player_color, const color_t *board,
+               const int board_size, f32_t **_C4_Out prob,
+               f32_t *_C4_Out value )
 {
         error_t err = OK;
 
