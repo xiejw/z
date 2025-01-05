@@ -96,7 +96,7 @@ IndentCaseLabels: false
 # END xiejw Changed
 IndentPPDirectives: None
 # BEGIN xiejw Changed
-IndentWidth:     4
+IndentWidth:     8
 # END xiejw Changed
 IndentWrappedFunctionNames: false
 JavaScriptQuotes: Leave
