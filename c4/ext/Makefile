@@ -46,30 +46,28 @@ CXXFLAGS   += -isystem${TORCH_DIR}/include/torch/csrc/api/include
 #
 # However, on Linux, we need.
 ifeq ($(UNAME), Linux)
-LDFLAGS          += -L${TORCH_DIR}/lib
-LDFLAGS          += -Wl,-rpath,${TORCH_DIR}/lib
-LDFLAGS          += -ltorch_cpu -ltorch -lc10
-LDFLAGS          += -fuse-ld=lld
+MAIN_LDFLAGS          += -L${TORCH_DIR}/lib
+MAIN_LDFLAGS          += -Wl,-rpath,${TORCH_DIR}/lib
+MAIN_LDFLAGS          += -ltorch_cpu -ltorch -lc10
+LDFLAGS               += -fuse-ld=lld
 endif
 
-ifeq ($(UNAME), Darwin)
-else
-CXXFLAGS         += -D_GLIBCXX_USE_CXX11_ABI=${TORCH_CXX11_ABI}
+ifeq ($(UNAME), Linux)
+CXXFLAGS              += -D_GLIBCXX_USE_CXX11_ABI=${TORCH_CXX11_ABI}
 endif
 
-#
-# actions
+# === --- Actions ---------------------------------------------------------- ===
 #
 BUILD = .build
 
-EXT_MODS = ${BUILD}/model.o
+EXT_MODS = ${BUILD}/model.o ${BUILD}/policy.o
 MODS     = ${BUILD}/main.o ${EXT_MODS}
 
 ${BUILD}/%.o: %.cc
 	${CXX} ${CXXFLAGS} -c $< -o $@
 
 main: ${MODS} | ${BUILD}
-	${CXX} ${LDFLAGS} $^ -o ${BUILD}/main
+	${CXX} ${MAIN_LDFLAGS} ${LDFLAGS} $^ -o ${BUILD}/main
 
 compile: ${EXT_MODS} | ${BUILD}
 	${CXX} ${EXT_LD_FLAGS} ${LDFLAGS} $^ -o ${BUILD}/c4_sys.so

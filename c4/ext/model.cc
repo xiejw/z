@@ -107,7 +107,7 @@ model_predict( const color_t next_player_color, const color_t *board,
         error_t err = OK;
 
         if ( DEBUG2_ENABLED ) {
-                DEBUG2( ) << "[debug] calling model\n";
+                DEBUG2( ) << "calling model\n";
                 for ( int i = 0; i < board_size; i++ ) {
                         DEBUG2( ) << board[i] << ",";
                 }
@@ -115,7 +115,7 @@ model_predict( const color_t next_player_color, const color_t *board,
         }
 
         torch::Tensor feature_input =
-            torch::empty( { 1, CHANNEL_COUNT, ROW_COUNT, COL_COUNT },
+            torch::zeros( { 1, CHANNEL_COUNT, ROW_COUNT, COL_COUNT },
                           tensor_opt_for_placeholder );
 
         /* Fill the inputs
