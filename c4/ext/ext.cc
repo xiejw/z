@@ -16,6 +16,7 @@ predict( PyObject *self, PyObject *args )
         int boards[BOARD_SIZE] = { };
         int predict_col = c4::policy_call( std::span{ boards }, BLACK_INT );
         DEBUG( ) << "predict col is " << predict_col << "\n";
+        c4::model_deinit( );
         return PyLong_FromLong( 0 );
 }
 
