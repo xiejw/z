@@ -38,6 +38,10 @@ endif
 
 CXXFLAGS   += -DC4_FILE_PATH='"${C4_TRACED_MODEL_FILE}"'
 
+# TODO should detec
+CXXFLAGS   += -Wno-missing-field-initializers
+CXXFLAGS   += -isystem/usr/include/python3.12
+
 CXXFLAGS   += -isystem${TORCH_DIR}/include/
 CXXFLAGS   += -isystem${TORCH_DIR}/include/torch/csrc/api/include
 
@@ -62,8 +66,9 @@ endif
 #
 BUILD = .build
 
-EXT_MODS = ${BUILD}/model.o ${BUILD}/policy.o
-MODS     = ${BUILD}/main.o ${EXT_MODS}
+SHARED_MODS = ${BUILD}/model.o ${BUILD}/policy.o
+MODS        = ${BUILD}/main.o ${SHARED_MODS}
+EXT_MODS    = ${BUILD}/ext.o ${SHARED_MODS}
 
 ${BUILD}/%.o: %.cc | ${BUILD}
 	${CXX} ${CXXFLAGS} -c $< -o $@
@@ -72,7 +77,7 @@ main: ${MODS} | ${BUILD}
 	${CXX} ${MAIN_LDFLAGS} ${LDFLAGS} $^ -o ${BUILD}/main
 
 compile: ${EXT_MODS} | ${BUILD}
-	${CXX} ${EXT_LD_FLAGS} ${LDFLAGS} $^ -o ${BUILD}/c4_sys.so
+	${CXX} ${EXT_LD_FLAGS} ${MAIN_LDFLAGS} ${LDFLAGS} $^ -o ${BUILD}/c4_sys.so
 
 
 ${BUILD}:
