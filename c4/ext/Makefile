@@ -28,9 +28,9 @@ EXT_LD_FLAGS     += -shared
 CXXFLAGS         += -O3 -std=gnu++23 -fPIC
 CXXFLAGS         += -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 
-ifeq ($(UNAME), Linux)
+#ifeq ($(UNAME), Linux)
 MODEL_ON_CPU    = 1
-endif
+#endif
 
 ifdef MODEL_ON_CPU
 CXXFLAGS         += -DMODEL_ON_CPU=1
@@ -49,10 +49,10 @@ CXXFLAGS   += -isystem${TORCH_DIR}/include/torch/csrc/api/include
 # runtime)
 #
 # However, on Linux, we need.
+LDFLAGS          += -L${TORCH_DIR}/lib
+LDFLAGS          += -Wl,-rpath,${TORCH_DIR}/lib
+LDFLAGS          += -ltorch_cpu -ltorch -lc10
 ifeq ($(UNAME), Linux)
-MAIN_LDFLAGS          += -L${TORCH_DIR}/lib
-MAIN_LDFLAGS          += -Wl,-rpath,${TORCH_DIR}/lib
-MAIN_LDFLAGS          += -ltorch_cpu -ltorch -lc10
 LDFLAGS               += -fuse-ld=lld
 endif
 
