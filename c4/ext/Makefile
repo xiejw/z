@@ -40,7 +40,7 @@ CXXFLAGS   += -DC4_FILE_PATH='"${C4_TRACED_MODEL_FILE}"'
 
 # TODO should detec
 CXXFLAGS   += -Wno-missing-field-initializers
-CXXFLAGS   += -isystem/usr/include/python3.12
+CXXFLAGS   += -isystem${PY_INCLUDE_DIR}
 
 CXXFLAGS   += -isystem${TORCH_DIR}/include/
 CXXFLAGS   += -isystem${TORCH_DIR}/include/torch/csrc/api/include

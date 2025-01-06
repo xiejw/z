@@ -5,6 +5,7 @@ import os
 import platform
 import subprocess
 import sys
+import sysconfig
 
 from pathlib import Path
 from string import Template
@@ -67,6 +68,7 @@ torch_cxx11_abi = 1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0
 #
 
 makefile_tpl = Template(""
+"PY_INCLUDE_DIR         = $py_include_dir\n"
 "TORCH_DIR              = $torch_dir\n"
 "TORCH_CXX11_ABI        = $torch_cxx11_abi\n"
 "C4_STATE_FILE          = $c4_state_file\n"
@@ -75,6 +77,7 @@ makefile_tpl = Template(""
 )
 
 cfg = {
+    "py_include_dir":       sysconfig.get_paths()['include'],
     "torch_dir":            torch.__path__[0],
     "torch_cxx11_abi":      torch_cxx11_abi,
     "c4_state_file":        c4_state_file,
