@@ -54,6 +54,8 @@ endif
 
 ifeq ($(UNAME), Linux)
 CXXFLAGS              += -D_GLIBCXX_USE_CXX11_ABI=${TORCH_CXX11_ABI}
+else
+LDFLAGS               += -undefined dynamic_lookup
 endif
 
 # === --- Actions ---------------------------------------------------------- ===
@@ -63,7 +65,7 @@ BUILD = .build
 EXT_MODS = ${BUILD}/model.o ${BUILD}/policy.o
 MODS     = ${BUILD}/main.o ${EXT_MODS}
 
-${BUILD}/%.o: %.cc
+${BUILD}/%.o: %.cc | ${BUILD}
 	${CXX} ${CXXFLAGS} -c $< -o $@
 
 main: ${MODS} | ${BUILD}
