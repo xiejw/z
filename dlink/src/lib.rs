@@ -3,21 +3,57 @@
 /// A dancing link table with pre-allocated nodes.
 ///
 /// All headers should be covered exactly once. For example, to cover all rows
-/// and columns exactly once in a `3x3` board game, like
+/// and columns exactly once in a `3x3` board game with stones, like
 /// ```
 ///   1 2 3
 ///  +-+-+-+
-/// 1|x| | |   (a possible solution at (r1,c1), (r2,c2) and (r3,c3). )
+/// 1| | | |
 ///  +-+-+-+
-/// 2| |x| |
+/// 2| | | |
 ///  +-+-+-+
-/// 3| | |x|
-///  +-+-+-+
+/// 3| | | |
+///  +-+-+-+,
 /// ```
-/// We could design header as
+/// we could design 6 headers as
 /// ```
-/// r1 r2 r3 c1 c2 c3 (6 headers)
+/// r1 r2 r3 c1 c2 c3.
 /// ```
+/// where `r` is row and `c` is column.
+///
+/// With that, if a stone is placed at row 1 (`r1`) and column 2 (`c2`), then
+/// visually the 2 options will be inserted into the table like
+/// ```
+///             r1 r2 r3 c1 c2 c3             1 2 3
+///             ^           ^                +-+-+-+
+///             |           |               1| |x| |
+///             v           v                +-+-+-+
+/// (r1,c2)     + <-------> +               2| | | |
+///                                          +-+-+-+
+///                                         3| | | |
+///                                          +-+-+-+
+/// ```
+/// Note that the 2 options are horizontally linked together so they can find
+/// each other and each option is vertically linked with its covered header as
+/// well.
+///
+/// To see how it helps, the conflicting positions `(r1,c1)` and `(r1,c2)` are
+/// encoded in the table like
+/// ```
+///             r1 r2 r3 c1 c2 c3             1 2 3
+///             ^        ^  ^                +-+-+-+
+///             |        |  |               1|x|x| |
+///             |        |  |                +-+-+-+
+///             v        v  |               2| | | |
+/// (r1,c1)     + <----> +  |                +-+-+-+
+///             ^           |               3| | | |
+///             |           |                +-+-+-+
+///             v           v
+/// (r1,c2)     + <-------> +
+/// ```
+/// When  `(r1,c1)` is selected  by the algorithm, header `r1` will be covered
+/// and all options it vertically linked, e.g., `(r1,c2)`, are unlinked
+/// temporarily. This means `(r1,c2)` will not be part of the search anymore,
+/// until backtracking.
 ///
 pub struct Table<'a, T> {
     /// All dancing link nodes (headers and options).
