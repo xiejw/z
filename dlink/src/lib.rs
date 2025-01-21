@@ -1,6 +1,24 @@
 #![allow(dead_code)]
 
 /// A dancing link table with pre-allocated nodes.
+///
+/// All headers should be covered exactly once. For example, to cover all rows
+/// and columns exactly once in a `3x3` board game, like
+/// ```
+///   1 2 3
+///  +-+-+-+
+/// 1|x| | |   (a possible solution at (r1,c1), (r2,c2) and (r3,c3). )
+///  +-+-+-+
+/// 2| |x| |
+///  +-+-+-+
+/// 3| | |x|
+///  +-+-+-+
+/// ```
+/// We could design header as
+/// ```
+/// r1 r2 r3 c1 c2 c3 (6 headers)
+/// ```
+///
 pub struct Table<'a, T> {
     /// All dancing link nodes (headers and options).
     nodes: Vec<Node<'a, T>>,
