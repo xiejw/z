@@ -1,8 +1,8 @@
 run:
-	cargo run
+	go build -o /dev/null dlink.go
 
 fmt:
-	cargo fmt
+	go fmt dlink.go
 
 doc:
-	cargo doc --document-private-items
+	go doc -all dlink/cmd/...
