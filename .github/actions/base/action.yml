@@ -4,6 +4,8 @@ name: 'z-action'
 #     https://github.com/actions/runner-images
 description: 'Common Action'
 inputs:
+  checkout_y:
+    default: false
   require_clang:
     default: false
   clang_version:
@@ -11,6 +13,12 @@ inputs:
 runs:
   using: "composite"
   steps:
+    - name: Checkout y
+      if: ${{ inputs.checkout_y == 'true' }}
+      uses: actions/checkout@v4
+      with:
+        repository: xiejw/y
+        path: y
     # --------------------------------------------------------------------------
     # Clang related
     #

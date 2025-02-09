@@ -6,4 +6,4 @@
 configure.mk
 
 # cc
-.build
+.build*
