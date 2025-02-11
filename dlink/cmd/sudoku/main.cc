@@ -15,7 +15,7 @@
 #define PID 1
 #endif
 
-// === --- Predefined problems --------------------------------------------- ===
+// === --- Predefined Problems --------------------------------------------- ===
 //
 // clang-format off
 static const int PROLBEMS[][SIZE * SIZE] = {
@@ -59,38 +59,53 @@ static const int PROLBEMS[][SIZE * SIZE] = {
 
 // === --- Prototypes ------------------------------------------------------ ===
 //
+struct Option;  // Forward def.
+using OptionVec = std::vector<Option>;
+using DLTable   = eve::algos::dal::Table;
+
 struct Option {
         int x;
         int y;
         int k;
 };
-using Options = std::vector<Option>;
-using DLTable = eve::algos::dal::Table;
 
 static auto PrintProblem( const int *problem ) -> void;
-static auto FindAllOptions( const int *problem, Options &options ) -> size_t;
+static auto FindAllOptions( const int *problem, OptionVec &options ) -> size_t;
 static auto HideColHeaders( DLTable &t, const int *problem ) -> void;
-static auto InsertOptions( DLTable &t, const Options &options ) -> void;
+static auto InsertOptions( DLTable &t, const OptionVec &options ) -> void;
 static auto PrintSolution( DLTable &t, const int *problem,
                            std::vector<std::size_t> &sols ) -> void;
 
-/* For a digit k (1-based) in cell (i,j), generates four ids (1-based) for
- * the following headers:
+/* For a digit k (1-based) in cell (i,j), together called placement, it will
+ * cover four column headers ids:
  *
- * - p{i,j}: Represent the cell position. All must have filled by a digit.
- * - r{i,k}: Represent the row with digit. Each row must have all digits.
- * - c{j,k}: Represent the column with digit. Each column must have all digits.
- * - b{x,k}: Represent the box with digit where x = 3 * floor(i/3) + floor(j/3).
- *           Each box must have all digits.
+ * - pos{i,j}: Represent the cell position. All must have filled by a digit.
+ * - row{i,k}: Represent the row with digit. Each row must have all digits.
+ * - col{j,k}: Represent the column with digit. Each column must have all
+ *             digits.
+ * - box{x,k}: Represent the box with digit where x = 3 * floor(i/3) +
+ *             floor(j/3).  Each box must have all digits.
+ *
+ * NOTE: There is an optimization in the code to use union to cast HeaderIds to
+ * plain size_t array.
  */
-static auto GetColHeadId( int i, int j, int k, size_t *p, size_t *r, size_t *c,
-                          size_t *b ) -> void;
+struct HeaderIds {
+        size_t pos;
+        size_t row;
+        size_t col;
+        size_t box;
+};
+static_assert( std::is_trivial_v<HeaderIds> == true &&
+               std::is_standard_layout_v<HeaderIds> == true );
+
+static auto GenerateColHeaderIdsForPlacement( int i, int j, int k,
+                                              HeaderIds *ids ) -> void;
 // === --- main ------------------------------------------------------------ ===
 //
 auto
 main( ) -> int
 {
-        // === --- Select and print problem -------------------------------- ===
+        // === --- Select and Print the Problem ---------------------------- ===
         //
         const int *problem = PROLBEMS[PID];
         logInfo( "Problem:\n" );
@@ -107,7 +122,8 @@ main( ) -> int
         //
         // For each option, we need to cover 4 headers (aka items), i.e., cell
         // position, row with digit column with digit, box with digit, and
-        // digit. This is documented in details in GetColHeadId for details.
+        // digit. This is documented in details in
+        // GenerateColHeaderIdsForPlacement for details.
 
         DLTable t{ /*n_col_heads=*/4 * 81,
                    /*n_options_total=*/4 * options_count };
@@ -239,38 +255,35 @@ FindAllOptions( const int *problem, std::vector<Option> &options ) -> size_t
 auto
 HideColHeaders( DLTable &t, const int *problem ) -> void
 {
-        size_t item_ids[4];
+        HeaderIds item_ids;
         for ( int x = 0; x < SIZE; x++ ) {
                 int offset = x * SIZE;
                 for ( int y = 0; y < SIZE; y++ ) {
                         int num = problem[offset + y];
                         if ( num == 0 ) continue;
 
-                        GetColHeadId( x, y, num,
-                                      /*p=*/item_ids,
-                                      /*r=*/item_ids + 1,
-                                      /*c=*/item_ids + 2,
-                                      /*b=*/item_ids + 3 );
-                        t.CoverCol( item_ids[0] );
-                        t.CoverCol( item_ids[1] );
-                        t.CoverCol( item_ids[2] );
-                        t.CoverCol( item_ids[3] );
+                        GenerateColHeaderIdsForPlacement( x, y, num,
+                                                          &item_ids );
+                        t.CoverCol( item_ids.pos );
+                        t.CoverCol( item_ids.row );
+                        t.CoverCol( item_ids.col );
+                        t.CoverCol( item_ids.box );
                 }
         }
 }
 
 auto
-InsertOptions( DLTable &t, const Options &options ) -> void
+InsertOptions( DLTable &t, const OptionVec &options ) -> void
 {
-        size_t item_ids[4];
+        union ItemIds {
+                HeaderIds in;
+                size_t    out[4];
+        } item_ids;
         for ( auto &opt : options ) {
                 auto *o = &opt;
-                GetColHeadId( o->x, o->y, o->k,
-                              /*p=*/item_ids,
-                              /*r=*/item_ids + 1,
-                              /*c=*/item_ids + 2,
-                              /*b=*/item_ids + 3 );
-                t.AppendOption( item_ids, (void *)o );
+                GenerateColHeaderIdsForPlacement( o->x, o->y, o->k,
+                                                  &item_ids.in );
+                t.AppendOption( item_ids.out, (void *)o );
         }
 }
 
@@ -292,22 +305,22 @@ PrintSolution( DLTable &t, const int *problem, std::vector<std::size_t> &sols )
 }
 
 auto
-GetColHeadId( int i, int j, int k, size_t *p, size_t *r, size_t *c, size_t *b )
-    -> void
+GenerateColHeaderIdsForPlacement( int i, int j, int k, HeaderIds *ids ) -> void
 {
         int x      = 3 * ( i / 3 ) + ( j / 3 );
         int offset = 0;
 
         k = k - 1;  // k is 1 based.
 
-        *p = (size_t)( i * SIZE + j + offset + 1 );  // item id is 1 based.
+        ids->pos =
+            (size_t)( i * SIZE + j + offset + 1 );  // item id is 1 based.
         offset += SIZE * SIZE + 1;
 
-        *r = (size_t)( i * SIZE + k + offset );
+        ids->row = (size_t)( i * SIZE + k + offset );
         offset += SIZE * SIZE;
 
-        *c = (size_t)( j * SIZE + k + offset );
+        ids->col = (size_t)( j * SIZE + k + offset );
         offset += SIZE * SIZE;
 
-        *b = (size_t)( x * SIZE + k + offset );
+        ids->box = (size_t)( x * SIZE + k + offset );
 }
