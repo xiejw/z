@@ -3,6 +3,7 @@
 
 #include <cstdlib>
 #include <memory>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -61,7 +62,8 @@ struct Table {
                 return this->mNodes.get( )[Id].Data;
         };
 
-        auto SearchSolution( std::vector<std::size_t> &sols ) -> bool;
+        // Return the solutions as header ids.
+        auto SearchSolution( ) -> std::optional<std::vector<std::size_t>>;
 
       private:
         auto FillNode( Node &node, std::size_t Id ) -> void;

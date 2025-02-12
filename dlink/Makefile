@@ -13,9 +13,11 @@ BINS            += ${BUILD}/sudoku_main
 DEPS            += ${BUILD} ${BUILD_OBJ} ${EVE_LIB}
 
 # ------------------------------------------------------------------------------
-# Libs
+# Mods
 #
 MODULES          = ${BUILD_OBJ}/algos_dal.o
+
+TEST_MODS        = ${BUILD_OBJ}/algos_dal_test.o
 
 # ------------------------------------------------------------------------------
 # Actions
@@ -31,9 +33,11 @@ run: compile
 
 release:
 	@echo compile with RELEASE mode
-	${MK} RELEASE=1 compile || exit 1
+	${MK} RELEASE=1 compile run || exit 1
 
-test: compile run
+
+test: compile
+	${BUILD}/test_main
 
 # ------------------------------------------------------------------------------
 # Rules for sub-modules
@@ -44,16 +48,15 @@ ${BUILD_OBJ}/algos_%.o: ${SRC}/algos/%.cc ${INC}/algos/*.h | ${DEPS}
 # ------------------------------------------------------------------------------
 # Cmds
 #
-compile: ${BUILD}/sudoku_main
+compile: ${BUILD}/sudoku_main ${BUILD}/test_main
 
 ${BUILD}/sudoku_main: ${BUILD}/sudoku_main.o ${MODULES} | ${DEPS}
 	${CXX} -o $@ $^ ${LDFLAGS}
 
+${BUILD}/test_main: ${BUILD}/test_main.o ${MODULES} ${TEST_MODS} | ${DEPS}
+	${CXX} -o $@ $^ ${LDFLAGS} ${EVE_TEST_LIB}
+
 ${BUILD}/%_main.o: cmd/%/main.cc | ${DEPS}
 	${CXX} ${CXXFLAGS} -o $@ -c $^
 
-# ------------------------------------------------------------------------------
-# Tests
-#
 
-TEST_LIBS       = ${BUILD_OBJ}/algos_dal_test.o

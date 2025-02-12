@@ -57,7 +57,7 @@ static const int PROLBEMS[][SIZE * SIZE] = {
 };
 // clang-format on
 
-// === --- Prototypes ------------------------------------------------------ ===
+// === --- Prototypes of Helper Methods ------------------------------------ ===
 //
 struct Option;  // Forward def.
 using OptionVec = std::vector<Option>;
@@ -70,6 +70,12 @@ struct Option {
 };
 
 static auto PrintProblem( const int *problem ) -> void;
+
+/* Seach all options that on (x,y) the digit k is allowed to be put there.
+ *
+ * The argument options must have enough capacity to hold all potential
+ * options
+ */
 static auto FindAllOptions( const int *problem, OptionVec &options ) -> size_t;
 static auto HideColHeaders( DLTable &t, const int *problem ) -> void;
 static auto InsertOptions( DLTable &t, const OptionVec &options ) -> void;
@@ -98,8 +104,9 @@ struct HeaderIds {
 static_assert( std::is_trivial_v<HeaderIds> == true &&
                std::is_standard_layout_v<HeaderIds> == true );
 
-static auto GenerateColHeaderIdsForPlacement( int i, int j, int k,
-                                              HeaderIds *ids ) -> void;
+static auto GenerateColHeaderIdsForPlacement( int i, int j, int k )
+    -> HeaderIds;
+
 // === --- main ------------------------------------------------------------ ===
 //
 auto
@@ -140,9 +147,9 @@ main( ) -> int
 
         // === --- Step 4: Print the Solution ------------------------------ ===
         //
-        std::vector<std::size_t> sols{ };
-        if ( t.SearchSolution( sols ) ) {
-                PrintSolution( t, problem, sols );
+        if ( auto opt_sols = t.SearchSolution( ); opt_sols ) {
+                logInfo( "Found solution:\n" );
+                PrintSolution( t, problem, opt_sols.value( ) );
         } else {
                 printf( "No solution.\n" );
         }
@@ -150,7 +157,7 @@ main( ) -> int
         return 0;
 }
 
-// === --- Helper methods -------------------------------------------------- ===
+// === --- Helper Methods -------------------------------------------------- ===
 //
 
 // Print the Sudoku Problem on screen.
@@ -179,10 +186,6 @@ PrintProblem( const int *problem ) -> void
         }
 }
 
-// Seach all options that on (x,y) the digit k is allowed to be put there.
-//
-// The argument options must have enough capacity to hold all potential
-// options
 auto
 FindAllOptions( const int *problem, std::vector<Option> &options ) -> size_t
 {
@@ -262,8 +265,8 @@ HideColHeaders( DLTable &t, const int *problem ) -> void
                         int num = problem[offset + y];
                         if ( num == 0 ) continue;
 
-                        GenerateColHeaderIdsForPlacement( x, y, num,
-                                                          &item_ids );
+                        item_ids =
+                            GenerateColHeaderIdsForPlacement( x, y, num );
                         t.CoverCol( item_ids.pos );
                         t.CoverCol( item_ids.row );
                         t.CoverCol( item_ids.col );
@@ -281,8 +284,8 @@ InsertOptions( DLTable &t, const OptionVec &options ) -> void
         } item_ids;
         for ( auto &opt : options ) {
                 auto *o = &opt;
-                GenerateColHeaderIdsForPlacement( o->x, o->y, o->k,
-                                                  &item_ids.in );
+                item_ids.in =
+                    GenerateColHeaderIdsForPlacement( o->x, o->y, o->k );
                 t.AppendOption( item_ids.out, (void *)o );
         }
 }
@@ -295,32 +298,31 @@ PrintSolution( DLTable &t, const int *problem, std::vector<std::size_t> &sols )
         int solution[SIZE * SIZE];
         memcpy( solution, problem, sizeof( int ) * SIZE * SIZE );
 
-        logInfo( "Found solution:\n" );
-        size_t n = sols.size( );
-        for ( size_t i = 0; i < n; i++ ) {
-                Option *o = (Option *)t.GetNodeData( sols[i] );
+        for ( auto &opt_id : sols ) {
+                Option *o = (Option *)t.GetNodeData( opt_id );
                 solution[o->x * SIZE + o->y] = o->k;
         }
         PrintProblem( solution );
 }
 
 auto
-GenerateColHeaderIdsForPlacement( int i, int j, int k, HeaderIds *ids ) -> void
+GenerateColHeaderIdsForPlacement( int i, int j, int k ) -> HeaderIds
 {
-        int x      = 3 * ( i / 3 ) + ( j / 3 );
-        int offset = 0;
+        HeaderIds ids;
+        int       x      = 3 * ( i / 3 ) + ( j / 3 );
+        int       offset = 0;
 
         k = k - 1;  // k is 1 based.
 
-        ids->pos =
-            (size_t)( i * SIZE + j + offset + 1 );  // item id is 1 based.
+        ids.pos = (size_t)( i * SIZE + j + offset + 1 );  // item id is 1 based.
         offset += SIZE * SIZE + 1;
 
-        ids->row = (size_t)( i * SIZE + k + offset );
+        ids.row = (size_t)( i * SIZE + k + offset );
         offset += SIZE * SIZE;
 
-        ids->col = (size_t)( j * SIZE + k + offset );
+        ids.col = (size_t)( j * SIZE + k + offset );
         offset += SIZE * SIZE;
 
-        ids->box = (size_t)( x * SIZE + k + offset );
+        ids.box = (size_t)( x * SIZE + k + offset );
+        return ids;
 }

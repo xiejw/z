@@ -126,10 +126,11 @@ Table::AppendOption( std::span<std::size_t> col_Ids, void *Data ) -> void
 }
 
 auto
-Table::SearchSolution( std::vector<std::size_t> &sols ) -> bool
+Table::SearchSolution( ) -> std::optional<std::vector<std::size_t>>
 {
-        assert( sols.size( ) == 0 );
-        return Search( sols, 0 );
+        std::vector<std::size_t> sols{ };
+        if ( Search( sols, 0 ) ) return sols;
+        return std::optional<std::vector<std::size_t>>( );
 }
 
 auto
