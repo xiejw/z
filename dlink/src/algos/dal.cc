@@ -130,7 +130,7 @@ Table::SearchSolution( ) -> std::optional<std::vector<std::size_t>>
 {
         std::vector<std::size_t> sols{ };
         if ( Search( sols, 0 ) ) return sols;
-        return std::optional<std::vector<std::size_t>>( );
+        return std::nullopt;
 }
 
 auto
