@@ -1,5 +1,7 @@
 #include <algos/sat_watch.h>
 
-int main() {
-  return 0;
+int
+main( )
+{
+        return 0;
 }
