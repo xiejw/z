@@ -13,25 +13,25 @@ auto C( literal_t c ) -> literal_t;
 
 class WatchSolver {
       private:
-        size_t num_literals       = 0;
-        size_t num_causes         = 0;
-        size_t num_emitted_causes = 0;
-        bool   debug_mode         = false;
+        size_t m_num_literals;
+        size_t m_num_clauses;
+        size_t m_num_emitted_clauses;
+        bool   m_debug_mode;
 
-        std::vector<size_t> cells = { }; /* Index by cell. */
-        std::vector<size_t> start = { }; /* Index by cause. */
-        std::vector<size_t> link  = { }; /* Index by cause. */
-        std::vector<size_t> watch = { }; /* Index by literal and cause. */
+        std::vector<size_t> m_cells; /* Index by cell. */
+        std::vector<size_t> m_start; /* Index by clause. */
+        std::vector<size_t> m_link;  /* Index by clause. */
+        std::vector<size_t> m_watch; /* Index by literal and clause. */
 
       public:
-        WatchSolver( size_t num_literals, size_t num_causes );
+        WatchSolver( size_t num_literals, size_t num_clauses );
 
       public:
         auto ReserveCells( size_t num_cells ) -> void
         {
-                this->cells.reserve( num_cells );
+                m_cells.reserve( num_cells );
         }
-        auto SetDebugMode( bool m ) -> void { this->debug_mode = m; }
-        auto EmitCause( std::span<literal_t> ) -> void;
+        auto SetDebugMode( bool m ) -> void { m_debug_mode = m; }
+        auto EmitClause( std::span<literal_t> ) -> void;
 };
 }  // namespace eve::algos::sat
