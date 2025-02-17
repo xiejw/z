@@ -5,13 +5,6 @@
 namespace eve::algos::sat {
 namespace {
 constexpr size_t mask = 1 << ( sizeof( size_t ) - 1 );
-}
-
-auto
-C( literal_t c ) -> literal_t
-{
-        return c | mask;
-}
 
 auto
 LiteralRawValue( literal_t c ) -> literal_t
@@ -23,6 +16,13 @@ auto
 LiteralIsC( literal_t c ) -> bool
 {
         return c & mask;
+}
+}  // namespace
+
+auto
+C( literal_t c ) -> literal_t
+{
+        return c | mask;
 }
 
 WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses )
@@ -37,7 +37,7 @@ WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses )
 }
 
 auto
-WatchSolver::EmitClause( std::span<literal_t> lits ) -> void
+WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 {
         if ( lits.empty( ) ) {
                 panic( "lit empty" );
@@ -79,4 +79,6 @@ WatchSolver::EmitClause( std::span<literal_t> lits ) -> void
         }
         m_num_emitted_clauses++;
 }
+
+// TODO record start [0] final one this code is increasting order
 }  // namespace eve::algos::sat

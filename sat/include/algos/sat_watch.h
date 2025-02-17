@@ -32,6 +32,6 @@ class WatchSolver {
                 m_cells.reserve( num_cells );
         }
         auto SetDebugMode( bool m ) -> void { m_debug_mode = m; }
-        auto EmitClause( std::span<literal_t> ) -> void;
+        auto EmitClause( std::span<const literal_t> ) -> void;
 };
 }  // namespace eve::algos::sat

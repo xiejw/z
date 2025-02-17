@@ -10,5 +10,8 @@ main( )
         WatchSolver           sov{ /*num_literals=*/3, /*num_causes=*/4 };
         std::array<size_t, 2> a{ 1, C( 1 ) };
         sov.EmitClause( a );
+        sov.EmitClause( {
+            { 1, 1 }
+        } );
         return 0;
 }
