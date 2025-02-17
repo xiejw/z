@@ -27,11 +27,13 @@ class WatchSolver {
         WatchSolver( size_t num_literals, size_t num_clauses );
 
       public:
-        auto ReserveCells( size_t num_cells ) -> void
-        {
-                m_cells.reserve( num_cells );
-        }
+        auto ReserveCells( size_t num_cells ) -> void;
         auto SetDebugMode( bool m ) -> void { m_debug_mode = m; }
         auto EmitClause( std::span<const literal_t> ) -> void;
+        auto DebugPrint( ) -> void;
+
+      private:
+        /* Get the bar in watch separating the literal and clause. */
+        auto GetWatchBar( ) const -> size_t;
 };
 }  // namespace eve::algos::sat

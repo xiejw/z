@@ -7,11 +7,14 @@ using eve::algos::sat::WatchSolver;
 int
 main( )
 {
-        WatchSolver           sov{ /*num_literals=*/3, /*num_causes=*/4 };
-        std::array<size_t, 2> a{ 1, C( 1 ) };
-        sov.EmitClause( a );
+        WatchSolver sov{ /*num_literals=*/3, /*num_causes=*/4 };
         sov.EmitClause( {
-            { 1, 1 }
+            { 1, C( 1 ) }
         } );
+        sov.EmitClause( {
+            { 1, C( 2 ) }
+        } );
+        sov.DebugPrint( );
+
         return 0;
 }
