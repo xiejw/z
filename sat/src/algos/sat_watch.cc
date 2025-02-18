@@ -30,10 +30,11 @@ WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses )
       m_num_clauses( num_clauses ),
       m_num_emitted_clauses( 0 ),
       m_debug_mode( false ),
-      m_start( 1 + num_clauses + 1 ),  // Need one more at the end
-      m_link( 1 + num_clauses ),
-      m_watch( 2 + 2 * num_literals + 1 + num_clauses )
+      m_start( 1 + num_clauses ),
+      m_watch( 2 + 2 * num_literals ),
+      m_link( 1 + num_clauses )
 {
+        m_cells.reserve( 1 + 3 * num_clauses );  // Make a guess.
         m_cells.push_back( 0 );
 }
 
@@ -50,27 +51,13 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
                 panic( "lit empty" );
         }
 
-        auto clause_id = m_num_emitted_clauses + 1;
+        /* Clause id is decreasing order. */
+        auto clause_id = m_num_clauses - m_num_emitted_clauses;
 
-        if ( m_debug_mode ) {
-                if ( clause_id > m_num_clauses ) {
-                        panic( "clause num" );
-                }
-
-                for ( auto lit : lits ) {
-                        auto raw_v = LiteralRawValue( lit );
-                        if ( raw_v > m_num_literals ) {
-                                panic( "lit" );
-                        }
-                        if ( raw_v < 1 ) {
-                                panic( "lit < 1" );
-                        }
-                }
-        }
+        if ( m_debug_mode ) this->DebugCheck( m_num_emitted_clauses + 1, lits );
 
         // Put ites
-        bool         first_v   = true;
-        const size_t watch_bar = GetWatchBar( );
+        bool first_v = true;
         for ( auto lit : lits ) {
                 /* For literal 'l', the value put into the cell is 2*l+C(l). */
                 auto raw_v     = LiteralRawValue( lit );
@@ -78,11 +65,12 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
                 auto literal_v = raw_v * 2 + ( is_c ? 1 : 0 );
                 m_cells.push_back( literal_v );
 
-                if ( !first_v ) {
-                        continue;
-                }
+                if ( !first_v ) continue;
 
-                /* Special block to handle the first literal. */
+                /* === --- Special block to handle the first literal. ------ ===
+                 *
+                 * Start, Watch, Link should be recorded correctly.
+                 */
                 first_v = false;
 
                 /* Update the start array. */
@@ -92,19 +80,26 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
                 /* Update the watch list. */
                 if ( m_watch[literal_v] == 0 ) {
                         // This branch seems is identical to next.
-                        m_watch[literal_v] = watch_bar + clause_id;
+                        m_watch[literal_v] = clause_id;
                 } else {
-                        m_watch[watch_bar + clause_id] = m_watch[literal_v];
-                        m_watch[literal_v]             = watch_bar + clause_id;
+                        m_link[clause_id]  = m_watch[literal_v];
+                        m_watch[literal_v] = clause_id;
                 }
-                // link
         }
+
         m_num_emitted_clauses++;
+
+        if ( m_num_emitted_clauses == m_num_clauses ) {
+                /* Once all clauses are emitted, the start[0] - 1 should point
+                 * to the final cell. */
+                m_start[0] = m_cells.size( );
+        }
 }
 
 auto
 WatchSolver::DebugPrint( ) -> void
 {
+        /* === --- Cells ------------------------------------------------ === */
         std::print( "cells\n" );
         for ( size_t i = 0; i < m_cells.size( ); i++ ) {
                 std::print( "{:02} ", i );
@@ -115,6 +110,7 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 
+        /* === --- Start ------------------------------------------------ === */
         std::print( "start\n" );
         for ( size_t i = 0; i < m_start.size( ); i++ ) {
                 std::print( "{:02} ", i );
@@ -125,28 +121,45 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 
+        /* === --- Watch ------------------------------------------------ === */
         std::print( "watch\n" );
         for ( size_t i = 0; i < m_watch.size( ); i++ ) {
-                if ( i == GetWatchBar( ) ) {
-                        std::print( "|| " );
-                }
                 std::print( "{:02} ", i );
         }
         std::print( "\n" );
         for ( size_t i = 0; i < m_watch.size( ); i++ ) {
-                if ( i == GetWatchBar( ) ) {
-                        std::print( "|| " );
-                }
                 std::print( "{:02} ", m_watch[i] );
+        }
+        std::print( "\n" );
+
+        /* === --- Link ------------------------------------------------- === */
+        std::print( "link\n" );
+        for ( size_t i = 0; i < m_link.size( ); i++ ) {
+                std::print( "{:02} ", i );
+        }
+        std::print( "\n" );
+        for ( size_t i = 0; i < m_link.size( ); i++ ) {
+                std::print( "{:02} ", m_link[i] );
         }
         std::print( "\n" );
 }
 auto
-WatchSolver::GetWatchBar( ) const -> size_t
+WatchSolver::DebugCheck( size_t                     num_emitted_clauses,
+                         std::span<const literal_t> lits ) const -> void
 {
-        return 2 + 2 * m_num_literals;
+        if ( num_emitted_clauses > m_num_clauses ) {
+                panic( "clause num" );
+        }
+
+        for ( auto lit : lits ) {
+                auto raw_v = LiteralRawValue( lit );
+                if ( raw_v > m_num_literals ) {
+                        panic( "lit" );
+                }
+                if ( raw_v < 1 ) {
+                        panic( "lit < 1" );
+                }
+        }
 }
 
-// TODO How next is updated? seems realy hard why not follow watch?
-// TODO record start [0] final one this code is increasting order
 }  // namespace eve::algos::sat

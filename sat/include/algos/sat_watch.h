@@ -20,8 +20,8 @@ class WatchSolver {
 
         std::vector<size_t> m_cells; /* Index by cell. */
         std::vector<size_t> m_start; /* Index by clause. */
+        std::vector<size_t> m_watch; /* Index by literal. */
         std::vector<size_t> m_link;  /* Index by clause. */
-        std::vector<size_t> m_watch; /* Index by literal and clause. */
 
       public:
         WatchSolver( size_t num_literals, size_t num_clauses );
@@ -33,7 +33,7 @@ class WatchSolver {
         auto DebugPrint( ) -> void;
 
       private:
-        /* Get the bar in watch separating the literal and clause. */
-        auto GetWatchBar( ) const -> size_t;
+        auto DebugCheck( size_t clause_id, std::span<const literal_t> ) const
+            -> void;
 };
 }  // namespace eve::algos::sat
