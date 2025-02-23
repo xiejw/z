@@ -47,16 +47,17 @@ WatchSolver::ReserveCells( size_t num_cells ) -> void
 auto
 WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 {
-        if ( lits.empty( ) ) {
-                panic( "lit empty" );
-        }
+        /* === --- Few quick sanity checks. ----------------------------- === */
+        if ( lits.empty( ) ) panic( "emitted clause cannot be empty." );
+        if ( m_num_emitted_clauses >= m_num_clauses )
+                panic( "emitted clause is full. Cannot submit one more." );
 
-        /* Clause id is decreasing order. */
+        if ( m_debug_mode ) this->DebugCheck( lits );
+
+        /* Clause id is 1-based, and decreasing order. */
         auto clause_id = m_num_clauses - m_num_emitted_clauses;
 
-        if ( m_debug_mode ) this->DebugCheck( m_num_emitted_clauses + 1, lits );
-
-        // Put ites
+        /* Put each literal into the internal data structures. */
         bool first_v = true;
         for ( auto lit : lits ) {
                 /* For literal 'l', the value put into the cell is 2*l+C(l). */
@@ -94,6 +95,85 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
                  * to the final cell. */
                 m_start[0] = m_cells.size( );
         }
+}
+
+auto
+WatchSolver::Search( ) -> bool
+{
+        /* === --- This algorithm is Vol 4b, Page 215. ------------------ === */
+
+        /* B1 Init */
+        size_t d = 1;
+        size_t n = m_num_literals;
+
+        std::vector<size_t> m( n + 1 );
+
+        /* B2 Rejoice or choose */
+        while ( d <= n ) {
+                m[d] = m_watch[2 * d] == 0 || m_watch[2 * d + 1] != 0;
+                // size_t l      = 2 * d + m[d];
+                size_t comp_l = 2 * d + m[d] ^ 1;
+
+        B3:
+                /* B3 Remove C(l) if possible. Page 573. Ex 124 */
+                size_t j = m_watch[comp_l];
+
+                while ( j != 0 ) {
+                        /* A literal other than comp_l should be watched in
+                         * clause j. */
+
+                        size_t begin  = m_start[j];
+                        size_t end    = m_start[j - 1];
+                        size_t next_j = m_link[j];
+
+                        size_t k = begin + 1;
+                        for ( ; k < end; k++ ) {
+                                size_t new_l = m_cells[k];
+
+                                /* If new_l isn't false. Swap it to
+                                 * beginning. */
+                                if ( ( new_l >> 1 ) > d ||
+                                     ( new_l + m[new_l] % 2 ) == 0 ) {
+                                        m_cells[begin] = new_l;
+                                        m_cells[k]     = comp_l;
+                                        m_link[j]      = m_watch[new_l];
+                                        m_watch[new_l] = j;
+                                        j              = next_j;
+                                        break; /* This clause is done. */
+                                }
+                        }
+
+                        if ( k == end ) {
+                                /* Cannot stop watching on comp_l. */
+                                m_watch[comp_l] = j;
+                                goto B5;
+                        }
+                }
+
+                /* B4 Advance */
+                m_watch[comp_l] = 0;
+                d++;
+                continue; /* Return to B2 */
+
+        B5:
+                /* B5 Try again */
+                if ( m[d] < 2 ) {
+                        size_t new_md = 3 - m[d];
+                        m[d]          = new_md;
+                        // l             = 2 * d + ( new_md & 1 );
+                        comp_l = 2 * d + ( new_md ^ 1 );
+                        goto B3;
+                } else {
+                        /* B6 Backtrack */
+                        if ( d == 1 ) return false; /* Failed */
+
+                        /* Otherwise */
+                        d--;
+                        goto B5;
+                }
+        }
+
+        return true; /* Exit happily */
 }
 
 auto
@@ -143,14 +223,10 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 }
-auto
-WatchSolver::DebugCheck( size_t                     num_emitted_clauses,
-                         std::span<const literal_t> lits ) const -> void
-{
-        if ( num_emitted_clauses > m_num_clauses ) {
-                panic( "clause num" );
-        }
 
+auto
+WatchSolver::DebugCheck( std::span<const literal_t> lits ) const -> void
+{
         for ( auto lit : lits ) {
                 auto raw_v = LiteralRawValue( lit );
                 if ( raw_v > m_num_literals ) {

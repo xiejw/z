@@ -26,14 +26,21 @@ class WatchSolver {
       public:
         WatchSolver( size_t num_literals, size_t num_clauses );
 
-      public:
         auto ReserveCells( size_t num_cells ) -> void;
-        auto SetDebugMode( bool m ) -> void { m_debug_mode = m; }
+
+      public:
         auto EmitClause( std::span<const literal_t> ) -> void;
+        auto Search( ) -> bool;
+
+        /* === --- A set of debug tooling. ----------------------------- === */
+
+        /* Print the internal states of the solver. Orthogonal to debug mode. */
         auto DebugPrint( ) -> void;
 
+        /* Set debug mode, which might do more checks and prints. */
+        auto SetDebugMode( bool m ) -> void { m_debug_mode = m; }
+
       private:
-        auto DebugCheck( size_t clause_id, std::span<const literal_t> ) const
-            -> void;
+        auto DebugCheck( std::span<const literal_t> ) const -> void;
 };
 }  // namespace eve::algos::sat

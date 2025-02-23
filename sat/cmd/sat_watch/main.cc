@@ -1,5 +1,7 @@
-#include <algos/sat_watch.h>
 #include <array>
+#include <print>
+
+#include <algos/sat_watch.h>
 
 using eve::algos::sat::C;
 using eve::algos::sat::WatchSolver;
@@ -21,6 +23,12 @@ main( )
             { 2, 3 }
         } );
         sov.DebugPrint( );
+
+        if ( sov.Search( ) ) {
+                std::print( "good\n" );
+        } else {
+                std::print( "bad\n" );
+        }
 
         return 0;
 }
