@@ -25,7 +25,8 @@ C( literal_t c ) -> literal_t
         return c | mask;
 }
 
-WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses )
+WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses,
+                          size_t num_reserved_cells )
     : m_num_literals( num_literals ),
       m_num_clauses( num_clauses ),
       m_num_emitted_clauses( 0 ),
@@ -34,20 +35,26 @@ WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses )
       m_watch( 2 + 2 * num_literals ),
       m_link( 1 + num_clauses )
 {
-        m_cells.reserve( 1 + 3 * num_clauses );  // Make a guess.
+        m_cells.reserve( 1 + num_reserved_cells );
         m_cells.push_back( 0 );
+}
+
+WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses )
+    : WatchSolver( num_literals, num_clauses, 5 * num_clauses )
+{
 }
 
 auto
 WatchSolver::ReserveCells( size_t num_cells ) -> void
 {
-        m_cells.reserve( num_cells );
+        m_cells.reserve( 1 + num_cells );
 }
 
 auto
 WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 {
-        /* === --- Few quick sanity checks. ----------------------------- === */
+        /* === --- Few quick sanity checks. -----------------------------
+         * === */
         if ( lits.empty( ) ) panic( "emitted clause cannot be empty." );
         if ( m_num_emitted_clauses >= m_num_clauses )
                 panic( "emitted clause is full. Cannot submit one more." );
@@ -60,7 +67,8 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
         /* Put each literal into the internal data structures. */
         bool first_v = true;
         for ( auto lit : lits ) {
-                /* For literal 'l', the value put into the cell is 2*l+C(l). */
+                /* For literal 'l', the value put into the cell is 2*l+C(l).
+                 */
                 auto raw_v     = LiteralRawValue( lit );
                 auto is_c      = LiteralIsC( lit );
                 auto literal_v = raw_v * 2 + ( is_c ? 1 : 0 );
@@ -68,7 +76,8 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 
                 if ( !first_v ) continue;
 
-                /* === --- Special block to handle the first literal. ------ ===
+                /* === --- Special block to handle the first literal. ------
+                 * ===
                  *
                  * Start, Watch, Link should be recorded correctly.
                  */
@@ -91,8 +100,8 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
         m_num_emitted_clauses++;
 
         if ( m_num_emitted_clauses == m_num_clauses ) {
-                /* Once all clauses are emitted, the start[0] - 1 should point
-                 * to the final cell. */
+                /* Once all clauses are emitted, the start[0] - 1 should
+                 * point to the final cell. */
                 m_start[0] = m_cells.size( );
         }
 }
@@ -100,7 +109,8 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 auto
 WatchSolver::Search( ) -> bool
 {
-        /* === --- This algorithm is Vol 4b, Page 215. ------------------ === */
+        /* === --- This algorithm is Vol 4b, Page 215. ------------------
+         * === */
 
         /* B1 Init */
         size_t d = 1;
@@ -179,7 +189,8 @@ WatchSolver::Search( ) -> bool
 auto
 WatchSolver::DebugPrint( ) -> void
 {
-        /* === --- Cells ------------------------------------------------ === */
+        /* === --- Cells ------------------------------------------------
+         * === */
         std::print( "cells\n" );
         for ( size_t i = 0; i < m_cells.size( ); i++ ) {
                 std::print( "{:02} ", i );
@@ -190,7 +201,8 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 
-        /* === --- Start ------------------------------------------------ === */
+        /* === --- Start ------------------------------------------------
+         * === */
         std::print( "start\n" );
         for ( size_t i = 0; i < m_start.size( ); i++ ) {
                 std::print( "{:02} ", i );
@@ -201,7 +213,8 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 
-        /* === --- Watch ------------------------------------------------ === */
+        /* === --- Watch ------------------------------------------------
+         * === */
         std::print( "watch\n" );
         for ( size_t i = 0; i < m_watch.size( ); i++ ) {
                 std::print( "{:02} ", i );
@@ -212,7 +225,8 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 
-        /* === --- Link ------------------------------------------------- === */
+        /* === --- Link -------------------------------------------------
+         * === */
         std::print( "link\n" );
         for ( size_t i = 0; i < m_link.size( ); i++ ) {
                 std::print( "{:02} ", i );

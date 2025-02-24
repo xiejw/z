@@ -4,14 +4,11 @@
 #include <span>
 #include <vector>
 
+#include <algos/sat.h>
+
 namespace eve::algos::sat {
 
-using literal_t = size_t;
-
-/* Encode the complement of a literal (1-based). */
-auto C( literal_t c ) -> literal_t;
-
-class WatchSolver {
+class WatchSolver : Solver {
       private:
         size_t m_num_literals;
         size_t m_num_clauses;
@@ -24,14 +21,24 @@ class WatchSolver {
         std::vector<size_t> m_link;  /* Index by clause. */
 
       public:
+        /* === --- Constructors ----------------------------------------- === */
+
+        /* For all constructors, num_literals and num_clauses are fixed and
+         * cannot be changed anymore. num_reserved_cells should be the best
+         * guess for the application. It requires one more space for the
+         * placeholder. */
+        WatchSolver( size_t num_literals, size_t num_clauses,
+                     size_t num_reserved_cells );
         WatchSolver( size_t num_literals, size_t num_clauses );
 
         auto ReserveCells( size_t num_cells ) -> void;
 
       public:
-        auto EmitClause( std::span<const literal_t> ) -> void;
-        auto Search( ) -> bool;
+        /* === --- Conform Base Class ----------------------------------- === */
+        auto EmitClause( std::span<const literal_t> ) -> void override;
+        auto Search( ) -> bool override;
 
+      public:
         /* === --- A set of debug tooling. ----------------------------- === */
 
         /* Print the internal states of the solver. Orthogonal to debug mode. */
