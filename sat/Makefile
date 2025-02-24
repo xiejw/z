@@ -14,7 +14,8 @@ DEPS            += ${BUILD} ${BUILD_OBJ} ${EVE_LIB}
 # ------------------------------------------------------------------------------
 # Mods
 #
-MODULES          = ${BUILD_OBJ}/algos_sat_watch.o
+MODULES         += ${BUILD_OBJ}/algos_sat.o
+MODULES         += ${BUILD_OBJ}/algos_sat_watch.o
 
 #TEST_MODS        = ${BUILD_OBJ}/algos_sat_watch_test.o
 

@@ -3,30 +3,9 @@
 #include <eve/base/error.h>
 #include <eve/base/log.h>
 
-#define DEBUG 1
+#define DEBUG 0
 
 namespace eve::algos::sat {
-namespace {
-constexpr size_t mask = 1 << ( sizeof( size_t ) - 1 );
-
-auto
-LiteralRawValue( literal_t c ) -> literal_t
-{
-        return c & ( ~mask );
-}
-
-auto
-LiteralIsC( literal_t c ) -> bool
-{
-        return c & mask;
-}
-}  // namespace
-
-auto
-C( literal_t c ) -> literal_t
-{
-        return c | mask;
-}
 
 WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses,
                           size_t num_reserved_cells )
@@ -108,7 +87,7 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 }
 
 auto
-WatchSolver::Search( ) -> bool
+WatchSolver::Search( ) -> std::optional<std::vector<literal_t>>
 {
         /* === --- This algorithm is Vol 4b, Page 215. ------------------ === */
 
@@ -217,7 +196,7 @@ WatchSolver::Search( ) -> bool
                         goto B3;
                 } else {
                         /* B6 Backtrack */
-                        if ( d == 1 ) return false; /* Failed */
+                        if ( d == 1 ) return std::nullopt; /* Failed */
 
                         /* Otherwise */
                         d--;
@@ -229,7 +208,17 @@ WatchSolver::Search( ) -> bool
                 }
         }
 
-        return true; /* Exit happily */
+        std::vector<literal_t> result( m_num_literals );
+
+        for ( size_t i = 1; i <= m_num_literals; i++ ) {
+                if ( m[i] & 1 ) {
+                        result[i - 1] = C( i );
+                } else {
+                        result[i - 1] = i;
+                }
+        }
+
+        return result; /* Exit happily */
 }
 
 auto

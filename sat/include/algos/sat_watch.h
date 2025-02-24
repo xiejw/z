@@ -36,7 +36,7 @@ class WatchSolver : Solver {
       public:
         /* === --- Conform Base Class ----------------------------------- === */
         auto EmitClause( std::span<const literal_t> ) -> void override;
-        auto Search( ) -> bool override;
+        auto Search( ) -> std::optional<std::vector<literal_t>> override;
 
       public:
         /* === --- A set of debug tooling. ----------------------------- === */
