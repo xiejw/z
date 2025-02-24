@@ -1,6 +1,9 @@
 #include <algos/sat_watch.h>
 
 #include <eve/base/error.h>
+#include <eve/base/log.h>
+
+#define DEBUG 1
 
 namespace eve::algos::sat {
 namespace {
@@ -53,8 +56,7 @@ WatchSolver::ReserveCells( size_t num_cells ) -> void
 auto
 WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 {
-        /* === --- Few quick sanity checks. -----------------------------
-         * === */
+        /* === --- Few quick sanity checks. ----------------------------- === */
         if ( lits.empty( ) ) panic( "emitted clause cannot be empty." );
         if ( m_num_emitted_clauses >= m_num_clauses )
                 panic( "emitted clause is full. Cannot submit one more." );
@@ -76,8 +78,7 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 
                 if ( !first_v ) continue;
 
-                /* === --- Special block to handle the first literal. ------
-                 * ===
+                /* === --- Special block to handle the first literal. ------ ===
                  *
                  * Start, Watch, Link should be recorded correctly.
                  */
@@ -109,8 +110,7 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 auto
 WatchSolver::Search( ) -> bool
 {
-        /* === --- This algorithm is Vol 4b, Page 215. ------------------
-         * === */
+        /* === --- This algorithm is Vol 4b, Page 215. ------------------ === */
 
         /* B1 Init */
         size_t d = 1;
@@ -128,7 +128,20 @@ WatchSolver::Search( ) -> bool
                 /* B3 Remove C(l) if possible. Page 573. Ex 124 */
                 size_t j = m_watch[comp_l];
 
+                if ( DEBUG )
+                        logDebug(
+                            "work at B3 at level d %zu to remove compliment of "
+                            "literal with starting clause %zu (comp l = %zu)",
+                            (size_t)d, j, comp_l );
+
                 while ( j != 0 ) {
+                        if ( DEBUG ) {
+                                logDebug(
+                                    "--> sub level B3 to work on clause j = "
+                                    "%zu",
+                                    (size_t)j );
+                                DebugPrint( );
+                        }
                         /* A literal other than comp_l should be watched in
                          * clause j. */
 
@@ -136,8 +149,22 @@ WatchSolver::Search( ) -> bool
                         size_t end    = m_start[j - 1];
                         size_t next_j = m_link[j];
 
+                        if ( DEBUG ) {
+                                if ( next_j > m_num_clauses ) {
+                                        DebugPrint( );
+                                        logFatal( "wrong next j" );
+                                }
+                        }
+
                         size_t k = begin + 1;
                         for ( ; k < end; k++ ) {
+                                if ( DEBUG )
+                                        logDebug(
+                                            "--> --> sub level B3 clause j = "
+                                            "%zu work on cell %zu (begin %zu, "
+                                            "end %zu)",
+                                            (size_t)j, (size_t)k, begin, end );
+
                                 size_t new_l = m_cells[k];
 
                                 /* If new_l isn't false. Swap it to
@@ -156,6 +183,12 @@ WatchSolver::Search( ) -> bool
                         if ( k == end ) {
                                 /* Cannot stop watching on comp_l. */
                                 m_watch[comp_l] = j;
+                                if ( DEBUG )
+                                        logDebug(
+                                            "cannot stop watching on "
+                                            "compliment of literal, go to B5 "
+                                            "at level d %zu",
+                                            (size_t)d );
                                 goto B5;
                         }
                 }
@@ -163,6 +196,9 @@ WatchSolver::Search( ) -> bool
                 /* B4 Advance */
                 m_watch[comp_l] = 0;
                 d++;
+                if ( DEBUG )
+                        logDebug( "advance to with B2 at level d %zu",
+                                  (size_t)d );
                 continue; /* Return to B2 */
 
         B5:
@@ -171,7 +207,13 @@ WatchSolver::Search( ) -> bool
                         size_t new_md = 3 - m[d];
                         m[d]          = new_md;
                         // l             = 2 * d + ( new_md & 1 );
-                        comp_l = 2 * d + ( new_md ^ 1 );
+                        comp_l = 2 * d + ( ( new_md & 1 ) ^ 1 );
+
+                        if ( DEBUG )
+                                logDebug(
+                                    "try again with B3 at level d %zu and m[d] "
+                                    "= %zu",
+                                    (size_t)d, (size_t)new_md );
                         goto B3;
                 } else {
                         /* B6 Backtrack */
@@ -179,6 +221,10 @@ WatchSolver::Search( ) -> bool
 
                         /* Otherwise */
                         d--;
+
+                        if ( DEBUG )
+                                logDebug( "backtrack with B5 at level d %zu",
+                                          (size_t)d );
                         goto B5;
                 }
         }
@@ -189,8 +235,12 @@ WatchSolver::Search( ) -> bool
 auto
 WatchSolver::DebugPrint( ) -> void
 {
-        /* === --- Cells ------------------------------------------------
-         * === */
+        /* === --- Internal --------------------------------------------- === */
+        std::print( "internal\n" );
+        std::print( "  num_literals {:3}\n", m_num_literals );
+        std::print( "  num_clauses  {:3}\n", m_num_clauses );
+
+        /* === --- Cells ------------------------------------------------ === */
         std::print( "cells\n" );
         for ( size_t i = 0; i < m_cells.size( ); i++ ) {
                 std::print( "{:02} ", i );
@@ -201,8 +251,7 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 
-        /* === --- Start ------------------------------------------------
-         * === */
+        /* === --- Start ------------------------------------------------ === */
         std::print( "start\n" );
         for ( size_t i = 0; i < m_start.size( ); i++ ) {
                 std::print( "{:02} ", i );
@@ -213,8 +262,7 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 
-        /* === --- Watch ------------------------------------------------
-         * === */
+        /* === --- Watch ------------------------------------------------ === */
         std::print( "watch\n" );
         for ( size_t i = 0; i < m_watch.size( ); i++ ) {
                 std::print( "{:02} ", i );
@@ -225,8 +273,7 @@ WatchSolver::DebugPrint( ) -> void
         }
         std::print( "\n" );
 
-        /* === --- Link -------------------------------------------------
-         * === */
+        /* === --- Link ------------------------------------------------- === */
         std::print( "link\n" );
         for ( size_t i = 0; i < m_link.size( ); i++ ) {
                 std::print( "{:02} ", i );
