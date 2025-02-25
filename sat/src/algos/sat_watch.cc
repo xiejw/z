@@ -3,6 +3,8 @@
 #include <eve/base/error.h>
 #include <eve/base/log.h>
 
+#include <print>
+
 #define DEBUG 0
 
 namespace eve::algos::sat {
@@ -101,7 +103,7 @@ WatchSolver::Search( ) -> std::optional<std::vector<literal_t>>
         while ( d <= n ) {
                 m[d] = m_watch[2 * d] == 0 || m_watch[2 * d + 1] != 0;
                 // size_t l      = 2 * d + m[d];
-                size_t comp_l = 2 * d + m[d] ^ 1;
+                size_t comp_l = 2 * d + ( m[d] ^ 1 );
 
         B3:
                 /* B3 Remove C(l) if possible. Page 573. Ex 124 */

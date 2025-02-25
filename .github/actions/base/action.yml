@@ -10,6 +10,10 @@ inputs:
     default: false
   clang_version:
     default: 15
+  require_gcc:
+    default: false
+  gcc_version:
+    default: 14
 runs:
   using: "composite"
   steps:
@@ -19,8 +23,25 @@ runs:
       with:
         repository: xiejw/y
         path: y
-    # --------------------------------------------------------------------------
-    # Clang related
+
+    # === --- GCC related ------------------------------------------------ ===
+    #
+    - name: Set environmental variables for GCC
+      if: ${{ inputs.require_gcc == 'true' }}
+      shell: bash
+      run: |
+        echo "CC=gcc-${{ inputs.gcc_version }}" >> $GITHUB_ENV
+        echo "CXX=g++-${{ inputs.gcc_version }}" >> $GITHUB_ENV
+    - name: Install GCC
+      if: ${{ inputs.require_gcc == 'true' }}
+      shell: bash
+      run: sudo apt-get install -y --no-install-recommends g++-${{ inputs.gcc_version }}
+    - name: Display GCC version
+      if: ${{ inputs.require_gcc == 'true' }}
+      shell: bash
+      run: ${CC} --version
+
+    # === --- Clang related ------------------------------------------------ ===
     #
     # https://brandur.org/fragments/github-actions-env-vars-in-env-vars
     - name: Set environmental variables for Clang

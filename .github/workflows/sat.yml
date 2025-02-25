@@ -12,8 +12,8 @@ jobs:
       - uses: ./z/.github/actions/base
         with:
           checkout_y: true
-          require_clang: true
-          clang_version: 18
+          require_gcc: true
+          gcc_version: 18
 
       - name: Run ${{ github.workflow }} Test
         run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean test
