@@ -13,7 +13,7 @@ jobs:
         with:
           checkout_y: true
           require_gcc: true
-          gcc_version: 18
+          gcc_version: 14
 
       - name: Run ${{ github.workflow }} Test
         run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean test
