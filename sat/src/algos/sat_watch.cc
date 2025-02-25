@@ -149,7 +149,7 @@ WatchSolver::Search( ) -> std::optional<std::vector<literal_t>>
                                 /* If new_l isn't false. Swap it to
                                  * beginning. */
                                 if ( ( new_l >> 1 ) > d ||
-                                     ( new_l + m[new_l] % 2 ) == 0 ) {
+                                     ( ( new_l + m[new_l >> 1] ) % 2 ) == 0 ) {
                                         m_cells[begin] = new_l;
                                         m_cells[k]     = comp_l;
                                         m_link[j]      = m_watch[new_l];
