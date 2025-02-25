@@ -13,7 +13,6 @@ class WatchSolver : Solver {
         size_t m_num_literals;
         size_t m_num_clauses;
         size_t m_num_emitted_clauses;
-        bool   m_debug_mode;
 
         std::vector<size_t> m_cells; /* Index by cell. */
         std::vector<size_t> m_start; /* Index by clause. */
@@ -43,9 +42,6 @@ class WatchSolver : Solver {
 
         /* Print the internal states of the solver. Orthogonal to debug mode. */
         auto DebugPrint( ) -> void;
-
-        /* Set debug mode, which might do more checks and prints. */
-        auto SetDebugMode( bool m ) -> void { m_debug_mode = m; }
 
       private:
         auto DebugCheck( std::span<const literal_t> ) const -> void;

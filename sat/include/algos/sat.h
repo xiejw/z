@@ -7,19 +7,29 @@
 
 namespace eve::algos::sat {
 
-/* Defined type for literals. */
-using literal_t = size_t;
-
-/* Encode the complement of a literal (1-based).
+/* === --- Defined type for literals --------------------------------------- ===
  *
- * When submit a clause (see Solver), the literal 1 should be submitted as 1,
- * and the complement of literal 1 should be submitted as C(1).
+ * Any caller should use encoded literal when emitting clauses. This helps to
+ * wrap both the literal and its complement. Internal representation is opaque
+ * to callers.
+ *
+ * - To emit literal x, use 'x';
+ * - To emit complement of literal x, use 'C(x)'.
+ * - Both cases are 1-based literals.
+ *
+ * Few free functions are provided to decode:
+ * - LiteralRawValue returns the absolute value of the x.
+ * - LiteralIsC returns true if the encoded value is a complement.
+ * - PrintLiterals prints the clause with literals nicely.
  */
+using literal_t = size_t;
 auto C( literal_t c ) -> literal_t;
 auto LiteralRawValue( literal_t c ) -> literal_t;
 auto LiteralIsC( literal_t c ) -> bool;
 auto PrintLiterals( std::span<const literal_t> ) -> void;
 
+/* === --- SAT Solver Interface  ------------------------------------------- ===
+ */
 class Solver {
       public:
         virtual auto EmitClause( std::span<const literal_t> ) -> void   = 0;

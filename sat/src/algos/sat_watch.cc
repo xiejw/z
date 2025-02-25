@@ -14,7 +14,6 @@ WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses,
     : m_num_literals( num_literals ),
       m_num_clauses( num_clauses ),
       m_num_emitted_clauses( 0 ),
-      m_debug_mode( false ),
       m_start( 1 + num_clauses ),
       m_watch( 2 + 2 * num_literals ),
       m_link( 1 + num_clauses )
@@ -42,7 +41,7 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
         if ( m_num_emitted_clauses >= m_num_clauses )
                 panic( "emitted clause is full. Cannot submit one more." );
 
-        if ( m_debug_mode ) this->DebugCheck( lits );
+        this->DebugCheck( lits );
 
         /* Clause id is 1-based, and decreasing order. */
         auto clause_id = m_num_clauses - m_num_emitted_clauses;
@@ -91,6 +90,10 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 auto
 WatchSolver::Search( ) -> std::optional<std::vector<literal_t>>
 {
+        if ( m_num_emitted_clauses != m_num_clauses ) {
+                panic( "emitted clauses are not enough. expected %zu, got %zu",
+                       (size_t)m_num_clauses, (size_t)m_num_emitted_clauses );
+        }
         /* === --- This algorithm is Vol 4b, Page 215. ------------------ === */
 
         /* B1 Init */
