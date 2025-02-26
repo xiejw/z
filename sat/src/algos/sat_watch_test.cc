@@ -3,7 +3,6 @@
 #include <algos/sat_watch.h>
 
 using eve::algos::sat::C;
-using eve::algos::sat::PrintLiterals;
 using eve::algos::sat::WatchSolver;
 
 EVE_TEST( SatWatch, Simple )
