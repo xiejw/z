@@ -111,4 +111,6 @@ which is same as
 **The Root of the DAG**: The final SAT problem is the conjunction of all terms
 above with `app:0` as `true` (the root).
 
+See [Example Code](https://github.com/xiejw/z/blob/main/sat/src/algos/sat_watch_dep_test.cc#L8-L114).
+
 ### Algorithm B: Satisfiability by Watching
