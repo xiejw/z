@@ -14,7 +14,7 @@
 #define NN_INPUT_SIZE  18
 #define NN_HIDDEN_SIZE 100
 #define NN_OUTPUT_SIZE 9
-#define LEARNING_RATE  0.1
+#define LEARNING_RATE  0.1f
 
 // Game board representation.
 typedef struct {
@@ -58,7 +58,7 @@ relu_derivative( float x )
 /* Initialize a neural network with random weights, we should
  * use something like He weights since we use RELU, but we don't
  * care as this is a trivial example. */
-#define RANDOM_WEIGHT( ) ( ( (float)rand( ) / RAND_MAX ) - 0.5f )
+#define RANDOM_WEIGHT( ) ( ( (float)rand( ) / (float)RAND_MAX ) - 0.5f )
 void
 init_neural_network( NeuralNetwork *nn )
 {
@@ -77,9 +77,8 @@ init_neural_network( NeuralNetwork *nn )
 }
 
 /* Initialize nn computer symbol. Half chance it will play first */
-#define RANDOM_NN_SYMBOL_INT_V( ) \
-        ( ( ( (float)rand( ) / RAND_MAX ) < 0.5f ) ? 0 : 1 )
-#define INT_TO_SYMBOL( x ) ( ( x ) ? 'O' : 'X' )
+#define RANDOM_NN_SYMBOL_INT_V( ) ( ( rand( ) < ( RAND_MAX >> 1 ) ) ? 0 : 1 )
+#define INT_TO_SYMBOL( x )        ( ( x ) ? 'O' : 'X' )
 
 /* Apply softmax activation function to an array input, and
  * set the result into output. */
@@ -111,7 +110,7 @@ softmax( float *input, float *output, int size )
                 /* Fallback in case of numerical issues, just provide
                  * a uniform distribution. */
                 for ( int i = 0; i < size; i++ ) {
-                        output[i] = 1.0f / size;
+                        output[i] = 1.0f / (float)size;
                 }
         }
 }
@@ -483,7 +482,7 @@ learn_from_game( NeuralNetwork *nn, int *move_history, int num_moves,
                          * valid moves, which is conceptually the same as
                          * discouraging the move that we want to discourage. */
                         int   valid_moves_left = 9 - move_idx - 1;
-                        float other_prob       = 1.0f / valid_moves_left;
+                        float other_prob       = 1.0f / (float)valid_moves_left;
                         for ( int i = 0; i < 9; i++ ) {
                                 if ( state.board[i] == '.' && i != move ) {
                                         target_probs[i] = other_prob;
@@ -659,10 +658,11 @@ train_against_random( NeuralNetwork *nn, int num_games )
                         printf(
                             "Games: %d (NN starts %.1f%%), Wins: %d (%.1f%%), "
                             "Losses: %d (%.1f%%), Ties: %d (%.1f%%)\n",
-                            i + 1, (float)nn_starts_first * 100 / ( i + 1 ),
-                            wins, (float)wins * 100 / played_games, losses,
-                            (float)losses * 100 / played_games, ties,
-                            (float)ties * 100 / played_games );
+                            i + 1,
+                            (float)nn_starts_first * 100.0f / (float)( i + 1 ),
+                            wins, (float)wins * 100.f / (float)played_games,
+                            losses, (float)losses * 100.f / (float)played_games,
+                            ties, (float)ties * 100.f / (float)played_games );
                         played_games = 0;
                         wins         = 0;
                         losses       = 0;
@@ -678,7 +678,7 @@ main( int argc, char **argv )
         int random_games = 150000;  // Fast and enough to play in a decent way.
 
         if ( argc > 1 ) random_games = atoi( argv[1] );
-        srand( time( NULL ) );
+        srand( (unsigned)time( NULL ) );
 
         // Initialize neural network.
         NeuralNetwork nn;
