@@ -4,6 +4,10 @@
   four](https://en.wikipedia.org/wiki/Connect_Four). It is
   quite strong.  Click [here](c4/README.md) to get started.
 - **Dancing Link** ([dlink](./dlink)): An advanced data structure implementing
-  backtracking algorithms, for the exact cover problem (XC).
+  backtracking algorithms, for the exact cover problem (XC). This can be
+  extended to help exact cover with colors problem (XCC).
 - **SAT Solver** ([sat](./sat)): Few algorithms which aim to solve the Boolean
   satisfiability problem (SAT).
+- **Tic Tac Toe** ([ttt](./ttt)): A [forked](https://github.com/antirez/ttt-rl)
+  Tic Tac Toe agent backed by Reinforcement Learning.
+
