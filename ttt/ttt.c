@@ -14,7 +14,8 @@
 // Game board representation.
 typedef struct {
     char board[9];          // Can be "." (empty) or "X", "O".
-    int current_player;     // 0 for player (X), 1 for computer (O).
+    char nn_symbol;         // 0 for 'X', 1 for 'O'
+    char current_p;         // 0 for 'X', 1 for 'O'
 } GameState;
 
 /* Neural network structure. For simplicity we have just
@@ -63,6 +64,10 @@ void init_neural_network(NeuralNetwork *nn) {
     for (int i = 0; i < NN_OUTPUT_SIZE; i++)
         nn->biases_o[i] = RANDOM_WEIGHT();
 }
+
+/* Initialize nn computer symbol. Half chance it will play first */
+#define RANDOM_NN_SYMBOL_INT_V() ((((float)rand() / RAND_MAX) < 0.5f) ? 0 : 1)
+#define INT_TO_SYMBOL(x) ( (x) ? 'O' : 'X')
 
 /* Apply softmax activation function to an array input, and
  * set the result into output. */
@@ -127,7 +132,8 @@ void forward_pass(NeuralNetwork *nn, float *inputs) {
 /* Initialize game state with an empty board. */
 void init_game(GameState *state) {
     memset(state->board,'.',9);
-    state->current_player = 0;  // Player (X) goes first
+    state->nn_symbol = RANDOM_NN_SYMBOL_INT_V();
+    state->current_p = 0;
 }
 
 /* Show board on screen in ASCII "art"... */
@@ -470,7 +476,7 @@ void play_game(NeuralNetwork *nn) {
     while (!check_game_over(&state, &winner)) {
         display_board(&state);
 
-        if (state.current_player == 0) {
+        if (state.nn_symbol != state.current_p) {
             // Human turn.
             int move;
             char movec;
@@ -484,32 +490,32 @@ void play_game(NeuralNetwork *nn) {
                 continue;
             }
 
-            state.board[move] = 'X';
+            state.board[move] = INT_TO_SYMBOL(state.current_p);
             move_history[num_moves++] = move;
         } else {
             // Computer's turn
             printf("Computer's move:\n");
             int move = get_computer_move(&state, nn, 1);
-            state.board[move] = 'O';
+            state.board[move] = INT_TO_SYMBOL(state.current_p);
             printf("Computer placed O at position %d\n", move);
             move_history[num_moves++] = move;
         }
 
-        state.current_player = !state.current_player;
+        state.current_p = !state.current_p;
     }
 
     display_board(&state);
 
-    if (winner == 'X') {
+    if (winner == INT_TO_SYMBOL(!state.nn_symbol)) {
         printf("You win!\n");
-    } else if (winner == 'O') {
+    } else if (winner == INT_TO_SYMBOL(state.nn_symbol)) {
         printf("Computer wins!\n");
     } else {
         printf("It's a tie!\n");
     }
 
     // Learn from this game
-    learn_from_game(nn, move_history, num_moves, 1, winner);
+    learn_from_game(nn, move_history, num_moves, state.nn_symbol? 1 :0 , winner);
 }
 
 /* Get a random valid move, this is used for training
@@ -537,34 +543,35 @@ int get_random_move(GameState *state) {
  * Montecarlo Tree Search (MCTS), where a tree structure repesents
  * potential future game states that are explored according to
  * some selection: you may want to learn about it. */
-char play_random_game(NeuralNetwork *nn, int *move_history, int *num_moves) {
+char play_random_game(NeuralNetwork *nn, int *move_history, int *num_moves, char *nn_symbol) {
     GameState state;
     char winner = 0;
     *num_moves = 0;
 
     init_game(&state);
+    *nn_symbol = state.nn_symbol;
 
     while (!check_game_over(&state, &winner)) {
         int move;
 
-        if (state.current_player == 0) {  // Random player's turn (X)
+        if (state.current_p != state.nn_symbol) {  // Random player's turn )
             move = get_random_move(&state);
-        } else {  // Neural network's turn (O)
+        } else {  // Neural network's turn
             move = get_computer_move(&state, nn, 0);
         }
 
         /* Make the move and store it: we need the moves sequence
          * during the learning stage. */
-        char symbol = (state.current_player == 0) ? 'X' : 'O';
+        char symbol = INT_TO_SYMBOL(state.current_p);
         state.board[move] = symbol;
         move_history[(*num_moves)++] = move;
 
         // Switch player.
-        state.current_player = !state.current_player;
+        state.current_p = !state.current_p;
     }
 
-    // Learn from this game - neural network is 'O' (even-numbered moves).
-    learn_from_game(nn, move_history, *num_moves, 1, winner);
+    // Learn from this game
+    learn_from_game(nn, move_history, *num_moves, state.nn_symbol ? 1 : 0, winner);
     return winner;
 }
 
@@ -573,18 +580,21 @@ void train_against_random(NeuralNetwork *nn, int num_games) {
     int move_history[9];
     int num_moves;
     int wins = 0, losses = 0, ties = 0;
+    int nn_starts_first = 0;
 
     printf("Training neural network against %d random games...\n", num_games);
 
     int played_games = 0;
     for (int i = 0; i < num_games; i++) {
-        char winner = play_random_game(nn, move_history, &num_moves);
+        char nn_symbol;
+        char winner = play_random_game(nn, move_history, &num_moves, &nn_symbol);
         played_games++;
+        nn_starts_first += (nn_symbol == 0);
 
         // Accumulate statistics that are provided to the user (it's fun).
-        if (winner == 'O') {
+        if (winner == INT_TO_SYMBOL(nn_symbol)) {
             wins++; // Neural network won.
-        } else if (winner == 'X') {
+        } else if (winner == INT_TO_SYMBOL(!nn_symbol)) {
             losses++; // Random player won.
         } else {
             ties++; // Tie.
@@ -592,9 +602,10 @@ void train_against_random(NeuralNetwork *nn, int num_games) {
 
         // Show progress every many games to avoid flooding the stdout.
         if ((i + 1) % 10000 == 0) {
-            printf("Games: %d, Wins: %d (%.1f%%), "
+            printf("Games: %d (NN starts %.1f%%), Wins: %d (%.1f%%), "
                    "Losses: %d (%.1f%%), Ties: %d (%.1f%%)\n",
-                  i + 1, wins, (float)wins * 100 / played_games,
+                  i + 1, (float)nn_starts_first * 100 / (i+1),
+                  wins, (float)wins * 100 / played_games,
                   losses, (float)losses * 100 / played_games,
                   ties, (float)ties * 100 / played_games);
             played_games = 0;
