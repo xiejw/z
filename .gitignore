@@ -10,3 +10,6 @@ configure.mk
 
 # ctags
 tags
+
+# bin data
+*.bin
