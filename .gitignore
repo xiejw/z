@@ -7,7 +7,7 @@ configure.mk
 
 # cc
 .build*
-a.out
+a.out*
 
 # ctags
 tags

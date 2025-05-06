@@ -39,10 +39,9 @@ show_tensor( Tensor *t, const char *prompt )
                         if ( i % 6 == 0 ) printf( "\n\t" );
                         printf( "%g, ", f );
                 }
-                if ( i == MAX_ELE_DISPLAY || ( t->ele_total < MAX_ELE_DISPLAY &&
-                                               i == t->ele_total - 1 ) )
-                        printf( "\n" );
+                if ( i + 1 == MAX_ELE_DISPLAY ) break;
         }
+        printf( "\n" );
 }
 
 /* === Utils to read tensor data file --------------------------------------- */
@@ -151,25 +150,16 @@ conv2d1chl( f32 *out_ptr,    /* Ptr to the output */
                 f32 *output_base_ptr = out_ptr + y * w;
                 for ( i32 x = 0; x < w; x++ ) {
                         // This line is wrong
-                        f32 v = *( input_base_ptr + x ) * *kernel_center_ptr;
-                        for ( i32 ky = 0; ky <= half_kh; ky++ ) {
-                                for ( i32 kx = 0; kx <= half_kw; kx++ ) {
-                                        if ( ky == 0 && kx == 0 ) continue;
-
-                                        v += ( ky <= y && kx <= x )
-                                                 ? kernel_center_ptr[-ky * kw -
-                                                                     kx] *
-                                                       input_base_ptr[x -
-                                                                      ky * w -
-                                                                      kx]
-                                                 : 0;
-                                        v += ( ky + y < h && kx + x < w )
-                                                 ? kernel_center_ptr[ky * kw +
-                                                                     kx] *
-                                                       input_base_ptr[x +
-                                                                      ky * w +
-                                                                      kx]
-                                                 : 0;
+                        f32 v = 0.f;
+                        for ( i32 ky = -half_kh; ky <= half_kh; ky++ ) {
+                                i32 offset_y = y + ky;
+                                if ( offset_y < 0 || offset_y >= h ) continue;
+                                for ( i32 kx = -half_kw; kx <= half_kw; kx++ ) {
+                                        i32 offset_x = x + kx;
+                                        if ( offset_x < 0 || offset_x >= w )
+                                                continue;
+                                        v += kernel_center_ptr[ky * kw + kx] *
+                                             input_base_ptr[x + kx + ky * w];
                                 }
                         }
                         /* Addeditive */
