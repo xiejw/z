@@ -1,25 +1,13 @@
 # All shapes are recored first and then all weights.
 import os
-
 import torch
-
 from model.resnet import build_resnet_model
 
-torch.set_grad_enabled(False)
-m = build_resnet_model(
-        (6, 7, 3), 42, state_file_to_load=os.getenv("C4_STATE_FILE")).eval()
+# === Helper Utils -------------------------------------------------------------
 
-# print(m)
-# print(m.conv2d.parameters())
-# print(m.conv2d.weight)
-# print(m.conv2d.bias)
-
-layer = m.conv2d
-params = [layer.weight, layer.bias]
-
-for param in params:
-    print("shape ", param.shape)
-  print("value ", torch.reshape(param, (-1,))[:20])
+def display_tensor(t):
+  print("  value (front) ", torch.reshape(t, (-1,))[:20])
+  print("  value (tail ) ", torch.reshape(t, (-1,))[-20:])
 
 def tensor_bo_bytes(t):
     return t.numpy().tobytes()
@@ -27,18 +15,49 @@ def u32_to_bytes(i):
     # This assume mac m1.
     return i.to_bytes(4, byteorder='little', signed=False)
 
+# === Torch Configuration ------------------------------------------------------
+
+torch.set_grad_enabled(False)
+torch.manual_seed(123)
+
+# === Model Resnet -------------------------------------------------------------
+# Model can be found here
+# https://github.com/xiejw/z/blob/main/c4/misc/converter/00_main.py#L280
+
+m = build_resnet_model(
+        (6, 7, 3), 42, state_file_to_load=os.getenv("C4_STATE_FILE")).eval()
+# print(m)
+
+inp = torch.randn((1, 3, 6, 7))
+out = m(inp)
+
+# print(m.conv2d.parameters())
+# print(m.conv2d.weight)
+# print(m.conv2d.bias)
+
+layer = m.conv2d
+# params = [inp, layer.weight, layer.bias, out[0], out[1]]
+
+# debug first layer
+out = layer(inp)
+params = [inp, layer.weight, layer.bias, out]
+
+for param in params:
+    print("shape ", param.shape)
+    display_tensor(param)
+
 with open('tensor_data.bin', 'wb') as f:
-    # Write total number of params
+    # Header 1: Write total number of params
     f.write(u32_to_bytes(len(params)))
 
-    # Write all shapes
+    # Header 2: Write all shapes
     for param in params:
         # Write dim count
         f.write(u32_to_bytes(len(param.shape)))
         # Write shape
         [f.write(u32_to_bytes(x)) for x in param.shape]
 
-    # Write all values
+    # Data: Write all values
     for param in params:
       f.write(tensor_bo_bytes(param))
 
