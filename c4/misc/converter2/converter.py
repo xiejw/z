@@ -36,16 +36,20 @@ inp = torch.randn((1, 3, 6, 7))
 
 # Layer 0
 layer = m.conv2d
+out = layer(inp)
 params = [inp, layer.weight, layer.bias]
 
-out = layer(inp)
 
 # Layer 1
 layer = m.batch_n
+out = layer(out)
 print("layer 1 eps", layer.eps)
 params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
 
+# Layer 2
+layer = m.relu
 out = layer(out)
+
 params.append(out)
 
 for param in params:

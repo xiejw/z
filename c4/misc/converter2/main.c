@@ -17,7 +17,7 @@
         do {                         \
                 printf( "panic\n" ); \
                 printf( msg );       \
-                exit( -1 );          \
+                exit( 1 );           \
         } while ( 0 )
 
 typedef float    f32;
@@ -58,9 +58,10 @@ assert_tensors_equal( Tensor *a, Tensor *b )
 
         for ( u32 i = 0; i < a->ele_total; i++ ) {
                 f32 err = a->data[i] - b->data[i];
-                if ( fabsf( err ) / a->data[i] >= REL_ERROR ) {
+                if ( fabsf( err / a->data[i] ) >= REL_ERROR ) {
                         printf( "the %u-th ele is not same. %g vs %g\n", i,
                                 a->data[i], b->data[i] );
+                        fflush( stdout );
                         PANIC( "assert_tensors_equal" );
                 }
         }
@@ -154,7 +155,66 @@ read_tensor_data( const char *file_name, u32 *tensor_cnt, Tensor *tensors )
         close( fd );
 }
 
-/* === NN ------------------------------------------------------------------- */
+/* === NN -------------------------------------------------------------------
+ */
+
+// clang-format off
+/*
++ ResNetModelWrapper(
++  (conv2d): Conv2d(3, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (batch_n): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (relu): ReLU(inplace=True)
++  (b0_conv2d): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b0_batch_n): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b0_relu): ReLU(inplace=True)
++  (b0_conv2d_b): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b0_batch_n_b): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b0_add): ResidualAddLayer()
++  (b0_relu_b): ReLU(inplace=True)
++  (b1_conv2d): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b1_batch_n): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b1_relu): ReLU(inplace=True)
++  (b1_conv2d_b): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b1_batch_n_b): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b1_add): ResidualAddLayer()
++  (b1_relu_b): ReLU(inplace=True)
++  (b2_conv2d): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b2_batch_n): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b2_relu): ReLU(inplace=True)
++  (b2_conv2d_b): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b2_batch_n_b): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b2_add): ResidualAddLayer()
++  (b2_relu_b): ReLU(inplace=True)
++  (b3_conv2d): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b3_batch_n): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b3_relu): ReLU(inplace=True)
++  (b3_conv2d_b): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b3_batch_n_b): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b3_add): ResidualAddLayer()
++  (b3_relu_b): ReLU(inplace=True)
++  (b4_conv2d): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b4_batch_n): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b4_relu): ReLU(inplace=True)
++  (b4_conv2d_b): Conv2d(128, 128, kernel_size=(5, 5), stride=(1, 1), padding=same)
++  (b4_batch_n_b): BatchNorm2d(128, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (b4_add): ResidualAddLayer()
++  (b4_relu_b): ReLU(inplace=True)
++  (p_conv2d): Conv2d(128, 2, kernel_size=(1, 1), stride=(1, 1), padding=same)
++  (p_batch_n): BatchNorm2d(2, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (p_relu): ReLU(inplace=True)
++  (p_flatten): Flatten(start_dim=1, end_dim=-1)
++  (p_dense): Linear(in_features=84, out_features=42, bias=True)
++  (p_softmax): Softmax(dim=1)
++  (v_conv2d): Conv2d(128, 2, kernel_size=(1, 1), stride=(1, 1), padding=same)
++  (v_batch_n): BatchNorm2d(2, eps=0.001, momentum=0.1, affine=True, track_running_stats=True)
++  (v_relu): ReLU(inplace=True)
++  (v_flatten): Flatten(start_dim=1, end_dim=-1)
++  (v_dense_1): Linear(in_features=84, out_features=256, bias=True)
++  (v_dense_2): Linear(in_features=256, out_features=1, bias=True)
++  (v_tanh): Tanh()
++)
+ */
+// clang-format on
 
 /* Helper util to fill the output tensor (one channel 'chl') only by doing
  * conv2d of the 1 channel input with kernel. */
@@ -331,6 +391,21 @@ batchnorm2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias,
         }
 }
 
+/* Relu performs max(0, x) for each element x. For performance, this layer does
+ * in place update.
+ *
+ * NOTE: We could fuse this with previous layer to avoid one more mem reading.
+ */
+void
+relu_inplace( Tensor *t )
+{
+        u32 size = t->ele_total;
+        for ( u32 i = 0; i < size; i++ ) {
+                f32 f = t->data[i];
+                if ( f < 0 ) t->data[i] = 0.f;
+        }
+}
+
 /* === Main ----------------------------------------------------------------- */
 
 int
@@ -356,6 +431,9 @@ main( void )
                      &tensors[tensor_pos + 1], &tensors[tensor_pos + 2],
                      &tensors[tensor_pos + 3] );
         tensor_pos += 4;
+
+        /* Layer 2 */
+        relu_inplace( output );
 
         /* Debug the output of the final layer. */
         printf( "assert outputs with tensor_pos %u\n", tensor_pos );
