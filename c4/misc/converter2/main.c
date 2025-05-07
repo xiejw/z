@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 
 #define BIN_DATA_FILE    "tensor_data.bin" /* Tensor data dump file */
@@ -18,6 +19,12 @@
                 printf( "panic\n" ); \
                 printf( msg );       \
                 exit( 1 );           \
+        } while ( 0 )
+
+#define RESET_TENSOR( t )     \
+        do {                  \
+                free( t );    \
+                ( t ) = NULL; \
         } while ( 0 )
 
 typedef float    f32;
@@ -45,6 +52,41 @@ show_tensor( Tensor *t, const char *prompt )
                 printf( "%g, ", t->data[i] );
         }
         printf( "\n" );
+}
+
+void
+alloc_tensor( Tensor **dst, u32 dim, u32 *shape )
+{
+        Tensor *t = malloc( sizeof( *t ) );
+        assert( t != NULL );
+        t->dim = dim;
+        memcpy( t->shape, shape, sizeof( u32 ) * dim );
+        *dst = t;
+
+        u32 ele_total = 1;
+        for ( u32 i = 0; i < dim; i++ ) {
+                ele_total *= shape[i];
+        }
+        t->ele_total = ele_total;
+
+        f32 *buf = malloc( sizeof( f32 ) * t->ele_total );
+        assert( buf != NULL );
+        t->data = buf;
+}
+
+void
+dup_tensor( Tensor **dst, Tensor *src, int copy_data )
+{
+        Tensor *t = malloc( sizeof( *t ) );
+        assert( t != NULL );
+        memcpy( t, src, sizeof( *t ) );
+        *dst = t;
+
+        f32 *buf = malloc( sizeof( f32 ) * t->ele_total );
+        assert( buf != NULL );
+        t->data = buf;
+
+        if ( !copy_data ) return;
 }
 
 /* Assert tensors a and b are almost same. Relative error is controled by
@@ -286,18 +328,8 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         u32 kernel_h = weight->shape[2];
         u32 kernel_w = weight->shape[3];
 
-        Tensor *output_tensor = malloc( sizeof( *output_tensor ) );
-
-        output_tensor->dim       = 4;
-        output_tensor->shape[0]  = 1;
-        output_tensor->shape[1]  = c_out;
-        output_tensor->shape[2]  = h;
-        output_tensor->shape[3]  = w;
-        output_tensor->ele_total = c_out * h * w;
-        f32 *out_buf             = malloc( sizeof( f32 ) * c_out * h * w );
-        assert( out_buf != NULL );
-        output_tensor->data = out_buf;
-        *dst                = output_tensor;
+        alloc_tensor( dst, 4, (u32[]){ 1, c_out, h, w } );
+        f32 *out_buf = ( *dst )->data;
 
         /* Naive algorithm. */
         for ( u32 out = 0; out < c_out; out++ ) {
@@ -349,18 +381,8 @@ batchnorm2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias,
         assert( num_features == mean->shape[0] );
         assert( num_features == var->shape[0] );
 
-        Tensor *output_tensor    = malloc( sizeof( *output_tensor ) );
-        output_tensor->dim       = 4;
-        output_tensor->shape[0]  = input->shape[0];
-        output_tensor->shape[1]  = input->shape[1];
-        output_tensor->shape[2]  = input->shape[2];
-        output_tensor->shape[3]  = input->shape[3];
-        output_tensor->ele_total = input->ele_total;
-
-        f32 *out_buf = malloc( sizeof( f32 ) * output_tensor->ele_total );
-        assert( out_buf != NULL );
-        output_tensor->data = out_buf;
-        *dst                = output_tensor;
+        dup_tensor( dst, input, 0 );
+        f32 *out_buf = ( *dst )->data;
 
         u32 h        = input->shape[2];
         u32 w        = input->shape[3];
@@ -406,6 +428,15 @@ relu_inplace( Tensor *t )
         }
 }
 
+void
+resnet_block( Tensor **dst, Tensor *src, u32 *tensor_pos, Tensor *tensors )
+{
+        (void)dst;
+        (void)src;
+        (void)tensor_pos;
+        (void)tensors;
+}
+
 /* === Main ----------------------------------------------------------------- */
 
 int
@@ -433,7 +464,14 @@ main( void )
         tensor_pos += 4;
 
         /* Layer 2 */
+        RESET_TENSOR( input );
         relu_inplace( output );
+
+        /* Block 0 */
+        // RESET_TENSOR( input );
+        // input = output;
+        // output = NULL;
+        // resnet_block(&output, input, &tensor_pos, tensors);
 
         /* Debug the output of the final layer. */
         printf( "assert outputs with tensor_pos %u\n", tensor_pos );
@@ -445,8 +483,8 @@ main( void )
         /* Output tensor must be the final one. */
         assert( tensor_pos == tensor_cnt );
 
-        free( input );
-        free( output );
+        RESET_TENSOR( input );
+        RESET_TENSOR( output );
 
         free_static_tensor_data( tensor_cnt, tensors );
 }
