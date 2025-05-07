@@ -29,18 +29,24 @@ m = build_resnet_model(
 # print(m)
 
 inp = torch.randn((1, 3, 6, 7))
-out = m(inp)
 
-# print(m.conv2d.parameters())
+# print(list(m.conv2d.parameters()))
 # print(m.conv2d.weight)
 # print(m.conv2d.bias)
 
+# Layer 0
 layer = m.conv2d
-# params = [inp, layer.weight, layer.bias, out[0], out[1]]
+params = [inp, layer.weight, layer.bias]
 
-# debug first layer
 out = layer(inp)
-params = [inp, layer.weight, layer.bias, out]
+
+# Layer 1
+layer = m.batch_n
+print("layer 1 eps", layer.eps)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+out = layer(out)
+params.append(out)
 
 for param in params:
     print("shape ", param.shape)

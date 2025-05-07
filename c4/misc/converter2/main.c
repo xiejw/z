@@ -6,11 +6,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#define BIN_DATA_FILE    "tensor_data.bin"
-#define MAX_DIM_LIMIT    5
-#define MAX_TENSOR_LIMIT 128
-#define MAX_ELE_DISPLAY  20
-#define REL_ERROR        1e-3f
+#define BIN_DATA_FILE    "tensor_data.bin" /* Tensor data dump file */
+#define MAX_DIM_LIMIT    5                 /* Max dim for tenshor shape. */
+#define MAX_TENSOR_LIMIT 128               /* Max number of tensors. */
+#define MAX_ELE_DISPLAY  20    /* Max number of elements to display. */
+#define REL_ERROR        1e-3f /* Max relative error allowed during assertion. */
+#define BN_EPS           0.001f /* Eps for Batch norm. */
 
 #define PANIC( msg )                 \
         do {                         \
@@ -30,33 +31,56 @@ typedef struct {
         f32 *data;
 } Tensor;
 
-/* === Utils to display tensor ---------------------------------------------- */
+/* === Utils to operate tensorsr -------------------------------------------- */
+
+/* Display tensor elements in stdout after prompt. Number of elements to be
+ * displayed is limited by MAX_ELE_DISPLAY.
+ */
 void
 show_tensor( Tensor *t, const char *prompt )
 {
         printf( "%s tensor data: ", prompt );
-        for ( u32 i = 0; i < t->ele_total; i++ ) {
-                f32 f = t->data[i];
-                if ( i < MAX_ELE_DISPLAY ) {
-                        if ( i % 6 == 0 ) printf( "\n\t" );
-                        printf( "%g, ", f );
-                }
-                if ( i + 1 == MAX_ELE_DISPLAY ) break;
+        for ( u32 i = 0; i < t->ele_total && i < MAX_ELE_DISPLAY; i++ ) {
+                if ( i % 6 == 0 ) printf( "\n\t" );
+                printf( "%g, ", t->data[i] );
         }
         printf( "\n" );
 }
 
+/* Assert tensors a and b are almost same. Relative error is controled by
+ * REL_ERROR.
+ */
 void
 assert_tensors_equal( Tensor *a, Tensor *b )
 {
-        assert( a->ele_total == b->ele_total );
+        if ( a->ele_total != b->ele_total )
+                PANIC( "assert_tensors_equal ele_total" );
+
         for ( u32 i = 0; i < a->ele_total; i++ ) {
                 f32 err = a->data[i] - b->data[i];
-                if ( fabs( err ) / a->data[i] >= REL_ERROR ) {
+                if ( fabsf( err ) / a->data[i] >= REL_ERROR ) {
                         printf( "the %u-th ele is not same. %g vs %g\n", i,
                                 a->data[i], b->data[i] );
                         PANIC( "assert_tensors_equal" );
                 }
+        }
+}
+
+/* Free a tensor on heap. */
+void
+free_tensor( Tensor *p )
+{
+        if ( p == NULL ) return;
+        free( p->data );
+        free( p );
+}
+
+/* Free tensor data inside a static allocated tensor arary (tensors). */
+void
+free_static_tensor_data( u32 tensor_cnt, Tensor *tensors )
+{
+        for ( u32 i = 0; i < tensor_cnt; i++ ) {
+                free( tensors[i].data );
         }
 }
 
@@ -112,8 +136,11 @@ read_tensor( int fd, Tensor *t )
 }
 
 void
-read_tensor_data( int fd, u32 *tensor_cnt, Tensor *tensors )
+read_tensor_data( const char *file_name, u32 *tensor_cnt, Tensor *tensors )
 {
+        int fd = open( file_name, O_RDONLY );
+        if ( fd == -1 ) PANIC( "failed to open tensor data file" );
+
         read_tensor_cnt( fd, tensor_cnt );
 
         /* Pass 1: Read shapes */
@@ -124,26 +151,13 @@ read_tensor_data( int fd, u32 *tensor_cnt, Tensor *tensors )
         for ( u32 i = 0; i < *tensor_cnt; i++ ) {
                 read_tensor( fd, &tensors[i] );
         }
-}
-
-void
-free_tensor( Tensor *p )
-{
-        if ( p == NULL ) return;
-        free( p->data );
-        free( p );
-}
-
-void
-free_tensor_data( u32 tensor_cnt, Tensor *tensors )
-{
-        for ( u32 i = 0; i < tensor_cnt; i++ ) {
-                free( tensors[i].data );
-        }
+        close( fd );
 }
 
 /* === NN ------------------------------------------------------------------- */
 
+/* Helper util to fill the output tensor (one channel 'chl') only by doing
+ * conv2d of the 1 channel input with kernel. */
 void
 conv2d1chl( f32 *out_ptr,    /* Ptr to the output */
             f32 *data_ptr,   /* Ptr to the input */
@@ -181,6 +195,15 @@ conv2d1chl( f32 *out_ptr,    /* Ptr to the output */
         }
 }
 
+/* Conv2D on a 4D (N, C_in, H, W) input tensor with
+ * - (C_out, C_in, KH, KW) * kernel (weight) and
+ * - (C_out) bias.
+ *
+ * NOTE:
+ * - This naive implementation assumes batch size is 1, i.e., N=1;
+ * - This naive implementation assumes conv2d is same padding, KH and KW are
+ *   both odd numbers.
+ */
 void
 conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 {
@@ -188,10 +211,11 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         assert( weight->dim == 4 );
         assert( bias->dim == 1 );
 
-        /* We assume batch size is 1 now. */
-        assert( input->shape[0] == 1 );
         assert( input->shape[1] == weight->shape[1] );
         assert( weight->shape[0] == bias->shape[0] );
+        /* We assume batch size is 1 now. */
+        assert( input->shape[0] == 1 );
+        /* We assume kernel size (h and w) are both odd */
         assert( weight->shape[2] % 2 == 1 );
         assert( weight->shape[3] % 2 == 1 );
 
@@ -213,6 +237,7 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         f32 *out_buf             = malloc( sizeof( f32 ) * c_out * h * w );
         assert( out_buf != NULL );
         output_tensor->data = out_buf;
+        *dst                = output_tensor;
 
         /* Naive algorithm. */
         for ( u32 out = 0; out < c_out; out++ ) {
@@ -233,7 +258,70 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
                                     kernel_ptr, (i32)kernel_h, (i32)kernel_w );
                 }
         }
-        *dst = output_tensor;
+}
+
+/* Batch norm on a 4D (N, C, H, W) input tensor.
+ *
+ * NOTE: This naive implementation assumes batch size is 1, i.e., N=1;
+ */
+void
+batchnorm2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias,
+             Tensor *mean, Tensor *var )
+{
+        assert( input->dim == 4 );
+        assert( weight->dim == 1 );
+        assert( bias->dim == 1 );
+        assert( mean->dim == 1 );
+        assert( var->dim == 1 );
+
+        /* We assume batch size is 1 now. */
+        assert( input->shape[0] == 1 );
+        u32 num_features = input->shape[1];
+        assert( num_features == weight->shape[0] );
+        assert( num_features == bias->shape[0] );
+        assert( num_features == mean->shape[0] );
+        assert( num_features == var->shape[0] );
+
+        Tensor *output_tensor    = malloc( sizeof( *output_tensor ) );
+        output_tensor->dim       = 4;
+        output_tensor->shape[0]  = input->shape[0];
+        output_tensor->shape[1]  = input->shape[1];
+        output_tensor->shape[2]  = input->shape[2];
+        output_tensor->shape[3]  = input->shape[3];
+        output_tensor->ele_total = input->ele_total;
+
+        f32 *out_buf = malloc( sizeof( f32 ) * output_tensor->ele_total );
+        assert( out_buf != NULL );
+        output_tensor->data = out_buf;
+        *dst                = output_tensor;
+
+        u32 h        = input->shape[2];
+        u32 w        = input->shape[3];
+        u32 img_size = h * w;
+
+        for ( u32 n = 0; n < num_features; n++ ) {
+                f32 *input_base_ptr  = input->data + n * img_size;
+                f32 *output_base_ptr = out_buf + n * img_size;
+
+                f32 w            = weight->data[n];
+                f32 b            = bias->data[n];
+                f32 m            = mean->data[n];
+                f32 v            = var->data[n];
+                f32 inv_sqrt_v_w = 1.f / sqrtf( v + BN_EPS ) * w;
+                f32 true_bias    = -m * inv_sqrt_v_w + b;
+
+                /* o = (i - m ) / sqrt(v + eps) * w + b
+                 *   = (i - m ) * (1 / sqrt(v+eps) * w) + b
+                 *   = (i - m ) * inv_sqrt_v_w + b
+                 *   = i * inv_sqrt_v_w + (- m * inv_sqrt_v_w + b)
+                 *   = i * inv_sqrt_v_w + true_bias
+                 */
+
+                for ( u32 i = 0; i < img_size; i++ ) {
+                        output_base_ptr[i] =
+                            input_base_ptr[i] * inv_sqrt_v_w + true_bias;
+                }
+        }
 }
 
 /* === Main ----------------------------------------------------------------- */
@@ -241,23 +329,39 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 int
 main( void )
 {
-        int fd = open( BIN_DATA_FILE, O_RDONLY );
-        if ( fd == -1 ) PANIC( "failed to open tensor data file" );
-
         u32    tensor_cnt;
         Tensor tensors[MAX_TENSOR_LIMIT];
-        read_tensor_data( fd, &tensor_cnt, tensors );
+        read_tensor_data( BIN_DATA_FILE, &tensor_cnt, tensors );
 
-        Tensor *output;
+        Tensor *input  = NULL;
+        Tensor *output = NULL;
 
-        conv2d( &output, &tensors[0], &tensors[1], &tensors[2] );
+        u32 tensor_pos = 0;
 
-        /* Debug the output of each layer. */
+        /* Layer 0 */
+        conv2d( &output, &tensors[tensor_pos + 0], &tensors[tensor_pos + 1],
+                &tensors[tensor_pos + 2] );
+        tensor_pos += 3;
+
+        /* Layer 1 */
+        input = output;
+        batchnorm2d( &output, input, &tensors[tensor_pos + 0],
+                     &tensors[tensor_pos + 1], &tensors[tensor_pos + 2],
+                     &tensors[tensor_pos + 3] );
+        tensor_pos += 4;
+
+        /* Debug the output of the final layer. */
+        printf( "assert outputs with tensor_pos %u\n", tensor_pos );
         show_tensor( output, "output" );
-        show_tensor( &tensors[3], "target" );
-        assert_tensors_equal( output, &tensors[3] );
+        show_tensor( &tensors[tensor_pos], "target" );
+        assert_tensors_equal( output, &tensors[tensor_pos] );
+        tensor_pos++;
+
+        /* Output tensor must be the final one. */
+        assert( tensor_pos == tensor_cnt );
+
+        free( input );
         free( output );
 
-        free_tensor_data( tensor_cnt, tensors );
-        close( fd );
+        free_static_tensor_data( tensor_cnt, tensors );
 }
