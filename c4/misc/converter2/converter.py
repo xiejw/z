@@ -43,7 +43,7 @@ params = [inp, layer.weight, layer.bias]
 # Layer 1
 layer = m.batch_n
 out = layer(out)
-print("layer 1 eps", layer.eps)
+# print("layer 1 eps", layer.eps)
 params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
 
 # Layer 2
@@ -51,9 +51,28 @@ layer = m.relu
 out = layer(out)
 
 # # Block 0
-# layer = m.b0_conv2d
-# out = layer(out)
-# params.extend([layer.weight, layer.bias])
+dup = out
+layer = m.b0_conv2d
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b0_batch_n
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+layer = m.relu
+out = layer(out)
+
+layer = m.b0_conv2d_b
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b0_batch_n_b
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+out = m.b0_relu_b(m.b0_add(out, dup))
+del dup
 
 params.append(out)
 

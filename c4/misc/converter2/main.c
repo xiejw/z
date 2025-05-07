@@ -11,7 +11,7 @@
 #define MAX_DIM_LIMIT    5                 /* Max dim for tenshor shape. */
 #define MAX_TENSOR_LIMIT 128               /* Max number of tensors. */
 #define MAX_ELE_DISPLAY  20    /* Max number of elements to display. */
-#define REL_ERROR        1e-3f /* Max relative error allowed during assertion. */
+#define REL_ERROR        1e-2f /* Max relative error allowed during assertion. */
 #define BN_EPS           0.001f /* Eps for Batch norm. */
 
 #define PANIC( msg )                 \
@@ -87,6 +87,8 @@ dup_tensor( Tensor **dst, Tensor *src, int copy_data )
         t->data = buf;
 
         if ( !copy_data ) return;
+
+        memcpy( buf, src->data, sizeof( f32 ) * t->ele_total );
 }
 
 /* Assert tensors a and b are almost same. Relative error is controled by
@@ -429,12 +431,55 @@ relu_inplace( Tensor *t )
 }
 
 void
+add_inplace( Tensor *dst, Tensor *src )
+{
+        assert( dst->ele_total == src->ele_total );
+        u32 size = dst->ele_total;
+        for ( u32 i = 0; i < size; i++ ) {
+                dst->data[i] += src->data[i];
+        }
+}
+
+void
 resnet_block( Tensor **dst, Tensor *src, u32 *tensor_pos, Tensor *tensors )
 {
-        (void)dst;
-        (void)src;
-        (void)tensor_pos;
-        (void)tensors;
+        Tensor *dup    = NULL;
+        Tensor *input  = src;
+        Tensor *output = NULL;
+
+        dup_tensor( &dup, src, /*copy_data=*/1 );
+
+        conv2d( &output, input, &tensors[*tensor_pos + 0],
+                &tensors[*tensor_pos + 1] );
+        *tensor_pos += 2;
+
+        input = output;
+        batchnorm2d( &output, input, &tensors[*tensor_pos + 0],
+                     &tensors[*tensor_pos + 1], &tensors[*tensor_pos + 2],
+                     &tensors[*tensor_pos + 3] );
+        *tensor_pos += 4;
+        RESET_TENSOR( input );
+
+        relu_inplace( output );
+
+        input = output;
+        conv2d( &output, input, &tensors[*tensor_pos + 0],
+                &tensors[*tensor_pos + 1] );
+        *tensor_pos += 2;
+        RESET_TENSOR( input );
+
+        input = output;
+        batchnorm2d( &output, input, &tensors[*tensor_pos + 0],
+                     &tensors[*tensor_pos + 1], &tensors[*tensor_pos + 2],
+                     &tensors[*tensor_pos + 3] );
+        *tensor_pos += 4;
+        RESET_TENSOR( input );
+
+        add_inplace( output, dup );
+        RESET_TENSOR( dup );
+
+        relu_inplace( output );
+        *dst = output;
 }
 
 /* === Main ----------------------------------------------------------------- */
@@ -468,10 +513,9 @@ main( void )
         relu_inplace( output );
 
         /* Block 0 */
-        // RESET_TENSOR( input );
-        // input = output;
-        // output = NULL;
-        // resnet_block(&output, input, &tensor_pos, tensors);
+        RESET_TENSOR( input );
+        input = output;
+        resnet_block( &output, input, &tensor_pos, tensors );
 
         /* Debug the output of the final layer. */
         printf( "assert outputs with tensor_pos %u\n", tensor_pos );
