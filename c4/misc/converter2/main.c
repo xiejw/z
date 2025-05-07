@@ -517,6 +517,26 @@ main( void )
         input = output;
         resnet_block( &output, input, &tensor_pos, tensors );
 
+        /* Block 1 */
+        RESET_TENSOR( input );
+        input = output;
+        resnet_block( &output, input, &tensor_pos, tensors );
+
+        /* Block 2 */
+        RESET_TENSOR( input );
+        input = output;
+        resnet_block( &output, input, &tensor_pos, tensors );
+
+        /* Block 3 */
+        RESET_TENSOR( input );
+        input = output;
+        resnet_block( &output, input, &tensor_pos, tensors );
+
+        /* Block 4 */
+        RESET_TENSOR( input );
+        input = output;
+        resnet_block( &output, input, &tensor_pos, tensors );
+
         /* Debug the output of the final layer. */
         printf( "assert outputs with tensor_pos %u\n", tensor_pos );
         show_tensor( output, "output" );

@@ -74,6 +74,102 @@ params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
 out = m.b0_relu_b(m.b0_add(out, dup))
 del dup
 
+# # Block 1
+dup = out
+layer = m.b1_conv2d
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b1_batch_n
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+layer = m.relu
+out = layer(out)
+
+layer = m.b1_conv2d_b
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b1_batch_n_b
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+out = m.b1_relu_b(m.b1_add(out, dup))
+del dup
+
+# # Block 2
+dup = out
+layer = m.b2_conv2d
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b2_batch_n
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+layer = m.relu
+out = layer(out)
+
+layer = m.b2_conv2d_b
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b2_batch_n_b
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+out = m.b2_relu_b(m.b2_add(out, dup))
+del dup
+
+# # Block 3
+dup = out
+layer = m.b3_conv2d
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b3_batch_n
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+layer = m.relu
+out = layer(out)
+
+layer = m.b3_conv2d_b
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b3_batch_n_b
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+out = m.b3_relu_b(m.b3_add(out, dup))
+del dup
+
+# # Block 4
+dup = out
+layer = m.b4_conv2d
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b4_batch_n
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+layer = m.relu
+out = layer(out)
+
+layer = m.b4_conv2d_b
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.b4_batch_n_b
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+out = m.b4_relu_b(m.b4_add(out, dup))
+del dup
+
 params.append(out)
 
 for param in params:
