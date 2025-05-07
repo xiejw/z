@@ -262,6 +262,13 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 
 /* Batch norm on a 4D (N, C, H, W) input tensor.
  *
+ * In case of CNNs the mean/variance should be taken across all pixels over the
+ * batch for each input channel. In other words, if your input is of shape (N,
+ * C, H, W) , your mean/variance will be of shape  (1, C, 1, 1) or (C) . The
+ * reason for that is that the weights of a kernel in a CNN are shared in a
+ * spatial dimension (HxW). However, in the channel dimension C the weights are
+ * not shared.
+ *
  * NOTE: This naive implementation assumes batch size is 1, i.e., N=1;
  */
 void
