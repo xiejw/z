@@ -21,10 +21,10 @@
                 exit( 1 );           \
         } while ( 0 )
 
-#define RESET_TENSOR( t )     \
-        do {                  \
-                free( t );    \
-                ( t ) = NULL; \
+#define RESET_TENSOR( t )         \
+        do {                      \
+                free_tensor( t ); \
+                ( t ) = NULL;     \
         } while ( 0 )
 
 typedef float    f32;

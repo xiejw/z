@@ -1,6 +1,7 @@
 ROOT = ../..
 CFLAGS  += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 CFLAGS  += -g
+# CFLAGS  += -fsanitize=address
 LDFLAGS += -lm -ffast-math
 
 
