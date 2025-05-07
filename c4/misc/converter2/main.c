@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <fcntl.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -9,6 +10,7 @@
 #define MAX_DIM_LIMIT    5
 #define MAX_TENSOR_LIMIT 128
 #define MAX_ELE_DISPLAY  20
+#define REL_ERROR        1e-3f
 
 #define PANIC( msg )                 \
         do {                         \
@@ -42,6 +44,20 @@ show_tensor( Tensor *t, const char *prompt )
                 if ( i + 1 == MAX_ELE_DISPLAY ) break;
         }
         printf( "\n" );
+}
+
+void
+assert_tensors_equal( Tensor *a, Tensor *b )
+{
+        assert( a->ele_total == b->ele_total );
+        for ( u32 i = 0; i < a->ele_total; i++ ) {
+                f32 err = a->data[i] - b->data[i];
+                if ( fabs( err ) / a->data[i] >= REL_ERROR ) {
+                        printf( "the %u-th ele is not same. %g vs %g\n", i,
+                                a->data[i], b->data[i] );
+                        PANIC( "assert_tensors_equal" );
+                }
+        }
 }
 
 /* === Utils to read tensor data file --------------------------------------- */
@@ -88,22 +104,11 @@ read_tensor( int fd, Tensor *t )
         t->data           = malloc( byte_count );
         assert( t->data != NULL );
 
-        f32 f;
-        printf( "tensor data: " );
-        for ( u32 i = 0; i < t->ele_total; i++ ) {
-                ssize_t c = read( fd, &f, 4 );
-                if ( c < 0 ) PANIC( "failed to read bytes for a f32" );
+        ssize_t c = read( fd, t->data, 4 * t->ele_total );
+        if ( c < 0 ) PANIC( "failed to read bytes for a f32" );
+        if ( c != 4 * t->ele_total ) PANIC( "failed to read full tensor" );
 
-                t->data[i] = f;
-
-                if ( i < MAX_ELE_DISPLAY ) {
-                        if ( i % 6 == 0 ) printf( "\n\t" );
-                        printf( "%g, ", f );
-                }
-                if ( i == MAX_ELE_DISPLAY || ( t->ele_total < MAX_ELE_DISPLAY &&
-                                               i == t->ele_total - 1 ) )
-                        printf( "\n" );
-        }
+        show_tensor( t, "tensor data" );
 }
 
 void
@@ -119,6 +124,14 @@ read_tensor_data( int fd, u32 *tensor_cnt, Tensor *tensors )
         for ( u32 i = 0; i < *tensor_cnt; i++ ) {
                 read_tensor( fd, &tensors[i] );
         }
+}
+
+void
+free_tensor( Tensor *p )
+{
+        if ( p == NULL ) return;
+        free( p->data );
+        free( p );
 }
 
 void
@@ -169,7 +182,7 @@ conv2d1chl( f32 *out_ptr,    /* Ptr to the output */
 }
 
 void
-conv2d( Tensor *input, Tensor *weight, Tensor *bias )
+conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 {
         assert( input->dim == 4 );
         assert( weight->dim == 4 );
@@ -189,14 +202,17 @@ conv2d( Tensor *input, Tensor *weight, Tensor *bias )
         u32 kernel_h = weight->shape[2];
         u32 kernel_w = weight->shape[3];
 
-        /* TODO make output an arg */
-        Tensor output_tensor = {
-            .dim = 4, .shape = { 1, c_out, h, w },
-                 .ele_total = c_out * h * w
-        };
-        f32 *out_buf = malloc( sizeof( f32 ) * c_out * h * w );
+        Tensor *output_tensor = malloc( sizeof( *output_tensor ) );
+
+        output_tensor->dim       = 4;
+        output_tensor->shape[0]  = 1;
+        output_tensor->shape[1]  = c_out;
+        output_tensor->shape[2]  = h;
+        output_tensor->shape[3]  = w;
+        output_tensor->ele_total = c_out * h * w;
+        f32 *out_buf             = malloc( sizeof( f32 ) * c_out * h * w );
         assert( out_buf != NULL );
-        output_tensor.data = out_buf;
+        output_tensor->data = out_buf;
 
         /* Naive algorithm. */
         for ( u32 out = 0; out < c_out; out++ ) {
@@ -213,12 +229,11 @@ conv2d( Tensor *input, Tensor *weight, Tensor *bias )
                         f32 *input_ptr = input->data + in * h * w;
                         f32 *kernel_ptr =
                             kernel_ptr_base + in * kernel_h * kernel_w;
-                        // DEBUG printf("c_out %d, c_in %d\n", out, in);
                         conv2d1chl( out_ptr, input_ptr, (i32)h, (i32)w,
                                     kernel_ptr, (i32)kernel_h, (i32)kernel_w );
                 }
         }
-        show_tensor( &output_tensor, "output" );
+        *dst = output_tensor;
 }
 
 /* === Main ----------------------------------------------------------------- */
@@ -233,8 +248,15 @@ main( void )
         Tensor tensors[MAX_TENSOR_LIMIT];
         read_tensor_data( fd, &tensor_cnt, tensors );
 
-        conv2d( &tensors[0], &tensors[1], &tensors[2] );
+        Tensor *output;
+
+        conv2d( &output, &tensors[0], &tensors[1], &tensors[2] );
+
+        /* Debug the output of each layer. */
+        show_tensor( output, "output" );
         show_tensor( &tensors[3], "target" );
+        assert_tensors_equal( output, &tensors[3] );
+        free( output );
 
         free_tensor_data( tensor_cnt, tensors );
         close( fd );
