@@ -183,6 +183,12 @@ params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
 layer = m.relu
 out = layer(out)
 
+out = m.p_flatten(out)
+
+layer = m.p_dense
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
 params.append(out)
 
 for param in params:

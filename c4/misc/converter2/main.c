@@ -436,6 +436,11 @@ relu_inplace( Tensor *t )
         }
 }
 
+/* Add is the Residul add in the resnet block. For performance, this layer does
+ * in place update to the dst.
+ *
+ * NOTE: We could fuse this with previous layer to avoid one more mem reading.
+ */
 void
 add_inplace( Tensor *dst, Tensor *src )
 {
@@ -443,6 +448,46 @@ add_inplace( Tensor *dst, Tensor *src )
         u32 size = dst->ele_total;
         for ( u32 i = 0; i < size; i++ ) {
                 dst->data[i] += src->data[i];
+        }
+}
+
+/* Linear layer to perform matmul on (1, C) x (C, N) = (1, N).
+ *
+ * NOTE
+ * - Batch size is assumed to be 1.
+ * - The weight matrix is assumed to have shape (N, C) rather than (C, N)
+ * - Input is ok to have more than 2 dim, and we implicitly do a flatten.
+ */
+void
+linear( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
+{
+        assert( input->dim >= 2 );
+        assert( weight->dim == 2 );
+        assert( bias->dim == 1 );
+
+        /* An implicit flatten. */
+        u32 ele_cnt = 1;
+        for ( u32 i = 1; i < input->dim; i++ ) {
+                ele_cnt *= input->shape[i];
+        }
+
+        assert( 1 == input->shape[0] );
+        assert( ele_cnt == weight->shape[1] );
+        assert( weight->shape[0] == bias->shape[0] );
+
+        u32 out_dim = weight->shape[0];
+
+        alloc_tensor( dst, 2, (u32[]){ 1, out_dim } );
+        f32 *out_buf = ( *dst )->data;
+
+        f32 *input_ptr = input->data;
+        for ( u32 n = 0; n < out_dim; n++ ) {
+                f32  v          = 0.f;
+                f32 *weight_ptr = weight->data + n * ele_cnt;
+                for ( u32 i = 0; i < ele_cnt; i++ ) {
+                        v += input_ptr[i] * weight_ptr[i];
+                }
+                out_buf[n] = v + bias->data[n];
         }
 }
 
@@ -506,6 +551,13 @@ policy_head( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
         RESET_TENSOR( input );
 
         relu_inplace( output );
+
+        input = output;
+        linear( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
+        RESET_TENSOR( input );
+
         *dst = output;
 }
 
