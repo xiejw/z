@@ -38,6 +38,12 @@ typedef struct {
         f32 *data;
 } Tensor;
 
+typedef struct {
+        u32    weight_cnt;                /* Total number of weights. */
+        Tensor weights[MAX_TENSOR_LIMIT]; /* All weights. */
+        // u32    weight_idx; /* the index to read the next weight. */
+} NN;
+
 /* === Utils to operate tensorsr -------------------------------------------- */
 
 /* Display tensor elements in stdout after prompt. Number of elements to be
@@ -181,7 +187,7 @@ read_tensor( int fd, Tensor *t )
 }
 
 void
-read_tensor_data( const char *file_name, u32 *tensor_cnt, Tensor *tensors )
+read_tensor_data( const char *file_name, u32 *tensor_cnt, Tensor *weights )
 {
         int fd = open( file_name, O_RDONLY );
         if ( fd == -1 ) PANIC( "failed to open tensor data file" );
@@ -190,11 +196,11 @@ read_tensor_data( const char *file_name, u32 *tensor_cnt, Tensor *tensors )
 
         /* Pass 1: Read shapes */
         for ( u32 i = 0; i < *tensor_cnt; i++ ) {
-                read_shape( fd, &tensors[i] );
+                read_shape( fd, &weights[i] );
         }
         /* Pass 2: Read tensor data */
         for ( u32 i = 0; i < *tensor_cnt; i++ ) {
-                read_tensor( fd, &tensors[i] );
+                read_tensor( fd, &weights[i] );
         }
         close( fd );
 }
@@ -441,7 +447,7 @@ add_inplace( Tensor *dst, Tensor *src )
 }
 
 void
-resnet_block( Tensor **dst, Tensor *src, u32 *tensor_pos, Tensor *tensors )
+resnet_block( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
 {
         Tensor *dup    = NULL;
         Tensor *input  = src;
@@ -449,30 +455,30 @@ resnet_block( Tensor **dst, Tensor *src, u32 *tensor_pos, Tensor *tensors )
 
         dup_tensor( &dup, src, /*copy_data=*/1 );
 
-        conv2d( &output, input, &tensors[*tensor_pos + 0],
-                &tensors[*tensor_pos + 1] );
-        *tensor_pos += 2;
+        conv2d( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
 
         input = output;
-        batchnorm2d( &output, input, &tensors[*tensor_pos + 0],
-                     &tensors[*tensor_pos + 1], &tensors[*tensor_pos + 2],
-                     &tensors[*tensor_pos + 3] );
-        *tensor_pos += 4;
+        batchnorm2d( &output, input, &weights[*weight_idx + 0],
+                     &weights[*weight_idx + 1], &weights[*weight_idx + 2],
+                     &weights[*weight_idx + 3] );
+        *weight_idx += 4;
         RESET_TENSOR( input );
 
         relu_inplace( output );
 
         input = output;
-        conv2d( &output, input, &tensors[*tensor_pos + 0],
-                &tensors[*tensor_pos + 1] );
-        *tensor_pos += 2;
+        conv2d( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
         RESET_TENSOR( input );
 
         input = output;
-        batchnorm2d( &output, input, &tensors[*tensor_pos + 0],
-                     &tensors[*tensor_pos + 1], &tensors[*tensor_pos + 2],
-                     &tensors[*tensor_pos + 3] );
-        *tensor_pos += 4;
+        batchnorm2d( &output, input, &weights[*weight_idx + 0],
+                     &weights[*weight_idx + 1], &weights[*weight_idx + 2],
+                     &weights[*weight_idx + 3] );
+        *weight_idx += 4;
         RESET_TENSOR( input );
 
         add_inplace( output, dup );
@@ -483,51 +489,64 @@ resnet_block( Tensor **dst, Tensor *src, u32 *tensor_pos, Tensor *tensors )
 }
 
 void
-policy_head( Tensor **dst, Tensor *src, u32 *tensor_pos, Tensor *tensors )
+policy_head( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
 {
         Tensor *input  = src;
         Tensor *output = NULL;
 
-        conv2d( &output, input, &tensors[*tensor_pos + 0],
-                &tensors[*tensor_pos + 1] );
-        *tensor_pos += 2;
+        conv2d( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
 
         input = output;
-        batchnorm2d( &output, input, &tensors[*tensor_pos + 0],
-                     &tensors[*tensor_pos + 1], &tensors[*tensor_pos + 2],
-                     &tensors[*tensor_pos + 3] );
-        *tensor_pos += 4;
+        batchnorm2d( &output, input, &weights[*weight_idx + 0],
+                     &weights[*weight_idx + 1], &weights[*weight_idx + 2],
+                     &weights[*weight_idx + 3] );
+        *weight_idx += 4;
         RESET_TENSOR( input );
 
         relu_inplace( output );
         *dst = output;
 }
 
-/* === Main ----------------------------------------------------------------- */
-
-int
-main( void )
+NN *
+nn_new( const char *data_file )
 {
-        u32    tensor_cnt;
-        Tensor tensors[MAX_TENSOR_LIMIT];
-        read_tensor_data( BIN_DATA_FILE, &tensor_cnt, tensors );
+        NN *nn = malloc( sizeof( *nn ) );
+        assert( nn != NULL );
+        nn->weight_cnt = 0;
+        // TODO nn->weight_idx = 0;
+        read_tensor_data( data_file, &nn->weight_cnt, nn->weights );
+        return nn;
+}
 
+void
+nn_free( NN *p )
+{
+        if ( p == NULL ) return;
+        free_static_tensor_data( p->weight_cnt, p->weights );
+        free( p );
+}
+
+void
+nn_forward( NN *nn )
+{
         Tensor *input  = NULL;
         Tensor *output = NULL;
 
-        u32 tensor_pos = 0;
+        u32 weight_idx = 0;
 
         /* Layer 0 */
-        conv2d( &output, &tensors[tensor_pos + 0], &tensors[tensor_pos + 1],
-                &tensors[tensor_pos + 2] );
-        tensor_pos += 3;
+        conv2d( &output, &nn->weights[weight_idx + 0],
+                &nn->weights[weight_idx + 1], &nn->weights[weight_idx + 2] );
+        weight_idx += 3;
 
         /* Layer 1 */
         input = output;
-        batchnorm2d( &output, input, &tensors[tensor_pos + 0],
-                     &tensors[tensor_pos + 1], &tensors[tensor_pos + 2],
-                     &tensors[tensor_pos + 3] );
-        tensor_pos += 4;
+        batchnorm2d( &output, input, &nn->weights[weight_idx + 0],
+                     &nn->weights[weight_idx + 1], &nn->weights[weight_idx + 2],
+                     &nn->weights[weight_idx + 3] );
+        weight_idx += 4;
 
         /* Layer 2 */
         RESET_TENSOR( input );
@@ -536,45 +555,52 @@ main( void )
         /* Block 0 */
         RESET_TENSOR( input );
         input = output;
-        resnet_block( &output, input, &tensor_pos, tensors );
+        resnet_block( &output, input, &weight_idx, nn->weights );
 
         /* Block 1 */
         RESET_TENSOR( input );
         input = output;
-        resnet_block( &output, input, &tensor_pos, tensors );
+        resnet_block( &output, input, &weight_idx, nn->weights );
 
         /* Block 2 */
         RESET_TENSOR( input );
         input = output;
-        resnet_block( &output, input, &tensor_pos, tensors );
+        resnet_block( &output, input, &weight_idx, nn->weights );
 
         /* Block 3 */
         RESET_TENSOR( input );
         input = output;
-        resnet_block( &output, input, &tensor_pos, tensors );
+        resnet_block( &output, input, &weight_idx, nn->weights );
 
         /* Block 4 */
         RESET_TENSOR( input );
         input = output;
-        resnet_block( &output, input, &tensor_pos, tensors );
+        resnet_block( &output, input, &weight_idx, nn->weights );
 
         /* Policy Head */
         RESET_TENSOR( input );
         input = output;
-        policy_head( &output, input, &tensor_pos, tensors );
+        policy_head( &output, input, &weight_idx, nn->weights );
 
         /* Debug the output of the final layer. */
-        printf( "assert outputs with tensor_pos %u\n", tensor_pos );
+        printf( "assert outputs with weight_idx %u\n", weight_idx );
         show_tensor( output, "output" );
-        show_tensor( &tensors[tensor_pos], "target" );
-        assert_tensors_equal( output, &tensors[tensor_pos] );
-        tensor_pos++;
+        show_tensor( &nn->weights[weight_idx], "target" );
+        assert_tensors_equal( output, &nn->weights[weight_idx] );
+        weight_idx++;
 
         /* Output tensor must be the final one. */
-        assert( tensor_pos == tensor_cnt );
+        assert( weight_idx == nn->weight_cnt );
 
         RESET_TENSOR( input );
         RESET_TENSOR( output );
+}
+/* === Main ----------------------------------------------------------------- */
 
-        free_static_tensor_data( tensor_cnt, tensors );
+int
+main( void )
+{
+        NN *nn = nn_new( BIN_DATA_FILE );
+        nn_forward( nn );
+        nn_free( nn );
 }
