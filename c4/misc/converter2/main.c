@@ -41,7 +41,6 @@ typedef struct {
 typedef struct {
         u32    weight_cnt;                /* Total number of weights. */
         Tensor weights[MAX_TENSOR_LIMIT]; /* All weights. */
-        // u32    weight_idx; /* the index to read the next weight. */
 } NN;
 
 /* === Utils to operate tensorsr -------------------------------------------- */
@@ -451,6 +450,24 @@ add_inplace( Tensor *dst, Tensor *src )
         }
 }
 
+void
+softmax_inplace( Tensor *dst )
+{
+        assert( dst->dim == 2 );
+        assert( dst->shape[0] == 1 );
+        u32  ele_cnt = dst->ele_total;
+        f32 *ptr     = dst->data;
+        f32  total   = 0.f;
+        for ( u32 i = 0; i < ele_cnt; i++ ) {
+                f32 v = expf( ptr[i] );
+                total += v;
+                ptr[i] = v;
+        }
+        for ( u32 i = 0; i < ele_cnt; i++ ) {
+                ptr[i] /= total;
+        }
+}
+
 /* Linear layer to perform matmul on (1, C) x (C, N) = (1, N).
  *
  * NOTE
@@ -558,6 +575,8 @@ policy_head( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
         *weight_idx += 2;
         RESET_TENSOR( input );
 
+        softmax_inplace( output );
+
         *dst = output;
 }
 
@@ -567,7 +586,6 @@ nn_new( const char *data_file )
         NN *nn = malloc( sizeof( *nn ) );
         assert( nn != NULL );
         nn->weight_cnt = 0;
-        // TODO nn->weight_idx = 0;
         read_tensor_data( data_file, &nn->weight_cnt, nn->weights );
         return nn;
 }
@@ -638,6 +656,12 @@ nn_forward( NN *nn )
         printf( "assert outputs with weight_idx %u\n", weight_idx );
         show_tensor( output, "output" );
         show_tensor( &nn->weights[weight_idx], "target" );
+        assert_tensors_equal( output, &nn->weights[weight_idx] );
+        weight_idx++;
+
+        printf( "assert outputs with weight_idx %u\n", weight_idx );
+        show_tensor( output, "output" );
+        show_tensor( &nn->weights[weight_idx], "whole model target" );
         assert_tensors_equal( output, &nn->weights[weight_idx] );
         weight_idx++;
 

@@ -20,25 +20,28 @@ def u32_to_bytes(i):
 torch.set_grad_enabled(False)
 torch.manual_seed(123)
 
+# Generate random inputs and save it for comparision.
+inp = torch.randn((1, 3, 6, 7))
+params = [inp]
+
 # === Model Resnet -------------------------------------------------------------
 # Model can be found here
-# https://github.com/xiejw/z/blob/main/c4/misc/converter/00_main.py#L280
+#
+# Ref 1: https://github.com/xiejw/z/blob/main/c4/misc/converter/00_main.py#L280
+# Ref 2: https://github.com/xiejw/z/blob/main/c4/lib/model/resnet.py#L29
 
 m = build_resnet_model(
         (6, 7, 3), 42, state_file_to_load=os.getenv("C4_STATE_FILE")).eval()
 # print(m)
 
-inp = torch.randn((1, 3, 6, 7))
+model_policy_out = m(inp)[0]
 
-# print(list(m.conv2d.parameters()))
-# print(m.conv2d.weight)
-# print(m.conv2d.bias)
+# === Prepare to decompose all layers and do computation on each layer ---------
 
 # Layer 0
 layer = m.conv2d
 out = layer(inp)
-params = [inp, layer.weight, layer.bias]
-
+params.extend([layer.weight, layer.bias])
 
 # Layer 1
 layer = m.batch_n
@@ -189,7 +192,15 @@ layer = m.p_dense
 out = layer(out)
 params.extend([layer.weight, layer.bias])
 
+out = m.p_softmax(out)
+
+# We saved two outputs for comparison.
+# First is the layer by layer computation result.
+# Second is the model output directly. They should be same.
 params.append(out)
+params.append(model_policy_out)
+
+# === Save all tensors to output file ------------------------------------------
 
 for param in params:
     print("shape ", param.shape)
