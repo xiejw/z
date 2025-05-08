@@ -170,6 +170,19 @@ params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
 out = m.b4_relu_b(m.b4_add(out, dup))
 del dup
 
+# Policy Head
+dup = out
+layer = m.p_conv2d
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.p_batch_n
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+layer = m.relu
+out = layer(out)
+
 params.append(out)
 
 for param in params:

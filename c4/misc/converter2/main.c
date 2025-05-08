@@ -482,6 +482,27 @@ resnet_block( Tensor **dst, Tensor *src, u32 *tensor_pos, Tensor *tensors )
         *dst = output;
 }
 
+void
+policy_head( Tensor **dst, Tensor *src, u32 *tensor_pos, Tensor *tensors )
+{
+        Tensor *input  = src;
+        Tensor *output = NULL;
+
+        conv2d( &output, input, &tensors[*tensor_pos + 0],
+                &tensors[*tensor_pos + 1] );
+        *tensor_pos += 2;
+
+        input = output;
+        batchnorm2d( &output, input, &tensors[*tensor_pos + 0],
+                     &tensors[*tensor_pos + 1], &tensors[*tensor_pos + 2],
+                     &tensors[*tensor_pos + 3] );
+        *tensor_pos += 4;
+        RESET_TENSOR( input );
+
+        relu_inplace( output );
+        *dst = output;
+}
+
 /* === Main ----------------------------------------------------------------- */
 
 int
@@ -536,6 +557,11 @@ main( void )
         RESET_TENSOR( input );
         input = output;
         resnet_block( &output, input, &tensor_pos, tensors );
+
+        /* Policy Head */
+        RESET_TENSOR( input );
+        input = output;
+        policy_head( &output, input, &tensor_pos, tensors );
 
         /* Debug the output of the final layer. */
         printf( "assert outputs with tensor_pos %u\n", tensor_pos );
