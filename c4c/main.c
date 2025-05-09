@@ -632,7 +632,7 @@ game_new( void )
         Game *g = calloc( 1, sizeof( *g ) );
         assert( g != NULL );
         g->next_player = BLACK;
-        g->nn_player   = ( ( rand( ) < ( RAND_MAX >> 1 ) ) ? BLACK : WHITE );
+        g->nn_player   = ( ( rand( ) % 2 == 0 ) ? BLACK : WHITE );
         return g;
 }
 
