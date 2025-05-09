@@ -12,5 +12,3 @@ a.out*
 # ctags
 tags
 
-# bin data
-*.bin

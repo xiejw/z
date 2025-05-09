@@ -15,11 +15,10 @@ typedef int32_t  i32;
 #define ROWS 6
 #define COLS 7
 
-#define BIN_DATA_FILE    "tensor_data.bin" /* Tensor data dump file */
-#define MAX_DIM_LIMIT    5                 /* Max dim for tenshor shape. */
-#define MAX_TENSOR_LIMIT 128               /* Max number of tensors. */
-#define MAX_ELE_DISPLAY  20    /* Max number of elements to display. */
-#define REL_ERROR        1e-2f /* Max relative error allowed during assertion. */
+#define BIN_DATA_FILE    ".build/tensor_data.bin" /* Tensor data dump file */
+#define MAX_DIM_LIMIT    5      /* Max dim for tenshor shape. */
+#define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
+#define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
 #define BN_EPS           0.001f /* Eps for Batch norm. */
 
 #define DISABLE_SHOW_TENSOR 1
@@ -115,26 +114,6 @@ dup_tensor( Tensor **dst, Tensor *src, int copy_data )
         if ( !copy_data ) return;
 
         memcpy( buf, src->data, sizeof( f32 ) * t->ele_total );
-}
-
-/* Assert tensors a and b are almost same. Relative error is controled by
- * REL_ERROR.
- */
-void
-assert_tensors_equal( Tensor *a, Tensor *b )
-{
-        if ( a->ele_total != b->ele_total )
-                PANIC( "assert_tensors_equal ele_total" );
-
-        for ( u32 i = 0; i < a->ele_total; i++ ) {
-                f32 err = a->data[i] - b->data[i];
-                if ( fabsf( err / a->data[i] ) >= REL_ERROR ) {
-                        printf( "the %u-th ele is not same. %g vs %g\n", i,
-                                a->data[i], b->data[i] );
-                        fflush( stdout );
-                        PANIC( "assert_tensors_equal" );
-                }
-        }
 }
 
 /* Free a tensor on heap. */
@@ -834,17 +813,19 @@ policy_nn_move( Game *g, NN *nn )
 
         f32 best     = -100000000000.f;
         int best_col = -1;
-        for ( int col = 1; col < COLS; col++ ) {
+        for ( int col = 0; col < COLS; col++ ) {
                 int row = game_legal_row( g, col );
                 if ( row == -1 ) continue;
                 int idx = COL_ROW_TO_IDX( col, row );
                 f32 v   = out->data[idx];
-                if ( v > best ) {
+                if ( best_col == -1 || v > best ) {
                         best     = v;
                         best_col = col;
                 }
         }
-        assert( best_col != -1 );
+        if ( best_col == -1 ) {
+                PANIC( "is the board full???" );
+        }
 
         RESET_TENSOR( out );
         return best_col;
@@ -864,6 +845,11 @@ play_game( NN *nn )
                         col = policy_nn_move( g, nn );
                 } else {
                         col = policy_human_move( g );
+                }
+
+                if ( col < 0 || col >= COLS ) {
+                        printf( "invalid column during game %d\n", col );
+                        PANIC( "unexpected" );
                 }
 
                 row = game_legal_row( g, col );
