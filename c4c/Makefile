@@ -1,5 +1,5 @@
 BUILD     = .build
-DATA_FILE = https://github.com/xiejw/z/releases/download/v0.0.2/tensor_data.bin
+DATA_FILE = https://github.com/xiejw/z/releases/download/v0.0.3/tensor_data.bin
 
 CFLAGS   += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
