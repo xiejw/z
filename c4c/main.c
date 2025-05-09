@@ -447,6 +447,19 @@ softmax_inplace( Tensor *dst )
         }
 }
 
+/* Tanh performs element wise tanh op on input. */
+void
+tanh_inplace( Tensor *dst )
+{
+        u32  ele_cnt = dst->ele_total;
+        f32 *ptr     = dst->data;
+        for ( u32 i = 0; i < ele_cnt; i++ ) {
+                f32 v = ptr[i];
+                ptr[i] =
+                    ( expf( v ) - expf( -v ) ) / ( expf( v ) + expf( -v ) );
+        }
+}
+
 /* Linear layer to perform matmul on (1, C) x (C, N) = (1, N).
  *
  * NOTE
@@ -559,6 +572,44 @@ policy_head( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
         *dst = output;
 }
 
+void
+value_head( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
+{
+        Tensor *input  = src;
+        Tensor *output = NULL;
+
+        conv2d( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
+
+        input = output;
+        batchnorm2d( &output, input, &weights[*weight_idx + 0],
+                     &weights[*weight_idx + 1], &weights[*weight_idx + 2],
+                     &weights[*weight_idx + 3] );
+        *weight_idx += 4;
+        RESET_TENSOR( input );
+
+        relu_inplace( output );
+
+        input = output;
+        linear( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
+        RESET_TENSOR( input );
+
+        relu_inplace( output );
+
+        input = output;
+        linear( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
+        RESET_TENSOR( input );
+
+        tanh_inplace( output );
+
+        *dst = output;
+}
+
 NN *
 nn_new( const char *data_file )
 {
@@ -577,8 +628,8 @@ nn_free( NN *p )
         free( p );
 }
 
-Tensor *
-nn_forward( NN *nn, Tensor *in )
+void
+nn_forward( NN *nn, Tensor *in, Tensor **policy_out, Tensor **value_out )
 {
         Tensor *input  = NULL;
         Tensor *output = NULL;
@@ -629,14 +680,19 @@ nn_forward( NN *nn, Tensor *in )
 
         /* Policy Head */
         RESET_TENSOR( input );
-        input = output;
+        input = output; /* This tensor will be re-used by value head. */
         policy_head( &output, input, &weight_idx, nn->weights );
+        *policy_out = output;
+        output      = NULL;
+
+        /* Value Head */
+        value_head( &output, input, &weight_idx, nn->weights );
+        *value_out = output;
+        output     = NULL;
+        RESET_TENSOR( input );
 
         /* Output tensor must be the final one. */
         assert( weight_idx == nn->weight_cnt );
-
-        RESET_TENSOR( input );
-        return output;
 }
 
 /* === Game related utilities ----------------------------------------------- */
@@ -865,7 +921,10 @@ policy_nn_move( Game *g, NN *nn )
          * - The index of each probability is same as COL_ROW_TO_IDX. Top left
          *   corner is (col=0,row=0).
          */
-        Tensor *out = nn_forward( nn, in );
+        Tensor *out; /* Policy output. */
+        Tensor *value_out;
+        nn_forward( nn, in, &out, &value_out );
+        RESET_TENSOR( value_out );
         RESET_TENSOR( in );
 
         assert( out->ele_total == ROWS * COLS );
