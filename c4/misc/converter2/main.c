@@ -7,9 +7,9 @@
 #include <string.h>
 #include <unistd.h>
 
-#define BIN_DATA_FILE    "tensor_data.bin" /* Tensor data dump file */
-#define MAX_DIM_LIMIT    5                 /* Max dim for tenshor shape. */
-#define MAX_TENSOR_LIMIT 128               /* Max number of tensors. */
+#define BIN_DATA_FILE    ".build/tensor_data.bin" /* Tensor data dump file */
+#define MAX_DIM_LIMIT    5     /* Max dim for tenshor shape. */
+#define MAX_TENSOR_LIMIT 128   /* Max number of tensors. */
 #define MAX_ELE_DISPLAY  20    /* Max number of elements to display. */
 #define REL_ERROR        1e-2f /* Max relative error allowed during assertion. */
 #define BN_EPS           0.001f /* Eps for Batch norm. */
@@ -468,6 +468,18 @@ softmax_inplace( Tensor *dst )
         }
 }
 
+void
+tanh_inplace( Tensor *dst )
+{
+        u32  ele_cnt = dst->ele_total;
+        f32 *ptr     = dst->data;
+        for ( u32 i = 0; i < ele_cnt; i++ ) {
+                f32 v = ptr[i];
+                ptr[i] =
+                    ( expf( v ) - expf( -v ) ) / ( expf( v ) + expf( -v ) );
+        }
+}
+
 /* Linear layer to perform matmul on (1, C) x (C, N) = (1, N).
  *
  * NOTE
@@ -580,6 +592,44 @@ policy_head( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
         *dst = output;
 }
 
+void
+value_head( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
+{
+        Tensor *input  = src;
+        Tensor *output = NULL;
+
+        conv2d( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
+
+        input = output;
+        batchnorm2d( &output, input, &weights[*weight_idx + 0],
+                     &weights[*weight_idx + 1], &weights[*weight_idx + 2],
+                     &weights[*weight_idx + 3] );
+        *weight_idx += 4;
+        RESET_TENSOR( input );
+
+        relu_inplace( output );
+
+        input = output;
+        linear( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
+        RESET_TENSOR( input );
+
+        relu_inplace( output );
+
+        input = output;
+        linear( &output, input, &weights[*weight_idx + 0],
+                &weights[*weight_idx + 1] );
+        *weight_idx += 2;
+        RESET_TENSOR( input );
+
+        tanh_inplace( output );
+
+        *dst = output;
+}
+
 NN *
 nn_new( const char *data_file )
 {
@@ -649,20 +699,30 @@ nn_forward( NN *nn )
 
         /* Policy Head */
         RESET_TENSOR( input );
-        input = output;
+        input = output; /* This input will be reused by value head. */
         policy_head( &output, input, &weight_idx, nn->weights );
+
+        Tensor *policy_output = output;
+        output                = NULL;
+
+        /* Value Head */
+        value_head( &output, input, &weight_idx, nn->weights );
+        Tensor *value_output = output;
+        output               = NULL;
+
+        RESET_TENSOR( input );
 
         /* Debug the output of the final layer. */
         printf( "assert outputs with weight_idx %u\n", weight_idx );
-        show_tensor( output, "output" );
-        show_tensor( &nn->weights[weight_idx], "target" );
-        assert_tensors_equal( output, &nn->weights[weight_idx] );
+        show_tensor( policy_output, "policy output" );
+        show_tensor( &nn->weights[weight_idx], "policy target" );
+        assert_tensors_equal( policy_output, &nn->weights[weight_idx] );
         weight_idx++;
 
         printf( "assert outputs with weight_idx %u\n", weight_idx );
-        show_tensor( output, "output" );
-        show_tensor( &nn->weights[weight_idx], "whole model target" );
-        assert_tensors_equal( output, &nn->weights[weight_idx] );
+        show_tensor( value_output, "value output" );
+        show_tensor( &nn->weights[weight_idx], "value target" );
+        assert_tensors_equal( value_output, &nn->weights[weight_idx] );
         weight_idx++;
 
         /* Output tensor must be the final one. */
@@ -670,6 +730,8 @@ nn_forward( NN *nn )
 
         RESET_TENSOR( input );
         RESET_TENSOR( output );
+        RESET_TENSOR( policy_output );
+        RESET_TENSOR( value_output );
 }
 /* === Main ----------------------------------------------------------------- */
 

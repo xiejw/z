@@ -34,7 +34,7 @@ m = build_resnet_model(
         (6, 7, 3), 42, state_file_to_load=os.getenv("C4_STATE_FILE")).eval()
 # print(m)
 
-model_policy_out = m(inp)[0]
+model_out = m(inp)
 
 # === Prepare to decompose all layers and do computation on each layer ---------
 
@@ -193,12 +193,45 @@ out = layer(out)
 params.extend([layer.weight, layer.bias])
 
 out = m.p_softmax(out)
+policy_out = out
+
+# Value Head
+out = dup
+del dup
+
+layer = m.v_conv2d
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+layer = m.v_batch_n
+out = layer(out)
+params.extend([layer.weight, layer.bias, layer.running_mean, layer.running_var])
+
+out = m.v_relu(out)
+
+out = m.v_flatten(out)
+
+layer = m.v_dense_1
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+out = m.v_relu(out)
+
+layer = m.v_dense_2
+out = layer(out)
+params.extend([layer.weight, layer.bias])
+
+out = m.v_tanh(out)
+
+value_out = out
 
 # We saved two outputs for comparison.
 # First is the layer by layer computation result.
 # Second is the model output directly. They should be same.
-params.append(out)
-params.append(model_policy_out)
+params.append(policy_out)
+params.append(value_out)
+# params.append(model_out[0])
+# params.append(model_out[1])
 
 # === Save all tensors to output file ------------------------------------------
 
@@ -206,7 +239,7 @@ for param in params:
     print("shape ", param.shape)
     display_tensor(param)
 
-with open('tensor_data.bin', 'wb') as f:
+with open('.build/tensor_data.bin', 'wb') as f:
     # Header 1: Write total number of params
     f.write(u32_to_bytes(len(params)))
 
