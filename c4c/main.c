@@ -779,7 +779,8 @@ policy_human_move( Game *g )
         while ( 1 ) {
                 int  col;
                 char movec;
-                printf( "Your move (1-7): " );
+                printf( "[%s] Your move (1-7): ",
+                        g->nn_player == BLACK ? "o" : "x" );
                 scanf( " %c", &movec );
                 col = movec - '1';  // Turn character into number.
 
