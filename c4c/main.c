@@ -824,11 +824,11 @@ policy_nn_move( Game *g, NN *nn )
          *
          * - For 3 channel input with shape {1,3,ROWS,COLS}, all f32 data are
          *   zero by default.
-         * - If the next_player is BLACK, the 2nd channel, i.e., [1,2,:,:] are
+         * - If the next_player is BLACK, the 3rd channel, i.e., [1,2,:,:] are
          *   set to 1.
          * - For each stone on the board, if it is BLACK, the corresponding f32
-         *   data in the 1st channel is 1. If WHITE, the 2nd channel for that
-         *   data is 1.
+         *   data in the 1st channel is 1, i.e., [1,0,row,col] = 1. If WHITE,
+         *   the 2nd channel for that data is 1, i.e, [1,1,row,col] = 1.
          */
         Tensor *in;
         alloc_tensor( &in, 4, (u32[]){ 1, 3, ROWS, COLS } );
