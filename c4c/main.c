@@ -229,6 +229,8 @@ read_tensor_data( const char *file_name, u32 *tensor_cnt, Tensor *weights )
 }
 
 /* === NN -------------------------------------------------------------------
+ *
+ * See reference_model.py for the PyTorch reference model.
  */
 
 /* Helper util to fill the output tensor (one channel 'chl') only by doing
