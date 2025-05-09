@@ -16,7 +16,7 @@ typedef int32_t  i32;
 #define COLS 7
 
 #define BIN_DATA_FILE    ".build/tensor_data.bin" /* Tensor data dump file */
-#define MAX_DIM_LIMIT    5      /* Max dim for tenshor shape. */
+#define MAX_DIM_LIMIT    5      /* Max dim for tensor shape. */
 #define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
 #define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
 #define BN_EPS           0.001f /* Eps for Batch norm. */
@@ -41,6 +41,8 @@ typedef int32_t  i32;
                 ( t ) = NULL;     \
         } while ( 0 )
 
+/* === Tensor and NN related data structures -------------------------------- */
+
 typedef struct {
         u32  dim;
         u32  shape[MAX_DIM_LIMIT];
@@ -53,6 +55,8 @@ typedef struct {
         Tensor weights[MAX_TENSOR_LIMIT]; /* All weights. */
 } NN;
 
+/* === Game play related data structures ------------------------------------ */
+
 typedef enum { NA, BLACK, WHITE } Color;
 
 typedef struct {
@@ -61,7 +65,7 @@ typedef struct {
         Color nn_player;
 } Game;
 
-/* === Utils to operate tensorsr -------------------------------------------- */
+/* === Utils to operate tensor ---------------------------------------------- */
 
 /* Display tensor elements in stdout after prompt. Number of elements to be
  * displayed is limited by MAX_ELE_DISPLAY.
@@ -79,6 +83,7 @@ show_tensor( Tensor *t, const char *prompt )
         printf( "\n" );
 }
 
+/* Allocates a tensor with shape and dim but random data buffer. */
 void
 alloc_tensor( Tensor **dst, u32 dim, u32 *shape )
 {
@@ -99,6 +104,9 @@ alloc_tensor( Tensor **dst, u32 dim, u32 *shape )
         t->data = buf;
 }
 
+/* Dup a tensor with the same shape and dim as src. If copy_data is non-zero,
+ * the data buffer is copied as well.
+ */
 void
 dup_tensor( Tensor **dst, Tensor *src, int copy_data )
 {
@@ -125,7 +133,7 @@ free_tensor( Tensor *p )
         free( p );
 }
 
-/* Free tensor data inside a static allocated tensor arary (tensors). */
+/* Free tensor data inside a static allocated tensor array (tensors). */
 void
 free_static_tensor_data( u32 tensor_cnt, Tensor *tensors )
 {
@@ -135,6 +143,22 @@ free_static_tensor_data( u32 tensor_cnt, Tensor *tensors )
 }
 
 /* === Utils to read tensor data file --------------------------------------- */
+
+/* Tensor data file specification.
+ *
+ * The file contains tensors only, no operation graphs/dags.
+ * - The first 4 bytes is little endian unsigned int32 (u32), which indicates
+ *   the total number of tensors in this file.
+ * - After the first 4 bytes, all tensors' shapes are recorded continuously (no
+ *   data is recorded in this section). Each shape starts with dimention (dim)
+ *   in u32, followed by shape element each is u32. For example, if two tensors
+ *   are stored in file with shape {2, 3} and {1, 3, 5}, the shapes are
+ *   recorded as a sequence of u32s: 2233135.
+ * - Immediately after last section, all tensor data are stored as float32 (f32)
+ *   bytes, without any delimiters. This makes mmap easier during file loading.
+ *
+ * Read read_tensor_data function for details.
+ */
 
 void
 read_tensor_cnt( int fd, u32 *cnt )
@@ -392,6 +416,12 @@ add_inplace( Tensor *dst, Tensor *src )
         }
 }
 
+/* Perform softmax on the 1-st dim (0-based). For performance, this layer does
+ * in place update.
+ *
+ * NOTE:
+ * - batch size is assume to be 1.
+ */
 void
 softmax_inplace( Tensor *dst )
 {
@@ -399,9 +429,14 @@ softmax_inplace( Tensor *dst )
         assert( dst->shape[0] == 1 );
         u32  ele_cnt = dst->ele_total;
         f32 *ptr     = dst->data;
-        f32  total   = 0.f;
+        f32  max     = ptr[0];
+        for ( u32 i = 1; i < ele_cnt; i++ ) {
+                f32 v = ptr[i];
+                if ( v > max ) max = v;
+        }
+        f32 total = 0.f;
         for ( u32 i = 0; i < ele_cnt; i++ ) {
-                f32 v = expf( ptr[i] );
+                f32 v = expf( ptr[i] - max );
                 total += v;
                 ptr[i] = v;
         }
@@ -781,7 +816,18 @@ policy_human_move( Game *g )
 int
 policy_nn_move( Game *g, NN *nn )
 {
-        // Convert board to feature input
+        /* Convert board to feature input
+         *
+         * The input tensor specification:
+         *
+         * - For 3 channel input with shape {1,3,ROWS,COLS}, all f32 data are
+         *   zero by default.
+         * - If the next_player is BLACK, the 2nd channel, i.e., [1,2,:,:] are
+         *   set to 1.
+         * - For each stone on the board, if it is BLACK, the corresponding f32
+         *   data in the 1st channel is 1. If WHITE, the 2nd channel for that
+         *   data is 1.
+         */
         Tensor *in;
         alloc_tensor( &in, 4, (u32[]){ 1, 3, ROWS, COLS } );
         memset( in->data, 0, sizeof( f32 ) * 3 * ROWS * COLS );
@@ -807,9 +853,20 @@ policy_nn_move( Game *g, NN *nn )
                 }
         }
 
-        // call nn
+        /* Call nn
+         *
+         * The output specification:
+         *
+         * - The output is a single tensor with ROWS*COLS value. Each is a
+         *   probability of the position to place next stone (even the position
+         *   is not legal move)
+         * - The index of each probability is same as COL_ROW_TO_IDX. Top left
+         *   corner is (col=0,row=0).
+         */
         Tensor *out = nn_forward( nn, in );
         RESET_TENSOR( in );
+
+        assert( out->ele_total == ROWS * COLS );
 
         f32 best     = -100000000000.f;
         int best_col = -1;
