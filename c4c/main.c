@@ -15,11 +15,12 @@ typedef int32_t  i32;
 #define ROWS 6
 #define COLS 7
 
-#define BIN_DATA_FILE    ".build/tensor_data.bin" /* Tensor data dump file */
-#define MAX_DIM_LIMIT    5      /* Max dim for tensor shape. */
-#define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
-#define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
-#define BN_EPS           0.001f /* Eps for Batch norm. */
+#define BIN_DATA_FILE         ".build/tensor_data.bin" /* Tensor data dump file */
+#define MAX_DIM_LIMIT         5      /* Max dim for tensor shape. */
+#define MAX_TENSOR_LIMIT      128    /* Max number of tensors. */
+#define MAX_ELE_DISPLAY       20     /* Max number of elements to display. */
+#define BN_EPS                0.001f /* Eps for Batch norm. */
+#define MCTS_SIMULATION_COUNT 10     /* Simulation iteration count. */
 
 #define DISABLE_SHOW_TENSOR 1
 
@@ -610,6 +611,48 @@ value_head( Tensor **dst, Tensor *src, u32 *weight_idx, Tensor *weights )
         *dst = output;
 }
 
+/* Convert game board to feature input.
+ *
+ * The input tensor specification:
+ *
+ * - For 3 channel input with shape {1,3,ROWS,COLS}, all f32 data are
+ *   zero by default.
+ * - If the next_player is BLACK, the 3rd channel, i.e., [1,2,:,:] are
+ *   set to 1.
+ * - For each stone on the board, if it is BLACK, the corresponding f32
+ *   data in the 1st channel is 1, i.e., [1,0,row,col] = 1. If WHITE,
+ *   the 2nd channel for that data is 1, i.e, [1,1,row,col] = 1.
+ */
+void
+convert_game_to_tensor_input( Tensor **dst, Game *g )
+{
+        Tensor *in;
+        alloc_tensor( &in, 4, (u32[]){ 1, 3, ROWS, COLS } );
+        memset( in->data, 0, sizeof( f32 ) * 3 * ROWS * COLS );
+
+        if ( g->next_player == BLACK ) {
+                f32 *ptr = in->data + 2 * ROWS * COLS;
+                for ( int i = 0; i < ROWS * COLS; i++ ) ptr[i] = 1.0f;
+        }
+
+        Color *board     = g->board;
+        f32   *black_ptr = in->data;
+        f32   *white_ptr = in->data + 1 * ROWS * COLS;
+        for ( int row = 0; row < ROWS; row++ ) {
+                for ( int col = 0; col < COLS; col++ ) {
+                        int   idx = COL_ROW_TO_IDX( col, row );
+                        Color c   = board[idx];
+                        if ( c == NA ) continue;
+                        if ( c == BLACK ) {
+                                black_ptr[idx] = 1.0f;
+                        } else {
+                                white_ptr[idx] = 1.0f;
+                        }
+                }
+        }
+        *dst = in;
+}
+
 NN *
 nn_new( const char *data_file )
 {
@@ -695,6 +738,218 @@ nn_forward( NN *nn, Tensor *in, Tensor **policy_out, Tensor **value_out )
         assert( weight_idx == nn->weight_cnt );
 }
 
+/* === MCTS node and tree --------------------------------------------------- */
+
+Game *game_dup_snapshot( Game *g );
+int   game_legal_row( Game *g, int col );
+int   game_winner( Game *g );
+void  game_free( Game *g );
+
+typedef struct MCTSNode {
+        Game *game_snapshot; /* Owned */
+        NN   *nn;            /* Unowned */
+        int   total_count;
+        f32   predicated_reward;
+        /* Owned children for each legal move. NULl means unexpanded yet. */
+        struct MCTSNode *c[COLS];
+        /* Visited count for each legal move. -1 for illegal column. */
+        int n[COLS];
+        /* Backed up total value for each legal move. */
+        f32 w[COLS];
+        /* Prior probability for each legal move. */
+        f32 p[COLS];
+} MCTSNode;
+
+MCTSNode *
+mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
+{
+        MCTSNode *node = calloc( 1, sizeof( *node ) );
+        assert( node != NULL );
+        node->game_snapshot = game_snapshot; /* owned now */
+        node->nn            = nn;
+
+        Tensor *in;
+        Tensor *policy_out;
+        Tensor *value_out;
+        convert_game_to_tensor_input( &in, game_snapshot );
+        nn_forward( nn, in, &policy_out, &value_out );
+
+        node->predicated_reward = value_out->data[0];
+
+        for ( int col = 0; col < COLS; col++ ) {
+                int row = game_legal_row( game_snapshot, col );
+                if ( row == -1 ) { /* illegal column. */
+                        node->n[col] = -1;
+                        continue;
+                }
+
+                node->p[col] = policy_out->data[COL_ROW_TO_IDX( col, row )];
+        }
+        return node;
+}
+
+void
+mcts_node_free( MCTSNode *n )
+{
+        if ( n == NULL ) return;
+        game_free( n->game_snapshot );
+        for ( int i = 0; i < COLS; i++ ) {
+                mcts_node_free( n->c[i] );
+        }
+        free( n );
+}
+
+int
+mcts_node_select_next_col_to_evaluate( MCTSNode *node )
+{
+        const f32 c                = 1.0f;
+        const f32 sqrt_total_count = sqrtf( (f32)node->total_count );
+        int       col_to_evaluate  = -1;
+        f32       best_q           = 0;
+        for ( int col = 0; col < COLS; col++ ) {
+                int n = node->n[col];
+                if ( n == -1 ) continue; /* illegal col. */
+                f32 q = node->w[col] / ( n > 0 ? (f32)n : 1.f );
+                q += c * node->p[col] * sqrt_total_count / ( 1.0f + (f32)n );
+
+                if ( col_to_evaluate == -1 || q > best_q ) {
+                        col_to_evaluate = col;
+                        best_q          = q;
+                }
+        }
+        assert( col_to_evaluate != -1 );
+        return col_to_evaluate;
+}
+
+int
+mcts_node_select_next_col_to_play( MCTSNode *node )
+{
+        int col_to_evaluate = -1;
+        int best_n          = 0;
+        for ( int col = 0; col < COLS; col++ ) {
+                int n = node->n[col];
+                if ( n == -1 ) continue; /* illegal col. */
+
+                // DEBUG info
+                printf( "col %d n %3d p %6.3f avg(w) %6.3f \n", col, n,
+                        node->p[col], node->w[col] / (f32)( n > 0 ? n : 1 ) );
+                if ( col_to_evaluate == -1 || n > best_n ) {
+                        col_to_evaluate = col;
+                        best_n          = n;
+                }
+        }
+        assert( col_to_evaluate != -1 );
+        return col_to_evaluate;
+}
+
+void
+mcts_node_backup_reward( MCTSNode *n, int col, f32 reward )
+{
+        assert( n->n[col] != -1 );
+        n->total_count++;
+        n->n[col] += 1;
+        n->w[col] += reward;
+}
+
+#define MAX_MCTS_SIMULATE_PATH_LEN ( ROWS * COLS )
+
+void
+mcts_backup_rewards( f32 black_reward, f32 white_reward, int count,
+                     MCTSNode **simulate_path_node, int *simulate_path_col )
+{
+        for ( int i = 0; i < count; i++ ) {
+                MCTSNode *n = simulate_path_node[i];
+                if ( n->game_snapshot->next_player == BLACK ) {
+                        mcts_node_backup_reward( n, simulate_path_col[i],
+                                                 black_reward );
+                } else {
+                        mcts_node_backup_reward( n, simulate_path_col[i],
+                                                 white_reward );
+                }
+        }
+}
+
+void
+mcts_run_simulation( MCTSNode *root, int iterations )
+{
+        int       simulate_len;
+        MCTSNode *simulate_path_node[MAX_MCTS_SIMULATE_PATH_LEN];
+        int       simulate_path_col[MAX_MCTS_SIMULATE_PATH_LEN];
+        time_t    last_report_progress = time( NULL );
+        for ( int it = 0; it < iterations; it++ ) {
+                if ( it == 0 || time( NULL ) - last_report_progress >= 3 ) {
+                        last_report_progress = time( NULL );
+                        float progress = (f32)it / (f32)iterations * 100.f;
+                        printf( "Progress: [%d%%]\n", (int)progress );
+                }
+                MCTSNode *node = root;
+
+                simulate_len = 0;
+
+                while ( 1 ) {
+                        int col = mcts_node_select_next_col_to_evaluate( node );
+                        int row = game_legal_row( node->game_snapshot, col );
+                        assert( row != -1 );
+                        simulate_path_node[simulate_len] = node;
+                        simulate_path_col[simulate_len]  = col;
+                        simulate_len++;
+
+                        Color next_player =
+                            node->game_snapshot->next_player == BLACK ? WHITE
+                                                                      : BLACK;
+                        Game *dup_game =
+                            game_dup_snapshot( node->game_snapshot );
+                        dup_game->board[COL_ROW_TO_IDX( col, row )] =
+                            dup_game->next_player;
+                        dup_game->next_player = next_player;
+
+                        int winner = game_winner( dup_game );
+
+                        /* Found winner */
+                        if ( winner >= 0 ) {
+                                f32 black_reward;
+                                f32 white_reward;
+                                if ( winner == 0 ) {
+                                        black_reward = 0.f;
+                                } else if ( winner == BLACK ) {
+                                        black_reward = 1.f;
+                                } else {
+                                        black_reward = -1.f;
+                                }
+                                white_reward = -1 * black_reward;
+                                mcts_backup_rewards(
+                                    black_reward, white_reward, simulate_len,
+                                    simulate_path_node, simulate_path_col );
+                                game_free( dup_game );
+                                break; /* End of this iteration. */
+                        }
+
+                        /* Expand new leaf */
+                        if ( node->c[col] == NULL ) {
+                                MCTSNode *expanded_node = mcts_node_new(
+                                    /*moved_in*/ dup_game, node->nn );
+                                node->c[col] =
+                                    expanded_node; /* owned by node */
+                                f32 black_reward;
+                                f32 white_reward;
+                                black_reward = expanded_node->predicated_reward;
+                                if ( expanded_node->game_snapshot
+                                         ->next_player == WHITE )
+                                        black_reward *= -1.f;
+                                white_reward = -1 * black_reward;
+                                mcts_backup_rewards(
+                                    black_reward, white_reward, simulate_len,
+                                    simulate_path_node, simulate_path_col );
+                                break; /* End of this iteration. */
+                        }
+
+                        game_free( dup_game );
+                        /* Keeps playing in this iteration. */
+                        node = node->c[col];
+                }
+        }
+}
+
 /* === Game related utilities ----------------------------------------------- */
 
 /* Creates a new game and initializes nn player randomly. */
@@ -713,6 +968,15 @@ game_free( Game *g )
 {
         if ( g == NULL ) return;
         free( g );
+}
+
+Game *
+game_dup_snapshot( Game *g )
+{
+        Game *ng = malloc( sizeof( *ng ) );
+        assert( ng != NULL );
+        memcpy( ng, g, sizeof( *ng ) );
+        return ng;
 }
 
 /* Display the board. */
@@ -751,7 +1015,8 @@ game_legal_row( Game *g, int col )
 }
 
 /* Return BLACK or WHITE if winner exists, 0 if tie, -1 if game is still
- * ongoing. */
+ * ongoing.
+ */
 int
 game_winner( Game *g )
 {
@@ -874,42 +1139,8 @@ policy_human_move( Game *g )
 int
 policy_nn_move( Game *g, NN *nn )
 {
-        /* Convert board to feature input
-         *
-         * The input tensor specification:
-         *
-         * - For 3 channel input with shape {1,3,ROWS,COLS}, all f32 data are
-         *   zero by default.
-         * - If the next_player is BLACK, the 3rd channel, i.e., [1,2,:,:] are
-         *   set to 1.
-         * - For each stone on the board, if it is BLACK, the corresponding f32
-         *   data in the 1st channel is 1, i.e., [1,0,row,col] = 1. If WHITE,
-         *   the 2nd channel for that data is 1, i.e, [1,1,row,col] = 1.
-         */
         Tensor *in;
-        alloc_tensor( &in, 4, (u32[]){ 1, 3, ROWS, COLS } );
-        memset( in->data, 0, sizeof( f32 ) * 3 * ROWS * COLS );
-
-        if ( g->next_player == BLACK ) {
-                f32 *ptr = in->data + 2 * ROWS * COLS;
-                for ( int i = 0; i < ROWS * COLS; i++ ) ptr[i] = 1.0f;
-        }
-
-        Color *board     = g->board;
-        f32   *black_ptr = in->data;
-        f32   *white_ptr = in->data + 1 * ROWS * COLS;
-        for ( int row = 0; row < ROWS; row++ ) {
-                for ( int col = 0; col < COLS; col++ ) {
-                        int   idx = COL_ROW_TO_IDX( col, row );
-                        Color c   = board[idx];
-                        if ( c == NA ) continue;
-                        if ( c == BLACK ) {
-                                black_ptr[idx] = 1.0f;
-                        } else {
-                                white_ptr[idx] = 1.0f;
-                        }
-                }
-        }
+        convert_game_to_tensor_input( &in, g );
 
         /* Call nn
          *
@@ -949,6 +1180,17 @@ policy_nn_move( Game *g, NN *nn )
         return best_col;
 }
 
+int
+policy_nn_mcts_move( Game *g, NN *nn )
+{
+        Game     *dup_game = game_dup_snapshot( g );
+        MCTSNode *root     = mcts_node_new( /*moved_in*/ dup_game, nn );
+        mcts_run_simulation( root, MCTS_SIMULATION_COUNT );
+        int col = mcts_node_select_next_col_to_play( root );
+        mcts_node_free( root );
+        return col;
+}
+
 void
 play_game( NN *nn )
 {
@@ -960,7 +1202,8 @@ play_game( NN *nn )
 
                 if ( g->next_player == g->nn_player ) {
                         // col = policy_random_move( g );
-                        col = policy_nn_move( g, nn );
+                        // col = policy_nn_move( g, nn );
+                        col = policy_nn_mcts_move( g, nn );
                 } else {
                         col = policy_human_move( g );
                 }
@@ -972,11 +1215,17 @@ play_game( NN *nn )
 
                 row = game_legal_row( g, col );
                 if ( row == -1 ) {
-                        printf( "invalid column during game %d\n", col );
+                        printf(
+                            "invalid column "
+                            "during game %d\n",
+                            col );
                         PANIC( "sorry" );
                 }
 
-                printf( "Place new stone in column: %d\n", col + 1 );
+                printf(
+                    "Place new stone in "
+                    "column: %d\n",
+                    col + 1 );
                 g->board[COL_ROW_TO_IDX( col, row )] = g->next_player;
                 show_board( g );
 
