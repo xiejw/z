@@ -15,12 +15,15 @@ typedef int32_t  i32;
 #define ROWS 6
 #define COLS 7
 
-#define BIN_DATA_FILE         ".build/tensor_data.bin" /* Tensor data dump file */
-#define MAX_DIM_LIMIT         5      /* Max dim for tensor shape. */
-#define MAX_TENSOR_LIMIT      128    /* Max number of tensors. */
-#define MAX_ELE_DISPLAY       20     /* Max number of elements to display. */
-#define BN_EPS                0.001f /* Eps for Batch norm. */
-#define MCTS_SIMULATION_COUNT 10     /* Simulation iteration count. */
+#define BIN_DATA_FILE    ".build/tensor_data.bin" /* Tensor data dump file */
+#define MAX_DIM_LIMIT    5      /* Max dim for tensor shape. */
+#define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
+#define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
+#define BN_EPS           0.001f /* Eps for Batch norm. */
+
+#ifndef MCTS_ITER_CNT
+#define MCTS_ITER_CNT 10 /* Simulation iteration count. */
+#endif
 
 #define DISABLE_SHOW_TENSOR 1
 
@@ -883,7 +886,7 @@ mcts_run_simulation( MCTSNode *root, int iterations )
                 if ( it == 0 || time( NULL ) - last_report_progress >= 3 ) {
                         last_report_progress = time( NULL );
                         float progress = (f32)it / (f32)iterations * 100.f;
-                        printf( "Progress: [%d%%]\n", (int)progress );
+                        printf( "Progress: [%.1f%%]\n", progress );
                 }
                 MCTSNode *node = root;
 
@@ -1188,7 +1191,7 @@ policy_nn_mcts_move( Game *g, NN *nn )
 {
         Game     *dup_game = game_dup_snapshot( g );
         MCTSNode *root     = mcts_node_new( /*moved_in*/ dup_game, nn );
-        mcts_run_simulation( root, MCTS_SIMULATION_COUNT );
+        mcts_run_simulation( root, MCTS_ITER_CNT );
         int col = mcts_node_select_next_col_to_play( root );
         mcts_node_free( root );
         return col;

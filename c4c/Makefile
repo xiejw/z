@@ -11,7 +11,13 @@ else
 CFLAGS   += -g
 endif
 
-# CFLAGS  += -fsanitize=address
+ifdef ASAN
+CFLAGS  += -fsanitize=address
+endif
+
+ifdef MCTS_ITER_CNT
+CFLAGS  += -DMCTS_ITER_CNT=${MCTS_ITER_CNT}
+endif
 
 compile: ${BUILD}/tensor_data.bin | ${BUILD}
 	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} main.c && ./${BUILD}/a.out
