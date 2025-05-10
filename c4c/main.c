@@ -785,6 +785,9 @@ mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
 
                 node->p[col] = policy_out->data[COL_ROW_TO_IDX( col, row )];
         }
+        RESET_TENSOR( in );
+        RESET_TENSOR( policy_out );
+        RESET_TENSOR( value_out );
         return node;
 }
 
@@ -1205,7 +1208,8 @@ play_game( NN *nn )
                         // col = policy_nn_move( g, nn );
                         col = policy_nn_mcts_move( g, nn );
                 } else {
-                        col = policy_human_move( g );
+                        col = policy_nn_mcts_move( g, nn );
+                        // col = policy_human_move( g );
                 }
 
                 if ( col < 0 || col >= COLS ) {
@@ -1233,18 +1237,19 @@ play_game( NN *nn )
                 switch ( winner ) {
                 case (int)BLACK:
                         printf( "black wins\n" );
-                        return;
+                        goto cleanup;
                 case (int)WHITE:
                         printf( "white wins\n" );
-                        return;
+                        goto cleanup;
                 case 0:
                         printf( "tie\n" );
-                        return;
+                        goto cleanup;
                 default:
                         g->next_player =
                             g->next_player == BLACK ? WHITE : BLACK;
                 }
         }
+cleanup:
         game_free( g );
 }
 
