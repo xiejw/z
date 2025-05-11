@@ -8,15 +8,23 @@
 #include <time.h>
 #include <unistd.h>
 
-#ifdef MACOS_BLAS
+/* === BLAS related header and kernels -------------------------------------- */
+
+#ifdef MACOS_ACCELERATE
 #include <Accelerate/Accelerate.h>
 #endif
 
-#ifdef MACOS_BLAS
+#ifdef BLAS
+#include <cblas.h>
+#endif
+
+#if defined(MACOS_ACCELERATE) || defined(BLAS)
 #define conv2d conv2d_blas
 #else
 #define conv2d conv2d_naive
 #endif
+
+/* === Configurations and macors -------------------------------------------- */
 
 typedef float    f32;
 typedef uint32_t u32;
@@ -341,7 +349,8 @@ conv2d_naive( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         }
 }
 
-#ifdef MACOS_BLAS
+
+#if defined(MACOS_ACCELERATE) || defined(BLAS)
 
 void
 fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
@@ -437,7 +446,8 @@ conv2d_blas( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         RESET_TENSOR( rhs );
 }
 
-#endif  // MACOS_BLAS
+#endif  // defined(MACOS_ACCELERATE) || defined(BLAS)
+
 
 /* Batch norm on a 4D (N, C, H, W) input tensor.
  *

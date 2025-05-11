@@ -18,9 +18,14 @@ endif
 
 # Enable BLAS for macOs, which uses Accelerate framework.
 ifeq ($(UNAME), Darwin)
-CFLAGS   += -DMACOS_BLAS
+CFLAGS   += -DMACOS_ACCELERATE
 CFLAGS   += -DACCELERATE_NEW_LAPACK
 LDFLAGS  += -framework Accelerate
+endif
+
+ifdef BLAS
+CFLAGS   += -DBLAS
+LDFLAGS  += -lblas
 endif
 
 # Control the iteration count for MCTS.
