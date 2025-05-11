@@ -10,7 +10,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define ITERATIONS      1
+#define ITERATIONS      100
 #define MAX_ELE_DISPLAY 20    /* Max number of elements to display. */
 #define MAX_DIM_LIMIT   5     /* Max dim for tenshor shape. */
 #define REL_ERROR       1e-2f /* Max relative error allowed during assertion. */
@@ -293,6 +293,20 @@ conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
                 }
         }
 
+        // DEBUG check im2col
+        // printf("im2col\n");
+        // for ( u32 i = 0; i < rhs->ele_total; i++ ) {
+        //         printf( "%.2f,  ", rhs->data[i] );
+        //         if ( ( i + 1 ) % ( kernel_h * kernel_w ) == 0 ) printf( "\n" );
+        // }
+
+        // // DEBUG check kernel
+        // printf("kernel\n");
+        // for ( u32 i = 0; i < weight->ele_total; i++ ) {
+        //         printf( "%6.2f,  ", weight->data[i] );
+        //         if ( ( i + 1 ) % ( kernel_h * kernel_w ) == 0 ) printf( "\n" );
+        // }
+
         // Fill bias
         for ( u32 c = 0; c < c_out; c++ ) {
                 f32  b       = bias->data[c];
@@ -303,17 +317,29 @@ conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
                 }
         }
 
+        // DEBUG check dst bias
+        // printf("dst_bias\n");
+        // for ( u32 i = 0; i < (*dst)->ele_total; i++ ) {
+        //         printf( "%.2f,  ", (*dst)->data[i] );
+        //         if ( ( i + 1 ) % ( h*w ) == 0 ) printf( "\n" );
+        // }
+
         int K = (int)( kernel_h * kernel_w * c_in );
         cblas_sgemm( CblasRowMajor, CblasNoTrans, CblasTrans, (int)c_out,
                      (int)( h * w ), K, 1.0f,
                      /*A=*/weight->data, K,
-                     /*B=*/rhs->data, K, 0.0f, /*C=*/out_buf, (int)( h * w ) );
+                     /*B=*/rhs->data, K, 1.0f, /*C=*/out_buf, (int)( h * w ) );
 
         RESET_TENSOR( rhs );
 }
 
 /* === Main ----------------------------------------------------------------- */
 
+//#define C_IN  2
+//#define C_OUT 2
+//#define K     3
+//#define H     2
+//#define W     2
 #define C_IN  128
 #define C_OUT 128
 #define K     5
@@ -352,6 +378,18 @@ compare( void )
         fill_rng( in );
         fill_rng( kernel );
         fill_rng( bias );
+
+        // DEBUG
+        // memcpy( in->data, (f32[]){ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 },
+        //         sizeof( f32 ) * 8 );
+        // memcpy( bias->data, (f32[]){ 0.1f, 0.2f }, sizeof( f32 ) * 2 );
+        // memcpy( kernel->data, (f32[]){
+        //                 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
+        //                 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0,
+        //                 -1.0, -  2.0,-  3.0,-  4.0,-  5.0,-  6.0,-  7.0,-  8.0, -9.0,
+        //                 -11.0,- 12.0,- 13.0,- 14.0,- 15.0,- 16.0,- 17.0,- 18.0, -19.0,
+        //                 },
+        //         sizeof( f32 ) * 4*9 );
 
         f64 start = time_now( );
 
