@@ -217,6 +217,99 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
                 }
         }
 }
+void
+fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
+                    int kh, int kw )
+{
+        int half_kh = ( kh - 1 ) >> 1;
+        int half_kw = ( kw - 1 ) >> 1;
+
+        for ( int ky = -half_kh; ky <= half_kh; ky++ ) {
+                int offset_y = y + ky;
+                if ( offset_y < 0 || offset_y >= h ) {
+                        for ( int n = 0; n < w; n++ ) {
+                                *out_ptr = 0.f;
+                                out_ptr++;
+                        }
+                        continue;
+                };
+                for ( int kx = -half_kw; kx <= half_kw; kx++ ) {
+                        i32 offset_x = x + kx;
+                        if ( offset_x < 0 || offset_x >= w ) {
+                                *out_ptr = 0.f;
+                                out_ptr++;
+                                continue;
+                        };
+                        *out_ptr = in_ptr[kx + ky * w];
+                        out_ptr++;
+                }
+        }
+}
+
+void
+conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
+{
+        assert( input->dim == 4 );
+        assert( weight->dim == 4 );
+        assert( bias->dim == 1 );
+
+        assert( input->shape[1] == weight->shape[1] );
+        assert( weight->shape[0] == bias->shape[0] );
+        /* We assume batch size is 1 now. */
+        assert( input->shape[0] == 1 );
+        /* We assume kernel size (h and w) are both odd */
+        assert( weight->shape[2] % 2 == 1 );
+        assert( weight->shape[3] % 2 == 1 );
+
+        u32 c_in     = input->shape[1];
+        u32 c_out    = weight->shape[0];
+        u32 h        = input->shape[2];
+        u32 w        = input->shape[3];
+        u32 kernel_h = weight->shape[2];
+        u32 kernel_w = weight->shape[3];
+
+        alloc_tensor( dst, 4, (u32[]){ 1, c_out, h, w } );
+        f32 *out_buf = ( *dst )->data;
+
+        // Tensor *lhs; /* this is the weight */
+        // alloc_tensor( &lhs, 2, (u32[]){ c_out, kernel_h * kernel_w * c_in }
+        // );
+
+        Tensor *rhs;
+        // alloc_tensor( &rhs, 2, (u32[]){ kernel_h * kernel_w * c_in, h * w }
+        // );
+        alloc_tensor( &rhs, 2, (u32[]){ h * w, kernel_h * kernel_w * c_in } );
+
+        // for ( u32 out = 0; out < c_out; out++ ) {
+        //         f32 *base = lhs->data + out * kernel_h * kernel_w * c_in;
+        //         f32 *weight_base = weight->data + out * kernel_h * kernel_w *
+        //         c_in; for ( u32 in = 0; in < c_in; in++ ) {
+        //                 f32 *ptr = base + kernel_h * kernel_w * in;
+        //                 memcpy( ptr,
+        //                          +
+        //                             kernel_h * kernel_w * in,
+        //                         sizeof( f32 ) * kernel_h * kernel_w );
+        //         }
+        // }
+
+        // favor reading over writing
+        u32 rhs_w = kernel_h * kernel_w * c_in;
+        for ( u32 c = 0; c < c_in; c++ ) {
+                f32 *in_ptr_base = input->data + (u32)c * h * w;
+                for ( u32 row = 0; row < h; row++ ) {
+                        f32 *out_ptr_base = rhs->data + ( row * w ) * rhs_w +
+                                            (u32)c * kernel_h * kernel_w;
+                        for ( u32 col = 0; col < w; col++ ) {
+                                f32 *out_ptr = out_ptr_base + col * rhs_w;
+                                f32 *in_ptr  = in_ptr_base + row * w + col;
+                                fill_channel_input(
+                                    out_ptr, (int)h, (int)w, (int)row, (int)col,
+                                    in_ptr, (int)kernel_h, (int)kernel_w );
+                        }
+                }
+        }
+        (void)out_buf;
+}
 
 /* === Main ----------------------------------------------------------------- */
 
@@ -226,6 +319,22 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 #define H     6
 #define W     7
 
+f64
+time_now( void )
+{
+        struct timeval tv;
+        gettimeofday( &tv, NULL );
+        return (f64)tv.tv_sec + (f64)tv.tv_usec / 1000. / 1000.;
+}
+
+void
+fill_rng( Tensor *in )
+{
+        for ( u32 i = 0; i < in->ele_total; i++ ) {
+                in->data[i] = (f32)( rand( ) % 1024 ) / 1024.f;
+        }
+}
+
 void
 compare( void )
 {
@@ -233,33 +342,37 @@ compare( void )
         Tensor *kernel;
         Tensor *bias;
         Tensor *output;
+        Tensor *output1;
 
         alloc_tensor( &in, 4, (u32[]){ 1, C_IN, H, W } );
         alloc_tensor( &kernel, 4, (u32[]){ C_OUT, C_IN, K, K } );
         alloc_tensor( &bias, 1, (u32[]){ C_OUT } );
 
-        struct timeval tv_start;
-        struct timeval tv_end;
-        gettimeofday( &tv_start, NULL );
+        fill_rng( in );
+        fill_rng( kernel );
+        fill_rng( bias );
+
+        f64 start = time_now( );
 
         for ( int i = 0; i < ITERATIONS; i++ ) {
                 conv2d( &output, in, kernel, bias );
-                RESET_TENSOR( output );
+                // RESET_TENSOR( output );
         }
-        gettimeofday( &tv_end, NULL );
-        printf( "taking %f seconds\n",
-                ( (f64)tv_end.tv_sec + (f64)tv_end.tv_usec / 1000.f / 1000.f ) -
-                    ( (f64)tv_start.tv_sec +
-                      (f64)tv_start.tv_usec / 1000.f / 1000.f ) );
+        f64 end = time_now( );
+        printf( "taking %f seconds\n", ( end - start ) );
 
-        // printf( "assert outputs with weight_idx %u\n", weight_idx );
-        // show_tensor( value_output, "value output" );
-        // show_tensor( &nn->weights[weight_idx], "value target" );
-        // assert_tensors_equal( value_output, &nn->weights[weight_idx] );
-        // weight_idx++;
+        start = time_now( );
 
-        // /* Output tensor must be the final one. */
-        // assert( weight_idx == nn->weight_cnt );
+        for ( int i = 0; i < ITERATIONS; i++ ) {
+                conv2d_fast( &output1, in, kernel, bias );
+                // RESET_TENSOR( output1 );
+        }
+        end = time_now( );
+        printf( "taking %f seconds\n", ( end - start ) );
+
+        show_tensor( output, "output" );
+        show_tensor( output1, "fast_output" );
+        assert_tensors_equal( output, output1 );
 
         RESET_TENSOR( in );
         RESET_TENSOR( output );
