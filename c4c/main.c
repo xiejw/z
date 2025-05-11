@@ -1211,8 +1211,11 @@ play_game( NN *nn )
                         // col = policy_nn_move( g, nn );
                         col = policy_nn_mcts_move( g, nn );
                 } else {
+#ifdef MCTS_SELF_PLAY
                         col = policy_nn_mcts_move( g, nn );
-                        // col = policy_human_move( g );
+#else
+                        col = policy_human_move( g );
+#endif
                 }
 
                 if ( col < 0 || col >= COLS ) {

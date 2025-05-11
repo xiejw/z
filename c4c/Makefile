@@ -12,11 +12,17 @@ CFLAGS   += -g
 endif
 
 ifdef ASAN
-CFLAGS  += -fsanitize=address
+CFLAGS   += -fsanitize=address
 endif
 
+# Control the iteration count for MCTS.
 ifdef MCTS_ITER_CNT
-CFLAGS  += -DMCTS_ITER_CNT=${MCTS_ITER_CNT}
+CFLAGS   += -DMCTS_ITER_CNT=${MCTS_ITER_CNT}
+endif
+
+# If define, the game will be played by two mcts-nn players.
+ifdef MCTS_SELF_PLAY
+CFLAGS   += -DMCTS_SELF_PLAY=1
 endif
 
 compile: ${BUILD}/tensor_data.bin | ${BUILD}
