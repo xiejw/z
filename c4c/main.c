@@ -1,4 +1,3 @@
-#include <Accelerate/Accelerate.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <math.h>
@@ -8,6 +7,16 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#ifdef MACOS_BLAS
+#include <Accelerate/Accelerate.h>
+#endif
+
+#ifdef MACOS_BLAS
+#define conv2d conv2d_blas
+#else
+#define conv2d conv2d_naive
+#endif
 
 typedef float    f32;
 typedef uint32_t u32;
@@ -332,6 +341,8 @@ conv2d_naive( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         }
 }
 
+#ifdef MACOS_BLAS
+
 void
 fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
                     int kh, int kw )
@@ -362,7 +373,7 @@ fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
 }
 
 void
-conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
+conv2d_blas( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 {
         assert( input->dim == 4 );
         assert( weight->dim == 4 );
@@ -425,6 +436,8 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 
         RESET_TENSOR( rhs );
 }
+
+#endif  // MACOS_BLAS
 
 /* Batch norm on a 4D (N, C, H, W) input tensor.
  *
@@ -973,10 +986,14 @@ mcts_backup_rewards( f32 black_reward, f32 white_reward, int count,
 void
 mcts_run_simulation( MCTSNode *root, int iterations )
 {
+        /* Record path of the simulation for backing up rewards. */
         int       simulate_len;
         MCTSNode *simulate_path_node[MAX_MCTS_SIMULATE_PATH_LEN];
         int       simulate_path_col[MAX_MCTS_SIMULATE_PATH_LEN];
-        time_t    last_report_progress = time( NULL );
+
+        /* Progress report */
+        time_t last_report_progress = time( NULL );
+
         for ( int it = 0; it < iterations; it++ ) {
                 MCTSNode *node = root;
 
@@ -1044,9 +1061,17 @@ mcts_run_simulation( MCTSNode *root, int iterations )
                         node = node->c[col];
                 }
 
-                if ( it == 0 || time( NULL ) - last_report_progress >= 2 ||
+                /* Report the progress.
+                 *
+                 * To avoid over-spamming, the condition is
+                 * - First iteration
+                 * - Last iteration
+                 * - at least 2 seconds have passed.
+                 */
+                time_t now = time( NULL );
+                if ( it == 0 || now - last_report_progress >= 2 ||
                      it == iterations - 1 ) {
-                        last_report_progress = time( NULL );
+                        last_report_progress = now;
                         float progress =
                             (f32)( it + 1 ) / (f32)iterations * 100.f;
                         printf( "Progress: [%5.1f%%]\n", progress );

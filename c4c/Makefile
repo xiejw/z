@@ -1,3 +1,4 @@
+UNAME     = $(shell uname)
 BUILD     = .build
 DATA_FILE = https://github.com/xiejw/z/releases/download/v0.0.3/tensor_data.bin
 
@@ -15,6 +16,13 @@ ifdef ASAN
 CFLAGS   += -fsanitize=address
 endif
 
+# Enable BLAS for macOs, which uses Accelerate framework.
+ifeq ($(UNAME), Darwin)
+CFLAGS   += -DMACOS_BLAS
+CFLAGS   += -DACCELERATE_NEW_LAPACK
+LDFLAGS  += -framework Accelerate
+endif
+
 # Control the iteration count for MCTS.
 ifdef MCTS_ITER_CNT
 CFLAGS   += -DMCTS_ITER_CNT=${MCTS_ITER_CNT}
@@ -24,8 +32,6 @@ endif
 ifdef MCTS_SELF_PLAY
 CFLAGS   += -DMCTS_SELF_PLAY=1
 endif
-
-CFLAGS += -DACCELERATE_NEW_LAPACK  -framework Accelerate
 
 
 compile: ${BUILD}/tensor_data.bin | ${BUILD}
