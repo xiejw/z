@@ -11,3 +11,12 @@ make RELEASE=1 MCTS_ITER_CNT=1600                  # Really strong nn player but
 make RELEASE=1 MCTS_ITER_CNT=1600 MCTS_SELF_PLAY=1 # Two nn players play each other
 ```
 Have fun!
+
+### Performance
+
+mac should be ok.
+
+linux should have openblas
+```
+sudo apt install libopenblas-dev
+```
