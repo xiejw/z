@@ -883,11 +883,6 @@ mcts_run_simulation( MCTSNode *root, int iterations )
         int       simulate_path_col[MAX_MCTS_SIMULATE_PATH_LEN];
         time_t    last_report_progress = time( NULL );
         for ( int it = 0; it < iterations; it++ ) {
-                if ( it == 0 || time( NULL ) - last_report_progress >= 3 ) {
-                        last_report_progress = time( NULL );
-                        float progress = (f32)it / (f32)iterations * 100.f;
-                        printf( "Progress: [%.1f%%]\n", progress );
-                }
                 MCTSNode *node = root;
 
                 simulate_len = 0;
@@ -952,6 +947,14 @@ mcts_run_simulation( MCTSNode *root, int iterations )
                         game_free( dup_game );
                         /* Keeps playing in this iteration. */
                         node = node->c[col];
+                }
+
+                if ( it == 0 || time( NULL ) - last_report_progress >= 3 ||
+                     it == iterations - 1 ) {
+                        last_report_progress = time( NULL );
+                        float progress =
+                            (f32)( it + 1 ) / (f32)iterations * 100.f;
+                        printf( "Progress: [%.1f%%]\n", progress );
                 }
         }
 }
