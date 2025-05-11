@@ -1,3 +1,4 @@
+#include <Accelerate/Accelerate.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <math.h>
@@ -22,7 +23,7 @@ typedef int32_t  i32;
 #define BN_EPS           0.001f /* Eps for Batch norm. */
 
 #ifndef MCTS_ITER_CNT
-#define MCTS_ITER_CNT 10 /* Simulation iteration count. */
+#define MCTS_ITER_CNT 1600 /* Simulation iteration count. */
 #endif
 
 #define DISABLE_SHOW_TENSOR 1
@@ -286,7 +287,7 @@ conv2d1chl( f32 *out_ptr,    /* Ptr to the output */
  *   both odd numbers.
  */
 void
-conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
+conv2d_naive( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 {
         assert( input->dim == 4 );
         assert( weight->dim == 4 );
@@ -329,6 +330,100 @@ conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
                                     kernel_ptr, (i32)kernel_h, (i32)kernel_w );
                 }
         }
+}
+
+void
+fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
+                    int kh, int kw )
+{
+        int half_kh = ( kh - 1 ) >> 1;
+        int half_kw = ( kw - 1 ) >> 1;
+
+        for ( int ky = -half_kh; ky <= half_kh; ky++ ) {
+                int offset_y = y + ky;
+                if ( offset_y < 0 || offset_y >= h ) {
+                        for ( int n = 0; n < kw; n++ ) {
+                                *out_ptr = 0.f;
+                                out_ptr++;
+                        }
+                        continue;
+                };
+                for ( int kx = -half_kw; kx <= half_kw; kx++ ) {
+                        int offset_x = x + kx;
+                        if ( offset_x < 0 || offset_x >= w ) {
+                                *out_ptr = 0.f;
+                                out_ptr++;
+                                continue;
+                        };
+                        *out_ptr = in_ptr[kx + ky * w];
+                        out_ptr++;
+                }
+        }
+}
+
+void
+conv2d( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
+{
+        assert( input->dim == 4 );
+        assert( weight->dim == 4 );
+        assert( bias->dim == 1 );
+
+        assert( input->shape[1] == weight->shape[1] );
+        assert( weight->shape[0] == bias->shape[0] );
+        /* We assume batch size is 1 now. */
+        assert( input->shape[0] == 1 );
+        /* We assume kernel size (h and w) are both odd */
+        assert( weight->shape[2] % 2 == 1 );
+        assert( weight->shape[3] % 2 == 1 );
+
+        u32 c_in     = input->shape[1];
+        u32 c_out    = weight->shape[0];
+        u32 h        = input->shape[2];
+        u32 w        = input->shape[3];
+        u32 kernel_h = weight->shape[2];
+        u32 kernel_w = weight->shape[3];
+
+        alloc_tensor( dst, 4, (u32[]){ 1, c_out, h, w } );
+        f32 *out_buf = ( *dst )->data;
+
+        Tensor *rhs;
+        alloc_tensor( &rhs, 2, (u32[]){ h * w, kernel_h * kernel_w * c_in } );
+
+        // favor reading over writing
+        u32 rhs_w = kernel_h * kernel_w * c_in;
+        for ( u32 c = 0; c < c_in; c++ ) {
+                f32 *in_ptr_base = input->data + (u32)c * h * w;
+
+                for ( u32 row = 0; row < h; row++ ) {
+                        f32 *out_ptr_base = rhs->data + ( row * w ) * rhs_w +
+                                            (u32)c * kernel_h * kernel_w;
+                        for ( u32 col = 0; col < w; col++ ) {
+                                f32 *out_ptr = out_ptr_base + col * rhs_w;
+                                f32 *in_ptr  = in_ptr_base + row * w + col;
+                                fill_channel_input(
+                                    out_ptr, (int)h, (int)w, (int)row, (int)col,
+                                    in_ptr, (int)kernel_h, (int)kernel_w );
+                        }
+                }
+        }
+
+        // Fill bias
+        for ( u32 c = 0; c < c_out; c++ ) {
+                f32  b       = bias->data[c];
+                f32 *out_ptr = out_buf + c * h * w;
+                for ( u32 n = 0; n < h * w; n++ ) {
+                        *out_ptr = b;
+                        out_ptr++;
+                }
+        }
+
+        int K = (int)( kernel_h * kernel_w * c_in );
+        cblas_sgemm( CblasRowMajor, CblasNoTrans, CblasTrans, (int)c_out,
+                     (int)( h * w ), K, 1.0f,
+                     /*A=*/weight->data, K,
+                     /*B=*/rhs->data, K, 1.0f, /*C=*/out_buf, (int)( h * w ) );
+
+        RESET_TENSOR( rhs );
 }
 
 /* Batch norm on a 4D (N, C, H, W) input tensor.
@@ -837,7 +932,7 @@ mcts_node_select_next_col_to_play( MCTSNode *node )
                 if ( n == -1 ) continue; /* illegal col. */
 
                 // DEBUG info
-                printf( "col %d n %3d p %6.3f avg(w) %6.3f \n", col, n,
+                printf( "col %d n %4d p %7.3f avg(w) %7.3f \n", col, n,
                         node->p[col], node->w[col] / (f32)( n > 0 ? n : 1 ) );
                 if ( col_to_evaluate == -1 || n > best_n ) {
                         col_to_evaluate = col;
@@ -949,12 +1044,12 @@ mcts_run_simulation( MCTSNode *root, int iterations )
                         node = node->c[col];
                 }
 
-                if ( it == 0 || time( NULL ) - last_report_progress >= 3 ||
+                if ( it == 0 || time( NULL ) - last_report_progress >= 2 ||
                      it == iterations - 1 ) {
                         last_report_progress = time( NULL );
                         float progress =
                             (f32)( it + 1 ) / (f32)iterations * 100.f;
-                        printf( "Progress: [%.1f%%]\n", progress );
+                        printf( "Progress: [%5.1f%%]\n", progress );
                 }
         }
 }

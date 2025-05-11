@@ -25,6 +25,9 @@ ifdef MCTS_SELF_PLAY
 CFLAGS   += -DMCTS_SELF_PLAY=1
 endif
 
+CFLAGS += -DACCELERATE_NEW_LAPACK  -framework Accelerate
+
+
 compile: ${BUILD}/tensor_data.bin | ${BUILD}
 	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} main.c && ./${BUILD}/a.out
 
