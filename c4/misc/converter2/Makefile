@@ -13,7 +13,7 @@ compile:
 	clang -o a.out ${CFLAGS} ${LDFLAGS} main.c && ./a.out
 
 bench:
-	clang -o a.out -O3 ${CFLAGS} ${LDFLAGS} conv2d.c && ./a.out
+	clang -o a.out -O3 -march=native ${CFLAGS} ${LDFLAGS} conv2d.c && ./a.out
 
 fmt:
 	~/Workspace/y/tools/clang_format_all.sh .
