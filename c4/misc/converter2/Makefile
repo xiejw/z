@@ -1,6 +1,6 @@
 ROOT = ../..
 CFLAGS  += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
-CFLAGS  += -g
+# CFLAGS  += -g
 # CFLAGS  += -fsanitize=address
 LDFLAGS += -lm -ffast-math
 
@@ -11,6 +11,9 @@ run:
 
 compile:
 	clang -o a.out ${CFLAGS} ${LDFLAGS} main.c && ./a.out
+
+bench:
+	clang -o a.out -O3 ${CFLAGS} ${LDFLAGS} conv2d.c && ./a.out
 
 fmt:
 	~/Workspace/y/tools/clang_format_all.sh .
