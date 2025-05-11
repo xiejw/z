@@ -1,3 +1,4 @@
+#include <Accelerate/Accelerate.h>
 #include <assert.h>
 #include <fcntl.h>
 #include <math.h>
@@ -227,14 +228,14 @@ fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
         for ( int ky = -half_kh; ky <= half_kh; ky++ ) {
                 int offset_y = y + ky;
                 if ( offset_y < 0 || offset_y >= h ) {
-                        for ( int n = 0; n < w; n++ ) {
+                        for ( int n = 0; n < kw; n++ ) {
                                 *out_ptr = 0.f;
                                 out_ptr++;
                         }
                         continue;
                 };
                 for ( int kx = -half_kw; kx <= half_kw; kx++ ) {
-                        i32 offset_x = x + kx;
+                        int offset_x = x + kx;
                         if ( offset_x < 0 || offset_x >= w ) {
                                 *out_ptr = 0.f;
                                 out_ptr++;
@@ -271,31 +272,14 @@ conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         alloc_tensor( dst, 4, (u32[]){ 1, c_out, h, w } );
         f32 *out_buf = ( *dst )->data;
 
-        // Tensor *lhs; /* this is the weight */
-        // alloc_tensor( &lhs, 2, (u32[]){ c_out, kernel_h * kernel_w * c_in }
-        // );
-
         Tensor *rhs;
-        // alloc_tensor( &rhs, 2, (u32[]){ kernel_h * kernel_w * c_in, h * w }
-        // );
         alloc_tensor( &rhs, 2, (u32[]){ h * w, kernel_h * kernel_w * c_in } );
-
-        // for ( u32 out = 0; out < c_out; out++ ) {
-        //         f32 *base = lhs->data + out * kernel_h * kernel_w * c_in;
-        //         f32 *weight_base = weight->data + out * kernel_h * kernel_w *
-        //         c_in; for ( u32 in = 0; in < c_in; in++ ) {
-        //                 f32 *ptr = base + kernel_h * kernel_w * in;
-        //                 memcpy( ptr,
-        //                          +
-        //                             kernel_h * kernel_w * in,
-        //                         sizeof( f32 ) * kernel_h * kernel_w );
-        //         }
-        // }
 
         // favor reading over writing
         u32 rhs_w = kernel_h * kernel_w * c_in;
         for ( u32 c = 0; c < c_in; c++ ) {
                 f32 *in_ptr_base = input->data + (u32)c * h * w;
+
                 for ( u32 row = 0; row < h; row++ ) {
                         f32 *out_ptr_base = rhs->data + ( row * w ) * rhs_w +
                                             (u32)c * kernel_h * kernel_w;
@@ -308,7 +292,24 @@ conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
                         }
                 }
         }
-        (void)out_buf;
+
+        // Fill bias
+        for ( u32 c = 0; c < c_out; c++ ) {
+                f32  b       = bias->data[c];
+                f32 *out_ptr = out_buf + c * h * w;
+                for ( u32 n = 0; n < h * w; n++ ) {
+                        *out_ptr = b;
+                        out_ptr++;
+                }
+        }
+
+        int K = (int)( kernel_h * kernel_w * c_in );
+        cblas_sgemm( CblasRowMajor, CblasNoTrans, CblasTrans, (int)c_out,
+                     (int)( h * w ), K, 1.0f,
+                     /*A=*/weight->data, K,
+                     /*B=*/rhs->data, K, 0.0f, /*C=*/out_buf, (int)( h * w ) );
+
+        RESET_TENSOR( rhs );
 }
 
 /* === Main ----------------------------------------------------------------- */
@@ -331,7 +332,7 @@ void
 fill_rng( Tensor *in )
 {
         for ( u32 i = 0; i < in->ele_total; i++ ) {
-                in->data[i] = (f32)( rand( ) % 1024 ) / 1024.f;
+                in->data[i] = (f32)( rand( ) % 1024 ) / 1024.f - 0.5f;
         }
 }
 
@@ -362,7 +363,6 @@ compare( void )
         printf( "taking %f seconds\n", ( end - start ) );
 
         start = time_now( );
-
         for ( int i = 0; i < ITERATIONS; i++ ) {
                 conv2d_fast( &output1, in, kernel, bias );
                 // RESET_TENSOR( output1 );
@@ -376,6 +376,7 @@ compare( void )
 
         RESET_TENSOR( in );
         RESET_TENSOR( output );
+        RESET_TENSOR( output1 );
         RESET_TENSOR( kernel );
         RESET_TENSOR( bias );
 }

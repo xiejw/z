@@ -4,6 +4,7 @@ CFLAGS  += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 # CFLAGS  += -fsanitize=address
 LDFLAGS += -lm -ffast-math
 
+CFLAGS += -DACCELERATE_NEW_LAPACK  -framework Accelerate
 
 run:
 	mkdir -p .build && \
