@@ -1,7 +1,11 @@
+# === Configurations -----------------------------------------------------------
+#
 UNAME     = $(shell uname)
 BUILD     = .build
 DATA_FILE = https://github.com/xiejw/z/releases/download/v0.0.3/tensor_data.bin
 
+# === CFLAGS and LDFLAGS -------------------------------------------------------
+#
 CFLAGS   += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
@@ -28,6 +32,8 @@ CFLAGS   += -DBLAS
 LDFLAGS  += -lblas
 endif
 
+# === Knobs --------------------------------------------------------------------
+#
 # Control the iteration count for MCTS.
 ifdef MCTS_ITER_CNT
 CFLAGS   += -DMCTS_ITER_CNT=${MCTS_ITER_CNT}
@@ -39,6 +45,8 @@ CFLAGS   += -DMCTS_SELF_PLAY=1
 endif
 
 
+# === Rules --------------------------------------------------------------------
+#
 compile: ${BUILD}/tensor_data.bin | ${BUILD}
 	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} main.c && ./${BUILD}/a.out
 
