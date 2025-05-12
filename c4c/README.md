@@ -1,34 +1,46 @@
 ## c4c
 
-A pure c implementation, under 1050LOC, with zero dependency to play connect 4.
-The model is trained in Python world by self-playing the game with MCTS.
+This is a standalone C implementation of Connect Four, consisting of fewer than
+1,050 lines of code and requiring no external dependencies. The model was
+trained in Python using self-play guided by Monte Carlo Tree Search (MCTS).
 
-If BLAS is installed, the code leverages that to speed things up. This is the
-default option on macOs.
+When a `BLAS` library is available—such as the `Accelerate` framework on
+macOs—the implementation automatically leverages it to improve performance.
 
 ### Get Started
 
 To play
 ```
 make RELEASE=1
+
+# If you have openblas installed on Linux, try this
+# On macOs BLAS is enabled by default.
+make RELEASE=1 BLAS=1
+
+# Advanced knobs
 make                                               # Debug mode
 make RELEASE=1 MCTS_ITER_CNT=1600                  # Really strong nn player but slow
 make RELEASE=1 MCTS_ITER_CNT=400                   # Strong nn player but faster
 make RELEASE=1 MCTS_ITER_CNT=1600 MCTS_SELF_PLAY=1 # Two nn players play each other
 
-# If you have openblas installed on Linux, try this
-make RELEASE=1 BLAS=1
 ```
 Have fun!
 
 ### Performance and BLAS
 
-With few days of coding, the performance is reasonably OK if MCTS is not used.
-I did not do any optimization (fuse, threading, etc), the c code is quite fast.
+After a few days of development, the performance is reasonably acceptable when
+MCTS is not utilized. No performance optimizations—such as operation fusion,
+multi-threading, or SIMD—have been applied. Nevertheless, the C implementation
+demonstrates substantial speed and outperforms the original Python and
+PyTorch-based version
 
-However, MCTS agent calls `conv2d` too many times, which becomes the bottleneck.
-This is expected as `conv2d` and `matmul` are two of the dominating layers in
-deep learning. This is a sample of the profiling
+However, the MCTS agent invokes the `conv2d` operation excessively, resulting in
+a performance bottleneck. This behavior is anticipated, as `conv2d` and `matmul`
+(matrix multiplication) are among the most computationally intensive layers in
+deep learning models.
+
+
+This is a sample of the profiling result:
 ```
 Each sample counts as 0.01 seconds.
   %   cumulative   self              self     total
@@ -43,10 +55,15 @@ Each sample counts as 0.01 seconds.
 ...
 ```
 
-The approach to speed up `conv2d` is using the trick `im2col + matmul`, where
-`matmul` can leverage highly optimized BLAS `cblas_sgemm` library call. This
-gives 50x speed up on macOs for my local testing which provides BLAS via
-`accelerate` framework (this is enabled by default if macOs is detected).
+To accelerate the `conv2d` operation, the `im2col + matmul` technique is employed
+(refer to this
+[page](https://cs231n.github.io/convolutional-networks/#:~:text=Implementation%20as%20Matrix,output%20dimension%20[55x55x96].)
+for the algorithm).
+The `im2col` transformation incurs minimal
+overhead, while the matrix multiplication step (`matmul`) leverages the highly
+optimized `BLAS` routine `cblas_sgemm`. In local testing on macOs, this approach
+yielded a `50x`–60x performance improvement, benefiting from the `Accelerate`
+framework, which is enabled by default when macOs is detected.
 
 On Linux, I have tested `openblas` as follows
 ```
