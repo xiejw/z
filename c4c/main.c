@@ -1160,7 +1160,8 @@ mcts_run_simulation( MCTSNode *root, int iterations )
                         last_report_progress = now;
                         float progress =
                             (f32)( it + 1 ) / (f32)iterations * 100.f;
-                        printf( "Progress: [%5.1f%%]\n", progress );
+                        printf( "MCTS Simulation Progress [#%d]: [%5.1f%%]\n",
+                                (int)iterations, progress );
                 }
         }
 }
