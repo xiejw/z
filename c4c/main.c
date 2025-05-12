@@ -1292,7 +1292,9 @@ policy_human_move( Game *g )
                 char movec;
                 printf( "[%s] Your move (1-7): ",
                         g->nn_player == BLACK ? "o" : "x" );
-                scanf( " %c", &movec );
+                if ( EOF == scanf( " %c", &movec ) ) {
+                        PANIC( "eof, unexpected.\n" );
+                }
                 col = movec - '1';  // Turn character into number.
 
                 if ( col < 0 || col >= COLS ) {
