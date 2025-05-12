@@ -18,7 +18,7 @@
 #include <cblas.h>
 #endif
 
-#if defined(MACOS_ACCELERATE) || defined(BLAS)
+#if defined( MACOS_ACCELERATE ) || defined( BLAS )
 #define conv2d conv2d_blas
 #else
 #define conv2d conv2d_naive
@@ -349,12 +349,20 @@ conv2d_naive( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         }
 }
 
+#if defined( MACOS_ACCELERATE ) || defined( BLAS )
 
-#if defined(MACOS_ACCELERATE) || defined(BLAS)
-
+/* A helper method of conv2d_blas to extract a block of (kernel_h x kernel_w)
+ * from input and fill a line into the im2col matrix. If the input is out of
+ * box, fill 0.f instead.
+ *
+ * NOTE:
+ * - This implementation assumes kh and kw are odd.
+ * - out_ptr points to the start of the line to be filled.
+ * - in_ptr points the **center** of the input image.
+ */
 void
-fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
-                    int kh, int kw )
+conv2d_blas_fill_channel_input( f32 *out_ptr, int h, int w, int y, int x,
+                                f32 *in_ptr, int kh, int kw )
 {
         int half_kh = ( kh - 1 ) >> 1;
         int half_kw = ( kw - 1 ) >> 1;
@@ -381,6 +389,17 @@ fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
         }
 }
 
+/* Conv2D on a 4D (N, C_in, H, W) input tensor with
+ * - (C_out, C_in, KH, KW) * kernel (weight) and
+ * - (C_out) bias.
+ *
+ * NOTE:
+ * - This implementation assumes batch size is 1, i.e., N=1;
+ * - This implementation assumes conv2d is same padding, KH and KW are
+ *   both odd numbers.
+ * - This implementation uses im2col and cblas_sgemm to do the trick for
+ *   speeding up.
+ */
 void
 conv2d_blas( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
 {
@@ -406,28 +425,43 @@ conv2d_blas( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         alloc_tensor( dst, 4, (u32[]){ 1, c_out, h, w } );
         f32 *out_buf = ( *dst )->data;
 
-        Tensor *rhs;
-        alloc_tensor( &rhs, 2, (u32[]){ h * w, kernel_h * kernel_w * c_in } );
+        /* === im2col ----------------------------------------------------------
+         *
+         * The kernel K (weight) shape is (c_out, c_in*kh*kw).
+         * We construct a new matrix B whth shape (h*w, c_in*kh*kw) and do
+         * matmul(K, trans(B)) + bias, the result is the output.
+         *
+         * The idea is to extract the kernel patch from input and fill it in
+         * the matrix B one feature channel after another. Then the contracting
+         * dimension of the matmul is in fact the conv2d cross all input
+         * channels. Smart.
+         */
 
-        // favor reading over writing
-        u32 rhs_w = kernel_h * kernel_w * c_in;
+        Tensor *col_matrix;
+        alloc_tensor( &col_matrix, 2,
+                      (u32[]){ h * w, kernel_h * kernel_w * c_in } );
+
+        // im2col: Favor reading over writing. For each feature channel, fill
+        // the output pixel by extracting input patch.
+        const u32 matrix_w = kernel_h * kernel_w * c_in;
         for ( u32 c = 0; c < c_in; c++ ) {
                 f32 *in_ptr_base = input->data + (u32)c * h * w;
 
                 for ( u32 row = 0; row < h; row++ ) {
-                        f32 *out_ptr_base = rhs->data + ( row * w ) * rhs_w +
+                        f32 *out_ptr_base = col_matrix->data +
+                                            ( row * w ) * matrix_w +
                                             (u32)c * kernel_h * kernel_w;
                         for ( u32 col = 0; col < w; col++ ) {
-                                f32 *out_ptr = out_ptr_base + col * rhs_w;
+                                f32 *out_ptr = out_ptr_base + col * matrix_w;
                                 f32 *in_ptr  = in_ptr_base + row * w + col;
-                                fill_channel_input(
+                                conv2d_blas_fill_channel_input(
                                     out_ptr, (int)h, (int)w, (int)row, (int)col,
                                     in_ptr, (int)kernel_h, (int)kernel_w );
                         }
                 }
         }
 
-        // Fill bias
+        /* Fill bias into the output buffer. */
         for ( u32 c = 0; c < c_out; c++ ) {
                 f32  b       = bias->data[c];
                 f32 *out_ptr = out_buf + c * h * w;
@@ -437,17 +471,18 @@ conv2d_blas( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
                 }
         }
 
+        /* === The magic: matmul ---------------------------------------------*/
         int K = (int)( kernel_h * kernel_w * c_in );
         cblas_sgemm( CblasRowMajor, CblasNoTrans, CblasTrans, (int)c_out,
                      (int)( h * w ), K, 1.0f,
                      /*A=*/weight->data, K,
-                     /*B=*/rhs->data, K, 1.0f, /*C=*/out_buf, (int)( h * w ) );
+                     /*B=*/col_matrix->data, K, 1.0f, /*C=*/out_buf,
+                     (int)( h * w ) );
 
-        RESET_TENSOR( rhs );
+        RESET_TENSOR( col_matrix );
 }
 
 #endif  // defined(MACOS_ACCELERATE) || defined(BLAS)
-
 
 /* Batch norm on a 4D (N, C, H, W) input tensor.
  *

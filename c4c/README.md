@@ -3,6 +3,8 @@
 A pure c implementation with zero dependency to play connect 4.  The model is
 trained in Python world by self-playing the game with MCTS.
 
+If BLAS is installed, the code leverages that to speed things up.
+
 ### Get Started
 
 To play

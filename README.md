@@ -3,8 +3,8 @@
 - **Connect 4** ([c4](./c4)): A MCTS based AI agent which can play [connect
   four](https://en.wikipedia.org/wiki/Connect_Four). It is
   quite strong.  Click [here](c4/README.md) to get started.
-  - [c4c](./c4c) is a pure c implementation without any dependency. It does not
-    have yet the MCTS but it is fun to play.
+  - [c4c](./c4c) is a pure c implementation without any dependency. It also has
+    MCTS agent so fun to play.
 - **Dancing Link** ([dlink](./dlink)): An advanced data structure implementing
   backtracking algorithms, for the exact cover problem (XC). This can be
   extended to help exact cover with colors problem (XCC).
