@@ -34,7 +34,7 @@ typedef int32_t  i32;
 #define COLS 7
 
 #define BIN_DATA_FILE    ".build/tensor_data.bin" /* Tensor data dump file */
-#define MAX_DIM_LIMIT    5      /* Max dim for tensor shape. */
+#define MAX_DIM_LIMIT    4      /* Max dim for tensor shape. */
 #define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
 #define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
 #define BN_EPS           0.001f /* EPS for Batch norm. */
