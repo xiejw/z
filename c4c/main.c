@@ -24,7 +24,7 @@
 #define conv2d conv2d_naive
 #endif
 
-/* === Configurations and macors -------------------------------------------- */
+/* === Configurations and Macros -------------------------------------------- */
 
 typedef float    f32;
 typedef uint32_t u32;
@@ -34,13 +34,17 @@ typedef int32_t  i32;
 #define COLS 7
 
 #define BIN_DATA_FILE    ".build/tensor_data.bin" /* Tensor data dump file */
-#define MAX_DIM_LIMIT    5      /* Max dim for tensor shape. */
+#define MAX_DIM_LIMIT    4      /* Max dim for tensor shape. */
 #define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
 #define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
-#define BN_EPS           0.001f /* Eps for Batch norm. */
+#define BN_EPS           0.001f /* EPS for Batch norm. */
 
 #ifndef MCTS_ITER_CNT
-#define MCTS_ITER_CNT 1600 /* Simulation iteration count. */
+/* Simulation iteration count.
+ * - 1600 is quite strong but requires tons of compute. I never win.
+ * - 400 might be reasonably good to play but faster.
+ */
+#define MCTS_ITER_CNT 1600
 #endif
 
 #define DISABLE_SHOW_TENSOR 1
@@ -172,7 +176,7 @@ free_static_tensor_data( u32 tensor_cnt, Tensor *tensors )
  * - The first 4 bytes is little endian unsigned int32 (u32), which indicates
  *   the total number of tensors in this file.
  * - After the first 4 bytes, all tensors' shapes are recorded continuously (no
- *   data is recorded in this section). Each shape starts with dimention (dim)
+ *   data is recorded in this section). Each shape starts with dimension (dim)
  *   in u32, followed by shape element each is u32. For example, if two tensors
  *   are stored in file with shape {2, 3} and {1, 3, 5}, the shapes are
  *   recorded as a sequence of u32s: 2233135.
@@ -288,7 +292,7 @@ conv2d1chl( f32 *out_ptr,    /* Ptr to the output */
                                              input_base_ptr[x + kx + ky * w];
                                 }
                         }
-                        /* Addeditive */
+                        /* Additive */
                         output_base_ptr[x] += v;
                 }
         }
@@ -428,13 +432,13 @@ conv2d_blas( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         /* === im2col ----------------------------------------------------------
          *
          * The kernel K (weight) shape is (c_out, c_in*kh*kw).
-         * We construct a new matrix B whth shape (h*w, c_in*kh*kw) and do
+         * We construct a new matrix B with shape (h*w, c_in*kh*kw) and do
          * matmul(K, trans(B)) + bias, the result is the output.
          *
-         * The idea is to extract the kernel patch from input and fill it in
-         * the matrix B one feature channel after another. Then the contracting
-         * dimension of the matmul is in fact the conv2d cross all input
-         * channels. Smart.
+         * The idea is to extract the kernel block size patch from input and
+         * fill it in the matrix B one feature channel after another. Then the
+         * contracting dimension of the matmul is in fact the conv2d cross all
+         * input channels. Smart.
          */
 
         Tensor *col_matrix;
@@ -560,7 +564,7 @@ relu_inplace( Tensor *t )
         }
 }
 
-/* Add is the Residul add in the resnet block. For performance, this layer does
+/* Add is the Residual add in the resnet block. For performance, this layer does
  * in place update to the dst.
  *
  * NOTE: We could fuse this with previous layer to avoid one more mem reading.
@@ -622,7 +626,7 @@ tanh_inplace( Tensor *dst )
  * NOTE
  * - Batch size is assumed to be 1.
  * - The weight matrix is assumed to have shape (N, C) rather than (C, N)
- * - Input is ok to have more than 2 dim, and we implicitly do a flatten.
+ * - Input is OK to have more than 2 dim, and we implicitly do a flatten.
  */
 void
 linear( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
@@ -901,13 +905,26 @@ int   game_legal_row( Game *g, int col );
 int   game_winner( Game *g );
 void  game_free( Game *g );
 
+/* The node data structure for MCTS tree. All simulation rewards information is
+ * backed up and recorded in the node.
+ *
+ * - During evaluation, multi-armed bandit is leveraged to select the next
+ *   state to try.
+ * - During inference (play), the state with strongest chance is selected.
+ */
 typedef struct MCTSNode {
         Game *game_snapshot; /* Owned */
         NN   *nn;            /* Unowned */
-        int   total_count;
-        f32   predicated_reward;
-        /* Owned children for each legal move. NULl means unexpanded yet. */
+
+        /* Total number of visits during multi-armed bandit. */
+        int total_count;
+
+        /* The chance current player will win, between -1 and 1. */
+        f32 predicated_reward;
+
+        /* Owned children for each legal move. NULL means unexpanded yet. */
         struct MCTSNode *c[COLS];
+
         /* Visited count for each legal move. -1 for illegal column. */
         int n[COLS];
         /* Backed up total value for each legal move. */
@@ -916,6 +933,9 @@ typedef struct MCTSNode {
         f32 p[COLS];
 } MCTSNode;
 
+/* During creating, NN is invoked to provide predicated_reward (chance to win)
+ * and prior probabilities for all legal moves.
+ */
 MCTSNode *
 mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
 {
@@ -930,8 +950,10 @@ mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
         convert_game_to_tensor_input( &in, game_snapshot );
         nn_forward( nn, in, &policy_out, &value_out );
 
+        /* Fill predicated_reward from the value header output. */
         node->predicated_reward = value_out->data[0];
 
+        /* Fill prior probabilities from the policy header output. */
         for ( int col = 0; col < COLS; col++ ) {
                 int row = game_legal_row( game_snapshot, col );
                 if ( row == -1 ) { /* illegal column. */
@@ -947,6 +969,7 @@ mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
         return node;
 }
 
+/* Recursively free the entire MCTS tree rooted at n. */
 void
 mcts_node_free( MCTSNode *n )
 {
@@ -958,6 +981,10 @@ mcts_node_free( MCTSNode *n )
         free( n );
 }
 
+/* Select the next column to evaluate during simulation.
+ * Read AlphaGoZero paper (2017, "Methods" section, "Select" paragraph) for
+ * details.
+ */
 int
 mcts_node_select_next_col_to_evaluate( MCTSNode *node )
 {
@@ -980,6 +1007,9 @@ mcts_node_select_next_col_to_evaluate( MCTSNode *node )
         return col_to_evaluate;
 }
 
+/* Select the next column to play. Currently, choose the one with most visited
+ * count.
+ */
 int
 mcts_node_select_next_col_to_play( MCTSNode *node )
 {
@@ -1028,6 +1058,17 @@ mcts_backup_rewards( f32 black_reward, f32 white_reward, int count,
         }
 }
 
+/* Run iterations number of simulations for the MCTS tree at root. Backup all
+ * reward information.
+ *
+ * Each simulation ends with one of the conditions
+ * - Winner is found. Then the reward is the game result.
+ * - A new node needs to expand in the tree. Then the reward is the
+ *   predicated_reward of the new node (predicted by the NN).
+ *
+ * The larger iterations number is the deeper MCTS tree can see the future.
+ * Then the result is better.
+ */
 void
 mcts_run_simulation( MCTSNode *root, int iterations )
 {
@@ -1395,17 +1436,11 @@ play_game( NN *nn )
 
                 row = game_legal_row( g, col );
                 if ( row == -1 ) {
-                        printf(
-                            "invalid column "
-                            "during game %d\n",
-                            col );
+                        printf( "invalid column during game %d\n", col );
                         PANIC( "sorry" );
                 }
 
-                printf(
-                    "Place new stone in "
-                    "column: %d\n",
-                    col + 1 );
+                printf( "Place new stone in column: %d\n", col + 1 );
                 g->board[COL_ROW_TO_IDX( col, row )] = g->next_player;
                 show_board( g );
 
