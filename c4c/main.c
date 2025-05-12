@@ -38,6 +38,8 @@ typedef int32_t  i32;
 #define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
 #define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
 #define BN_EPS           0.001f /* EPS for Batch norm. */
+#define MCTS_PROB_LOW_LIMIT \
+        0.05f /* The low limit we allow for each MCTS node. */
 
 #ifndef MCTS_ITER_CNT
 /* Simulation iteration count.
@@ -960,8 +962,15 @@ mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
                         node->n[col] = -1;
                         continue;
                 }
-
-                node->p[col] = policy_out->data[COL_ROW_TO_IDX( col, row )];
+                /* The NN might predict the probability as low as 0.f even it
+                 * is a winning move. Force mcts to consider low probability
+                 * node.
+                 *
+                 * NOTE: I did not tune this number well for different
+                 * simulation count MCTS_ITER_CNT. */
+                f32 p = policy_out->data[COL_ROW_TO_IDX( col, row )];
+                if ( p < MCTS_PROB_LOW_LIMIT ) p = MCTS_PROB_LOW_LIMIT;
+                node->p[col] = p;
         }
         RESET_TENSOR( in );
         RESET_TENSOR( policy_out );
@@ -1020,7 +1029,7 @@ mcts_node_select_next_col_to_play( MCTSNode *node )
                 if ( n == -1 ) continue; /* illegal col. */
 
                 // DEBUG info
-                printf( "col %d n %4d p %7.3f avg(w) %7.3f \n", col, n,
+                printf( "col %d n %4d p %7.3f avg(w) %7.3f \n", col + 1, n,
                         node->p[col], node->w[col] / (f32)( n > 0 ? n : 1 ) );
                 if ( col_to_evaluate == -1 || n > best_n ) {
                         col_to_evaluate = col;
