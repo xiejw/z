@@ -24,7 +24,7 @@
 #define conv2d conv2d_naive
 #endif
 
-/* === Configurations and macors -------------------------------------------- */
+/* === Configurations and Macros -------------------------------------------- */
 
 typedef float    f32;
 typedef uint32_t u32;
@@ -37,7 +37,7 @@ typedef int32_t  i32;
 #define MAX_DIM_LIMIT    5      /* Max dim for tensor shape. */
 #define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
 #define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
-#define BN_EPS           0.001f /* Eps for Batch norm. */
+#define BN_EPS           0.001f /* EPS for Batch norm. */
 
 #ifndef MCTS_ITER_CNT
 #define MCTS_ITER_CNT 1600 /* Simulation iteration count. */
@@ -172,7 +172,7 @@ free_static_tensor_data( u32 tensor_cnt, Tensor *tensors )
  * - The first 4 bytes is little endian unsigned int32 (u32), which indicates
  *   the total number of tensors in this file.
  * - After the first 4 bytes, all tensors' shapes are recorded continuously (no
- *   data is recorded in this section). Each shape starts with dimention (dim)
+ *   data is recorded in this section). Each shape starts with dimension (dim)
  *   in u32, followed by shape element each is u32. For example, if two tensors
  *   are stored in file with shape {2, 3} and {1, 3, 5}, the shapes are
  *   recorded as a sequence of u32s: 2233135.
@@ -288,7 +288,7 @@ conv2d1chl( f32 *out_ptr,    /* Ptr to the output */
                                              input_base_ptr[x + kx + ky * w];
                                 }
                         }
-                        /* Addeditive */
+                        /* Additive */
                         output_base_ptr[x] += v;
                 }
         }
@@ -428,13 +428,13 @@ conv2d_blas( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         /* === im2col ----------------------------------------------------------
          *
          * The kernel K (weight) shape is (c_out, c_in*kh*kw).
-         * We construct a new matrix B whth shape (h*w, c_in*kh*kw) and do
+         * We construct a new matrix B with shape (h*w, c_in*kh*kw) and do
          * matmul(K, trans(B)) + bias, the result is the output.
          *
-         * The idea is to extract the kernel patch from input and fill it in
-         * the matrix B one feature channel after another. Then the contracting
-         * dimension of the matmul is in fact the conv2d cross all input
-         * channels. Smart.
+         * The idea is to extract the kernel block size patch from input and
+         * fill it in the matrix B one feature channel after another. Then the
+         * contracting dimension of the matmul is in fact the conv2d cross all
+         * input channels. Smart.
          */
 
         Tensor *col_matrix;
@@ -560,7 +560,7 @@ relu_inplace( Tensor *t )
         }
 }
 
-/* Add is the Residul add in the resnet block. For performance, this layer does
+/* Add is the Residual add in the resnet block. For performance, this layer does
  * in place update to the dst.
  *
  * NOTE: We could fuse this with previous layer to avoid one more mem reading.
@@ -622,7 +622,7 @@ tanh_inplace( Tensor *dst )
  * NOTE
  * - Batch size is assumed to be 1.
  * - The weight matrix is assumed to have shape (N, C) rather than (C, N)
- * - Input is ok to have more than 2 dim, and we implicitly do a flatten.
+ * - Input is OK to have more than 2 dim, and we implicitly do a flatten.
  */
 void
 linear( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
@@ -906,7 +906,7 @@ typedef struct MCTSNode {
         NN   *nn;            /* Unowned */
         int   total_count;
         f32   predicated_reward;
-        /* Owned children for each legal move. NULl means unexpanded yet. */
+        /* Owned children for each legal move. NULL means unexpanded yet. */
         struct MCTSNode *c[COLS];
         /* Visited count for each legal move. -1 for illegal column. */
         int n[COLS];
@@ -1395,17 +1395,11 @@ play_game( NN *nn )
 
                 row = game_legal_row( g, col );
                 if ( row == -1 ) {
-                        printf(
-                            "invalid column "
-                            "during game %d\n",
-                            col );
+                        printf( "invalid column during game %d\n", col );
                         PANIC( "sorry" );
                 }
 
-                printf(
-                    "Place new stone in "
-                    "column: %d\n",
-                    col + 1 );
+                printf( "Place new stone in column: %d\n", col + 1 );
                 g->board[COL_ROW_TO_IDX( col, row )] = g->next_player;
                 show_board( g );
 
