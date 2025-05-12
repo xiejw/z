@@ -1,9 +1,10 @@
 ## c4c
 
-A pure c implementation with zero dependency to play connect 4.  The model is
-trained in Python world by self-playing the game with MCTS.
+A pure c implementation, under 1050LOC, with zero dependency to play connect 4.
+The model is trained in Python world by self-playing the game with MCTS.
 
-If BLAS is installed, the code leverages that to speed things up.
+If BLAS is installed, the code leverages that to speed things up. This is the
+default option on macOs.
 
 ### Get Started
 
@@ -12,7 +13,7 @@ To play
 make RELEASE=1
 make                                               # Debug mode
 make RELEASE=1 MCTS_ITER_CNT=1600                  # Really strong nn player but slow
-make RELEASE=1 MCTS_ITER_CNT=600                   # Strong nn player but faster
+make RELEASE=1 MCTS_ITER_CNT=400                   # Strong nn player but faster
 make RELEASE=1 MCTS_ITER_CNT=1600 MCTS_SELF_PLAY=1 # Two nn players play each other
 
 # If you have openblas installed on Linux, try this
