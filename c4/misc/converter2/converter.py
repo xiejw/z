@@ -22,6 +22,8 @@ torch.manual_seed(123)
 
 # Generate random inputs and save it for comparision.
 inp = torch.randn((1, 3, 6, 7))
+# UPDATE_BEFORE_FINAL_DUMP
+# Use params []
 params = [inp]
 
 # === Model Resnet -------------------------------------------------------------
@@ -228,6 +230,9 @@ value_out = out
 # We saved two outputs for comparison.
 # First is the layer by layer computation result.
 # Second is the model output directly. They should be same.
+
+# UPDATE_BEFORE_FINAL_DUMP
+# comment out both lines
 params.append(policy_out)
 params.append(value_out)
 # params.append(model_out[0])

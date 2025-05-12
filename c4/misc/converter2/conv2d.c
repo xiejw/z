@@ -1,3 +1,10 @@
+/*
+ * This code is to test the accuracy and performance of different conv2d
+ * implementation.  Right now it has a naive implementation and an im2col +
+ * gemm implementation.
+ *
+ * To run, make bench.
+ */
 #include <Accelerate/Accelerate.h>
 #include <assert.h>
 #include <fcntl.h>
