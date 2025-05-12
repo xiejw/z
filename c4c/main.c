@@ -40,7 +40,11 @@ typedef int32_t  i32;
 #define BN_EPS           0.001f /* EPS for Batch norm. */
 
 #ifndef MCTS_ITER_CNT
-#define MCTS_ITER_CNT 1600 /* Simulation iteration count. */
+/* Simulation iteration count.
+ * - 1600 is quite strong but requires tons of compute. I never win.
+ * - 400 might be reasonably good to play but faster.
+ */
+#define MCTS_ITER_CNT 1600
 #endif
 
 #define DISABLE_SHOW_TENSOR 1
@@ -901,13 +905,26 @@ int   game_legal_row( Game *g, int col );
 int   game_winner( Game *g );
 void  game_free( Game *g );
 
+/* The node data structure for MCTS tree. All simulation rewards information is
+ * backed up and recorded in the node.
+ *
+ * - During evaluation, multi-armed bandit is leveraged to select the next
+ *   state to try.
+ * - During inference (play), the state with strongest chance is selected.
+ */
 typedef struct MCTSNode {
         Game *game_snapshot; /* Owned */
         NN   *nn;            /* Unowned */
-        int   total_count;
-        f32   predicated_reward;
+
+        /* Total number of visits during multi-armed bandit. */
+        int total_count;
+
+        /* The chance current player will win, between -1 and 1. */
+        f32 predicated_reward;
+
         /* Owned children for each legal move. NULL means unexpanded yet. */
         struct MCTSNode *c[COLS];
+
         /* Visited count for each legal move. -1 for illegal column. */
         int n[COLS];
         /* Backed up total value for each legal move. */
@@ -916,6 +933,9 @@ typedef struct MCTSNode {
         f32 p[COLS];
 } MCTSNode;
 
+/* During creating, NN is invoked to provide predicated_reward (chance to win)
+ * and prior probabilities for all legal moves.
+ */
 MCTSNode *
 mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
 {
@@ -930,8 +950,10 @@ mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
         convert_game_to_tensor_input( &in, game_snapshot );
         nn_forward( nn, in, &policy_out, &value_out );
 
+        /* Fill predicated_reward from the value header output. */
         node->predicated_reward = value_out->data[0];
 
+        /* Fill prior probabilities from the policy header output. */
         for ( int col = 0; col < COLS; col++ ) {
                 int row = game_legal_row( game_snapshot, col );
                 if ( row == -1 ) { /* illegal column. */
@@ -947,6 +969,7 @@ mcts_node_new( /*moved_in*/ Game *game_snapshot, NN *nn )
         return node;
 }
 
+/* Recursively free the entire MCTS tree rooted at n. */
 void
 mcts_node_free( MCTSNode *n )
 {
@@ -958,6 +981,10 @@ mcts_node_free( MCTSNode *n )
         free( n );
 }
 
+/* Select the next column to evaluate during simulation.
+ * Read AlphaGoZero paper (2017, "Methods" section, "Select" paragraph) for
+ * details.
+ */
 int
 mcts_node_select_next_col_to_evaluate( MCTSNode *node )
 {
@@ -980,6 +1007,9 @@ mcts_node_select_next_col_to_evaluate( MCTSNode *node )
         return col_to_evaluate;
 }
 
+/* Select the next column to play. Currently, choose the one with most visited
+ * count.
+ */
 int
 mcts_node_select_next_col_to_play( MCTSNode *node )
 {
@@ -1028,6 +1058,17 @@ mcts_backup_rewards( f32 black_reward, f32 white_reward, int count,
         }
 }
 
+/* Run iterations number of simulations for the MCTS tree at root. Backup all
+ * reward information.
+ *
+ * Each simulation ends with one of the conditions
+ * - Winner is found. Then the reward is the game result.
+ * - A new node needs to expand in the tree. Then the reward is the
+ *   predicated_reward of the new node (predicted by the NN).
+ *
+ * The larger iterations number is the deeper MCTS tree can see the future.
+ * Then the result is better.
+ */
 void
 mcts_run_simulation( MCTSNode *root, int iterations )
 {
