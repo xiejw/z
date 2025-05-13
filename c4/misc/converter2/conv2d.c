@@ -5,8 +5,11 @@
  *
  * To run, make bench.
  */
-#include <Accelerate/Accelerate.h>
+// #include <Accelerate/Accelerate.h>
+#define _POSIX_C_SOURCE 200112L
 #include <assert.h>
+#include <blis.h>
+#include <cblas.h>
 #include <fcntl.h>
 #include <math.h>
 #include <stdint.h>
@@ -255,7 +258,8 @@ fill_channel_input( f32 *out_ptr, int h, int w, int y, int x, f32 *in_ptr,
 }
 
 void
-conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
+conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias,
+             int use_blis )
 {
         assert( input->dim == 4 );
         assert( weight->dim == 4 );
@@ -304,14 +308,16 @@ conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         // printf("im2col\n");
         // for ( u32 i = 0; i < rhs->ele_total; i++ ) {
         //         printf( "%.2f,  ", rhs->data[i] );
-        //         if ( ( i + 1 ) % ( kernel_h * kernel_w ) == 0 ) printf( "\n" );
+        //         if ( ( i + 1 ) % ( kernel_h * kernel_w ) == 0 ) printf( "\n"
+        //         );
         // }
 
         // // DEBUG check kernel
         // printf("kernel\n");
         // for ( u32 i = 0; i < weight->ele_total; i++ ) {
         //         printf( "%6.2f,  ", weight->data[i] );
-        //         if ( ( i + 1 ) % ( kernel_h * kernel_w ) == 0 ) printf( "\n" );
+        //         if ( ( i + 1 ) % ( kernel_h * kernel_w ) == 0 ) printf( "\n"
+        //         );
         // }
 
         // Fill bias
@@ -332,21 +338,33 @@ conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias )
         // }
 
         int K = (int)( kernel_h * kernel_w * c_in );
-        cblas_sgemm( CblasRowMajor, CblasNoTrans, CblasTrans, (int)c_out,
-                     (int)( h * w ), K, 1.0f,
-                     /*A=*/weight->data, K,
-                     /*B=*/rhs->data, K, 1.0f, /*C=*/out_buf, (int)( h * w ) );
+
+        if ( use_blis ) {
+                float alpha = 1.0f, beta = 1.0f;
+                bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_TRANSPOSE, (int)c_out,
+                           (int)( h * w ), K, &alpha,
+                           /*A=*/weight->data, K, 1,
+                           /*B=*/rhs->data, K, 1, &beta, /*C=*/out_buf,
+                           (int)( h * w ), 1 );
+        } else {
+                /* blas */
+                cblas_sgemm( CblasRowMajor, CblasNoTrans, CblasTrans,
+                             (int)c_out, (int)( h * w ), K, 1.0f,
+                             /*A=*/weight->data, K,
+                             /*B=*/rhs->data, K, 1.0f, /*C=*/out_buf,
+                             (int)( h * w ) );
+        }
 
         RESET_TENSOR( rhs );
 }
 
 /* === Main ----------------------------------------------------------------- */
 
-//#define C_IN  2
-//#define C_OUT 2
-//#define K     3
-//#define H     2
-//#define W     2
+// #define C_IN  2
+// #define C_OUT 2
+// #define K     3
+// #define H     2
+// #define W     2
 #define C_IN  128
 #define C_OUT 128
 #define K     5
@@ -377,6 +395,7 @@ compare( void )
         Tensor *bias;
         Tensor *output;
         Tensor *output1;
+        Tensor *output2;
 
         alloc_tensor( &in, 4, (u32[]){ 1, C_IN, H, W } );
         alloc_tensor( &kernel, 4, (u32[]){ C_OUT, C_IN, K, K } );
@@ -386,18 +405,23 @@ compare( void )
         fill_rng( kernel );
         fill_rng( bias );
 
-        // DEBUG
+        // DEBUG Manually create a input with kernel and bias to check result.
+        //
         // memcpy( in->data, (f32[]){ 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0 },
         //         sizeof( f32 ) * 8 );
         // memcpy( bias->data, (f32[]){ 0.1f, 0.2f }, sizeof( f32 ) * 2 );
         // memcpy( kernel->data, (f32[]){
         //                 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0,
         //                 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0,
-        //                 -1.0, -  2.0,-  3.0,-  4.0,-  5.0,-  6.0,-  7.0,-  8.0, -9.0,
-        //                 -11.0,- 12.0,- 13.0,- 14.0,- 15.0,- 16.0,- 17.0,- 18.0, -19.0,
+        //                 -1.0,
+        //                 -  2.0,-  3.0,-  4.0,-  5.0,-  6.0,-  7.0,-  8.0,
+        //                 -9.0,
+        //                 -11.0,- 12.0,- 13.0,- 14.0,- 15.0,- 16.0,- 17.0,- 18.0,
+        //                 -19.0,
         //                 },
         //         sizeof( f32 ) * 4*9 );
 
+        /* Naive code */
         f64 start = time_now( );
 
         for ( int i = 0; i < ITERATIONS; i++ ) {
@@ -405,23 +429,36 @@ compare( void )
                 // RESET_TENSOR( output );
         }
         f64 end = time_now( );
-        printf( "taking %f seconds\n", ( end - start ) );
+        printf( "taking %f seconds for naive code\n", ( end - start ) );
 
+        /* BLAS code */
         start = time_now( );
         for ( int i = 0; i < ITERATIONS; i++ ) {
-                conv2d_fast( &output1, in, kernel, bias );
+                conv2d_fast( &output1, in, kernel, bias, /*use_blis=*/0 );
                 // RESET_TENSOR( output1 );
         }
         end = time_now( );
-        printf( "taking %f seconds\n", ( end - start ) );
+        printf( "taking %f seconds for blas code\n", ( end - start ) );
+
+        /* BLIS code */
+        start = time_now( );
+        for ( int i = 0; i < ITERATIONS; i++ ) {
+                conv2d_fast( &output2, in, kernel, bias, /*use_blis=*/1 );
+                // RESET_TENSOR( output1 );
+        }
+        end = time_now( );
+        printf( "taking %f seconds for blis code\n", ( end - start ) );
 
         show_tensor( output, "output" );
-        show_tensor( output1, "fast_output" );
+        show_tensor( output1, "blas_output" );
+        show_tensor( output2, "blis_output" );
         assert_tensors_equal( output, output1 );
+        assert_tensors_equal( output, output2 );
 
         RESET_TENSOR( in );
         RESET_TENSOR( output );
         RESET_TENSOR( output1 );
+        RESET_TENSOR( output2 );
         RESET_TENSOR( kernel );
         RESET_TENSOR( bias );
 }
