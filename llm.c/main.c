@@ -28,7 +28,8 @@
  * - To identify all special tokens, either a trie or regex is used.
  * - To identify word boundary, seems regex is the best tool but c does not
  *   have good support (unless using a heavy external library). Alternatively,
- *   write my own state machine. (will look into how llama.cpp does)
+ *   write my own state machine (this is how llama.cpp does which aligns my
+ *   guess)
  * - For mergeable ranks, we either need a hash table or trie to speed up the
  *   lookup.  It is used very frequently so performance is important.
  *
@@ -37,9 +38,47 @@
  *   https://github.com/openai/tiktoken/blob/00813b3f987a083ee9f631620d0271b0169da58b/tiktoken/load.py#L146-L158
  */
 
+char BASE64_ARRAY[256] = { 1 }; /* See base64_arary_init why 1 is here. */
+
+void
+base64_arary_init( void )
+{
+        if ( BASE64_ARRAY[0] != 1 ) return;
+
+        char idx = 0;
+        for ( char i = 'A'; i <= 'Z'; i++ ) {
+                BASE64_ARRAY[(int)i] = idx++;
+        }
+        assert( idx == 26 );
+
+        for ( char i = 'a'; i <= 'z'; i++ ) {
+                BASE64_ARRAY[(int)i] = idx++;
+        }
+        assert( idx == 26 + 26 );
+
+        for ( char i = '0'; i <= '9'; i++ ) {
+                BASE64_ARRAY[(int)i] = idx++;
+        }
+        assert( idx == 26 + 26 + 10 );
+
+        BASE64_ARRAY[(int)'+'] = idx++;
+        BASE64_ARRAY[(int)'/'] = idx++;
+        assert( idx == 64 );
+
+        BASE64_ARRAY[(int)'='] = 0;
+
+        BASE64_ARRAY[0] = 0; /* Record init is done. */
+}
 char *
 base64_decode( char *buf, size_t len )
 {
+        base64_arary_init( );
+        assert( len > 0 && len % 4 == 0 );
+        /* Algorithm
+         * - Unpack 4 chars each time. Fill the bits into the 3 chars of the
+         *   output.
+         * - Identify the '=' padding and reduce the length of the output.
+         */
         (void)buf;
         (void)len;
         return NULL;
