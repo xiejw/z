@@ -24,6 +24,14 @@
 
 /* === Tokenizer ---------------------------------------------------------------
  *
+ * There are few data structures needed
+ * - To identify all special tokens, either a trie or regex is used.
+ * - To identify word boundary, seems regex is the best tool but c does not
+ *   have good support (unless using a heavy external library). Alternatively,
+ *   write my own state machine. (will look into how llama.cpp does)
+ * - For mergeable ranks, we either need a hash table or trie to speed up the
+ *   lookup.  It is used very frequently so performance is important.
+ *
  * File to read
  * - Load tok file
  *   https://github.com/openai/tiktoken/blob/00813b3f987a083ee9f631620d0271b0169da58b/tiktoken/load.py#L146-L158
