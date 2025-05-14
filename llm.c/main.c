@@ -29,6 +29,13 @@
  *   https://github.com/openai/tiktoken/blob/00813b3f987a083ee9f631620d0271b0169da58b/tiktoken/load.py#L146-L158
  */
 
+char *
+base64_decode( char *buf, size_t len )
+{
+        (void)buf;
+        (void)len;
+        return NULL;
+}
 
 /* terminate 0 and '\n' are excluded. */
 void
@@ -40,6 +47,10 @@ process_line_in_tok_file( char *buf, size_t len )
         printf( "%.*s\n", (int)len, buf );
 }
 
+/* Read tokenizer model file and create a tokenizer after that.
+ *
+ * Tokenizer model file is lines of merge-able bytes with rank.
+ */
 void
 read_tok_file( void )
 {
@@ -60,26 +71,28 @@ read_tok_file( void )
                         break;
                 }
 
-        size_t start = 0;
-        while ( 1 ) {
-                size_t end = start;
-                for ( ; buf[end] != '\n' && end < (size_t)c; end++ ) {
-                }
-                if ( end == (size_t)c ) {
+                size_t start = 0;
+                while ( 1 ) {
+                        size_t end = start;
+                        for ( ; buf[end] != '\n' && end < (size_t)c; end++ ) {
+                        }
+                        if ( end == (size_t)c ) {
+                                memcpy( line + line_idx, buf + start,
+                                        end - start );
+                                line_idx += end - start;
+                                break;
+                        }
+
+                        /* Found a line */
                         memcpy( line + line_idx, buf + start, end - start );
-                        line_idx += end - start;
-                        break;
+                        process_line_in_tok_file( line,
+                                                  end - start + line_idx );
+                        line_idx = 0;
+                        start    = end + 1;
                 }
-
-                /* Found a line */
-                memcpy( line + line_idx, buf + start, end - start );
-                process_line_in_tok_file( line, end - start + line_idx );
-                line_idx = 0;
-                start    = end + 1;
         }
-}
 
-close( fd );
+        close( fd );
 }
 
 /* === Main ----------------------------------------------------------------- */
