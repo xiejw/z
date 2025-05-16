@@ -14,6 +14,7 @@
 #endif
 
 #define TOK_READ_BUF_SIZE 4096
+#define TOK_MAX_ID_LEN    10
 
 #define PANIC( msg )                 \
         do {                         \
@@ -38,60 +39,120 @@
  *   https://github.com/openai/tiktoken/blob/00813b3f987a083ee9f631620d0271b0169da58b/tiktoken/load.py#L146-L158
  */
 
-char BASE64_ARRAY[256] = { 1 }; /* See base64_arary_init why 1 is here. */
+char BASE64_LOOKUP_TBL[256] = {
+    1 }; /* See base54_lookup_tbl_init why 1 is here. */
 
+/* One time initialize the base64 lookup table. */
 void
-base64_arary_init( void )
+base54_lookup_tbl_init( void )
 {
-        if ( BASE64_ARRAY[0] != 1 ) return;
+        if ( BASE64_LOOKUP_TBL[0] != 1 ) return;
 
         char idx = 0;
         for ( char i = 'A'; i <= 'Z'; i++ ) {
-                BASE64_ARRAY[(int)i] = idx++;
+                BASE64_LOOKUP_TBL[(int)i] = idx++;
         }
         assert( idx == 26 );
 
         for ( char i = 'a'; i <= 'z'; i++ ) {
-                BASE64_ARRAY[(int)i] = idx++;
+                BASE64_LOOKUP_TBL[(int)i] = idx++;
         }
         assert( idx == 26 + 26 );
 
         for ( char i = '0'; i <= '9'; i++ ) {
-                BASE64_ARRAY[(int)i] = idx++;
+                BASE64_LOOKUP_TBL[(int)i] = idx++;
         }
         assert( idx == 26 + 26 + 10 );
 
-        BASE64_ARRAY[(int)'+'] = idx++;
-        BASE64_ARRAY[(int)'/'] = idx++;
+        BASE64_LOOKUP_TBL[(int)'+'] = idx++;
+        BASE64_LOOKUP_TBL[(int)'/'] = idx++;
         assert( idx == 64 );
 
-        BASE64_ARRAY[(int)'='] = 0;
+        BASE64_LOOKUP_TBL[(int)'='] = 0;
 
-        BASE64_ARRAY[0] = 0; /* Record init is done. */
+        BASE64_LOOKUP_TBL[0] = 0; /* Record init is done. */
 }
+
+/* Decode the input string buf with length len and return a malloc-allocated
+ * string for the decoded result.
+ *
+ * Check https://en.wikipedia.org/wiki/Base64 for reference.
+ */
 char *
 base64_decode( char *buf, size_t len )
 {
-        base64_arary_init( );
+        base54_lookup_tbl_init( );
+
         assert( len > 0 && len % 4 == 0 );
         /* Algorithm
          * - Unpack 4 chars each time. Fill the bits into the 3 chars of the
          *   output.
-         * - Identify the '=' padding and reduce the length of the output.
+         * - The '=' padding is ignored as it just becomes a NULL terminator.
          */
-        (void)buf;
-        (void)len;
-        return NULL;
+
+        char *output = malloc( len / 4 * 3 + 1 );
+
+#define CHECK_VALID_BASE64_CH( idx )                          \
+        assert( buf[( idx )] == '=' || buf[( idx )] == 'A' || \
+                BASE64_LOOKUP_TBL[(int)buf[( idx )]] != 0 )
+
+        size_t output_idx = 0;
+        for ( size_t i = 0; i < len; i += 4 ) {
+                CHECK_VALID_BASE64_CH( i );
+                CHECK_VALID_BASE64_CH( i + 1 );
+                CHECK_VALID_BASE64_CH( i + 2 );
+                CHECK_VALID_BASE64_CH( i + 3 );
+                char a               = BASE64_LOOKUP_TBL[(int)buf[i]];
+                char b               = BASE64_LOOKUP_TBL[(int)buf[i + 1]];
+                char c               = BASE64_LOOKUP_TBL[(int)buf[i + 2]];
+                char d               = BASE64_LOOKUP_TBL[(int)buf[i + 3]];
+                output[output_idx++] = (char)( ( a << 2 ) + ( b >> 4 ) );
+                output[output_idx++] =
+                    (char)( ( ( b & 0xF ) << 4 ) + ( c >> 2 ) );
+                output[output_idx++] = (char)( ( ( c & 0x4 ) << 6 ) + d );
+        }
+
+#undef CHECK_VALID_BASE64_CH
+
+        output[output_idx] = '\0';
+        return output;
 }
 
-/* terminate 0 and '\n' are excluded. */
+/* terminate 0 and '\n' are excluded. buf is allowed to not null-terminated */
 void
 process_line_in_tok_file( char *buf, size_t len )
 {
+        char id_buf[TOK_MAX_ID_LEN];
+        /* Strip off new line or final \0. */
         while ( len >= 1 && ( buf[len - 1] == '\0' || buf[len - 1] == '\n' ) )
                 len--;
-        if ( len == 0 ) return; /* Skip empty line */
-        printf( "%.*s\n", (int)len, buf );
+
+        /* Skip empty line */
+        if ( len == 0 ) return;
+
+        /* Split by space */
+        char *space_ptr;
+        space_ptr = strnstr( buf, " ", len );
+        if ( space_ptr == NULL )
+                PANIC( "expect a space in tokenizer model file line." );
+
+        assert( strnstr( space_ptr + 1, " ",
+                         len - (size_t)( space_ptr - buf + 1 ) ) == NULL &&
+                "expect one space only" );
+
+        /* Decode mergeable piece */
+        char *output = base64_decode( buf, (size_t)( space_ptr - buf ) );
+
+        /* Decode rank id */
+        size_t id_len = len - (size_t)( space_ptr + 1 - buf );
+        assert( id_len < TOK_MAX_ID_LEN );
+        memcpy( id_buf, space_ptr + 1, id_len );
+        id_buf[id_len] = '\0';
+        char *endptr;
+        int   rank_id = (int)strtol( id_buf, &endptr, 10 );
+        assert( endptr == id_buf + id_len );
+
+        printf( "decode %s rank %d\n", output, rank_id );
 }
 
 /* Read tokenizer model file and create a tokenizer after that.
