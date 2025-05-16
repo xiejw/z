@@ -164,7 +164,7 @@ base64_decode( char *buf, size_t len )
  * ignored as well.
  */
 void
-process_line_in_tok_file( Tokenizer *p, char *buf, size_t len )
+tok_process_line( Tokenizer *p, char *buf, size_t len )
 {
         /* Strip off new line or final \0. */
         while ( len >= 1 && ( buf[len - 1] == '\0' || buf[len - 1] == '\n' ) )
@@ -199,10 +199,12 @@ process_line_in_tok_file( Tokenizer *p, char *buf, size_t len )
         /* Store into Tokenizer */
         assert( rank_id >= 0 && rank_id <= TOK_MERGE_PIECE_COUNT );
         assert( p->pieces[rank_id].piece == NULL );
+        /* The model file is sequentially recorded. */
+        assert( rank_id == 0 || p->pieces[rank_id - 1].piece != NULL );
         p->pieces[rank_id].piece = piece;
         p->pieces[rank_id].id    = rank_id;
 
-        // printf( "decode %s rank %d\n", piece, rank_id );
+        printf( "decode %s rank %d\n", piece, rank_id );
 }
 
 /* Read tokenizer model file and create a tokenizer after that.
@@ -230,7 +232,7 @@ tok_load( Tokenizer *p )
                         /* Final line in buffer */
                         if ( line_idx > 0 ) {
                                 assert( line_idx <= TOK_READ_BUF_SIZE );
-                                process_line_in_tok_file( p, line, line_idx );
+                                tok_process_line( p, line, line_idx );
                         }
                         break;
                 }
@@ -251,13 +253,13 @@ tok_load( Tokenizer *p )
 
                         /* Found a line */
                         memcpy( line + line_idx, buf + start, end - start );
-                        process_line_in_tok_file( p, line,
-                                                  end - start + line_idx );
+                        tok_process_line( p, line, end - start + line_idx );
                         line_idx = 0;
                         start    = end + 1;
                 }
         }
 
+        assert( p->pieces[TOK_MERGE_PIECE_COUNT - 1].piece != NULL );
         close( fd );
 }
 
