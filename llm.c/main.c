@@ -24,6 +24,10 @@
                 exit( -1 );          \
         } while ( 0 )
 
+#define DEBUG_PRINT 0
+
+#define DEBUG if ( DEBUG_PRINT ) printf
+
 /* === Data Structure --------------------------------------------------------
  */
 typedef struct {
@@ -34,6 +38,33 @@ typedef struct {
 typedef struct {
         MergePiece pieces[TOK_MERGE_PIECE_COUNT];
 } Tokenizer;
+
+/* === State Machine to split text into words ----------------------------------
+ *
+ * The entire world is "copying" OpenAI's tiktoken. It uses a quite complex
+ * regexp to split text into words before applying bpe.
+ *
+ * Instead of using a fancy dependency, e.g, pcre2, here I wrote a state
+ * machine manually.
+ */
+
+void
+tok_split_text_to_words( Tokenizer *p, const char *text,
+                         /*output*/ char ***words, int *count )
+{
+        (void)p;
+        (void)text;
+        (void)words;
+        (void)count;
+}
+
+void
+tok_encode( Tokenizer *p, const char *text )
+{
+        char **words;
+        int    word_count;
+        tok_split_text_to_words( p, text, &words, &word_count );
+}
 
 /* === Tokenizer ---------------------------------------------------------------
  *
@@ -204,7 +235,7 @@ tok_process_line( Tokenizer *p, char *buf, size_t len )
         p->pieces[rank_id].piece = piece;
         p->pieces[rank_id].id    = rank_id;
 
-        printf( "decode %s rank %d\n", piece, rank_id );
+        DEBUG( "decode %s rank %d\n", piece, rank_id );
 }
 
 /* Read tokenizer model file and create a tokenizer after that.
@@ -270,5 +301,6 @@ main( void )
 {
         Tokenizer *p = tok_new( );
         tok_load( p );
+        tok_encode( p, "hello world   " );
         tok_free( p );
 }
