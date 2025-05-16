@@ -26,7 +26,8 @@
 
 #define DEBUG_PRINT 0
 
-#define DEBUG if ( DEBUG_PRINT ) printf
+#define DEBUG \
+        if ( DEBUG_PRINT ) printf
 
 /* === Data Structure --------------------------------------------------------
  */
@@ -45,8 +46,43 @@ typedef struct {
  * regexp to split text into words before applying bpe.
  *
  * Instead of using a fancy dependency, e.g, pcre2, here I wrote a state
- * machine manually.
+ * machine manually. The downside is unicode support becomes a feature request
+ * later to understand \p{L} and \p{N}; in addition to correctly parse unicode
+ * byte stream.
  */
+
+int
+is_chr_letter( char c )
+{
+        return ( c >= 'a' && c <= 'z' ) || ( c >= 'A' && c <= 'Z' );
+}
+
+int
+is_chr_digit( char c )
+{
+        return ( c >= '0' && c <= '9' );
+}
+
+char
+convert_to_lower( char c )
+{
+        if ( c >= 'A' && c <= 'Z' ) {
+                return c - 'A' + 'a';
+        }
+        return c;
+}
+
+int
+is_whitespace( char c )
+{
+        return ( c == ' ' || c == '\t' || c == '\r' || c == '\n' );
+}
+
+int
+is_newline( char c )
+{
+        return ( c == '\r' || c == '\n' );
+}
 
 void
 tok_split_text_to_words( Tokenizer *p, const char *text,
