@@ -5,11 +5,20 @@
  *
  * To run, make bench.
  */
-// #include <Accelerate/Accelerate.h>
+#ifdef MAC
+#include <Accelerate/Accelerate.h>
+#endif
+
+#ifdef BLIS
+#include <blis.h>
+#endif
+
+#ifdef BLAS
+#include <cblas.h>
+#endif
+
 #define _POSIX_C_SOURCE 200112L
 #include <assert.h>
-#include <blis.h>
-#include <cblas.h>
 #include <fcntl.h>
 #include <math.h>
 #include <stdint.h>
@@ -340,19 +349,23 @@ conv2d_fast( Tensor **dst, Tensor *input, Tensor *weight, Tensor *bias,
         int K = (int)( kernel_h * kernel_w * c_in );
 
         if ( use_blis ) {
+#ifdef BLIS
                 float alpha = 1.0f, beta = 1.0f;
                 bli_sgemm( BLIS_NO_TRANSPOSE, BLIS_TRANSPOSE, (int)c_out,
                            (int)( h * w ), K, &alpha,
                            /*A=*/weight->data, K, 1,
                            /*B=*/rhs->data, K, 1, &beta, /*C=*/out_buf,
                            (int)( h * w ), 1 );
+#endif
         } else {
+#if defined( MAC ) || defined( BLAS )
                 /* blas */
                 cblas_sgemm( CblasRowMajor, CblasNoTrans, CblasTrans,
                              (int)c_out, (int)( h * w ), K, 1.0f,
                              /*A=*/weight->data, K,
                              /*B=*/rhs->data, K, 1.0f, /*C=*/out_buf,
                              (int)( h * w ) );
+#endif
         }
 
         RESET_TENSOR( rhs );
@@ -393,9 +406,9 @@ compare( void )
         Tensor *in;
         Tensor *kernel;
         Tensor *bias;
-        Tensor *output;
-        Tensor *output1;
-        Tensor *output2;
+        Tensor *output  = NULL;
+        Tensor *output1 = NULL;
+        Tensor *output2 = NULL;
 
         alloc_tensor( &in, 4, (u32[]){ 1, C_IN, H, W } );
         alloc_tensor( &kernel, 4, (u32[]){ C_OUT, C_IN, K, K } );
@@ -431,6 +444,7 @@ compare( void )
         f64 end = time_now( );
         printf( "taking %f seconds for naive code\n", ( end - start ) );
 
+#if defined( MAC ) || defined( BLAS )
         /* BLAS code */
         start = time_now( );
         for ( int i = 0; i < ITERATIONS; i++ ) {
@@ -439,7 +453,9 @@ compare( void )
         }
         end = time_now( );
         printf( "taking %f seconds for blas code\n", ( end - start ) );
+#endif
 
+#ifdef BLIS
         /* BLIS code */
         start = time_now( );
         for ( int i = 0; i < ITERATIONS; i++ ) {
@@ -448,12 +464,21 @@ compare( void )
         }
         end = time_now( );
         printf( "taking %f seconds for blis code\n", ( end - start ) );
+#endif
 
         show_tensor( output, "output" );
+#if defined( MAC ) || defined( BLAS )
         show_tensor( output1, "blas_output" );
+#endif
+#ifdef BLIS
         show_tensor( output2, "blis_output" );
+#endif
+#if defined( MAC ) || defined( BLAS )
         assert_tensors_equal( output, output1 );
+#endif
+#ifdef BLIS
         assert_tensors_equal( output, output2 );
+#endif
 
         RESET_TENSOR( in );
         RESET_TENSOR( output );
