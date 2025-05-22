@@ -3,7 +3,10 @@
  * implementation.  Right now it has a naive implementation and an im2col +
  * gemm implementation.
  *
- * To run, make bench.
+ * To install openblas on debian
+ * - libopenblas-dev
+ *
+ * To run, make bench_xxx.
  */
 #ifdef MAC
 #include <Accelerate/Accelerate.h>

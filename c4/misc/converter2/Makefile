@@ -13,6 +13,10 @@ run:
 compile:
 	clang -o a.out ${CFLAGS} ${LDFLAGS} main.c && ./a.out
 
+bench_blas: CFLAGS += -DBLAS=1 -lblas
+bench_blas:
+	clang -o a.out conv2d.c -O3 -march=native ${CFLAGS} ${LDFLAGS}  && ./a.out
+
 bench_blis: CFLAGS +=  -lblas -isystem ${HOME}/Workspace/build/blis/include/firestorm ${HOME}/Workspace/build/blis/lib/firestorm/libblis.a
 bench_blis:
 	clang -o a.out conv2d.c -O3 -march=native ${CFLAGS} ${LDFLAGS}  && ./a.out
