@@ -2,6 +2,7 @@
 #define ADT_VEC_H_
 
 #include <assert.h>  // assert
+#include <stddef.h>  // ptrdiff_t
 #include <stdlib.h>  // free
 #include <string.h>  // memcpy
 
@@ -185,7 +186,7 @@ _vec_reserve( size_t **vec, size_t new_cap, size_t unit_size )
 
         if ( *vec ) {
                 size_t *new_p =
-                    realloc( &( *vec )[-(ssize_t)head_size], new_s );
+                    realloc( &( *vec )[-(ptrdiff_t)head_size], new_s );
                 if ( new_p == NULL ) return EMALLOC;
                 new_p[head_size - 1] = new_cap;  // other head fields unchanged.
                 *vec                 = (void *)( new_p + head_size );
