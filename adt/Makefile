@@ -25,6 +25,8 @@ endif
 compile: | ${BUILD}
 	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} main.c && ./${BUILD}/a.out
 
+release: test
+
 test: CFLAGS += -DADT_TEST_H_=1
 test: | ${BUILD}
 	clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} vec.c && ./${BUILD}/test

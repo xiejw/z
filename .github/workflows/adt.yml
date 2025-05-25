@@ -1,0 +1,20 @@
+name: adt
+run-name: ${{ github.actor }} is running tests for ${{ github.workflow }}
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout z
+        uses: actions/checkout@v4
+        with:
+          path: z
+      - uses: ./z/.github/actions/base
+        with:
+          require_clang: true
+      - name: Run ${{ github.workflow }} Test
+        run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean test
+      - name: Run ${{ github.workflow }} ASAN Test
+        run: make -C ${{ github.workspace }}/z/${{ github.workflow }} ASAN=1 clean test
+      - name: Run ${{ github.workflow }} Release
+        run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean release
