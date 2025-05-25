@@ -24,6 +24,14 @@ runs:
         repository: xiejw/y
         path: y
 
+    # === --- System cleanup --------------------------------------------- ===
+    #
+    # man-db is too slow and useless
+    #
+    - name: Remove man-db
+      shell: bash
+      run: sudo apt-get remove --purge man-db
+
     # === --- GCC related ------------------------------------------------ ===
     #
     - name: Set environmental variables for GCC
