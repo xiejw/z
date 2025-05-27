@@ -65,13 +65,21 @@ optimized `BLAS` routine `cblas_sgemm`. In local testing on macOs, this approach
 yielded a `50x`–60x performance improvement, benefiting from the `Accelerate`
 framework, which is enabled by default when macOs is detected.
 
-On Linux, I have tested `openblas` as follows
+On Debian/Linux, I have tested `openblas` as follows
 ```
 # Debian
 sudo apt install libopenblas-dev
 make RELEASE=1 BLAS=1
+```
 
+On other system, once `openblas` or any `BLAS` library is installed, it should
+work as follows
+```
 # ARCH
 sudo pacman -S blas-openblas
 CFLAGS=-I/usr/include/openblas make RELEASE=1 BLAS=1
+
+# macOS with old SDK
+export MACOSX_DEPLOYMENT_TARGET=13.3
+make RELEASE=1
 ```
