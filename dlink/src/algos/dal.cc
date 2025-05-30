@@ -77,8 +77,8 @@ Table::Table( std::size_t n_col_heads, std::size_t n_options_total )
     : mNodes{ nullptr, std::free }
 {
         auto total_reserved_nodes_count = 1 + n_col_heads + n_options_total;
-        this->mNumNodesTotal            = total_reserved_nodes_count;
-        this->mNumNodesAdded            = 1 + n_col_heads;
+        this->num_nodes_total           = total_reserved_nodes_count;
+        this->num_nodes_added           = 1 + n_col_heads;
         this->mNodes.reset(
             (Node *)malloc( sizeof( Node ) * total_reserved_nodes_count ) );
 
@@ -101,15 +101,15 @@ auto
 Table::AppendOption( std::span<std::size_t> col_Ids, void *Data ) -> void
 {
         auto  *nodes     = this->mNodes.get( );
-        size_t offset_Id = this->mNumNodesAdded;
+        size_t offset_Id = this->num_nodes_added;
         auto   num_Ids   = col_Ids.size( );
 
-        if ( offset_Id + num_Ids > this->mNumNodesTotal ) {
+        if ( offset_Id + num_Ids > this->num_nodes_total ) {
                 panic(
                     "Reserved space is not enough for dancing link table: "
                     "reserved "
                     "with %d, used %d, needed %d more.",
-                    this->mNumNodesTotal, offset_Id, num_Ids );
+                    this->num_nodes_total, offset_Id, num_Ids );
         }
 
         for ( size_t i = 0; i < num_Ids; i++ ) {
@@ -122,7 +122,7 @@ Table::AppendOption( std::span<std::size_t> col_Ids, void *Data ) -> void
                 }
         }
 
-        this->mNumNodesAdded += num_Ids;
+        this->num_nodes_added += num_Ids;
 }
 
 auto

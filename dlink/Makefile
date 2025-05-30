@@ -5,7 +5,7 @@ BUILD     = .build
 
 # === CFLAGS and LDFLAGS -------------------------------------------------------
 #
-CFLAGS   += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
+CFLAGS   += -std=c11 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
 ifdef RELEASE

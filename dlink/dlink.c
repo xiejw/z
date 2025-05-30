@@ -75,45 +75,43 @@ void *dlink_get_node_data( struct dlink_tbl *p, size_t id );
 
 /* === --- Implementation --------------------------------------------------- */
 
-// struct Node {
-//       private:
-//         std::size_t Id;
-//         std::size_t L;
-//         std::size_t R;
-//         std::size_t U;
-//         std::size_t D;
-//         union {
-//                 std::size_t
-//                     C;  // head Id of the vertical col. used by non-head.
-//                 std::size_t S;  // count of the vertical col. used by head.
-//         };
-//         void *data;  // unowned.
-// };
+struct dlink_node {
+        size_t Id;
+        size_t L;
+        size_t R;
+        size_t U;
+        size_t D;
+        union {
+                size_t C;  // head Id of the vertical col. used by non-head.
+                size_t S;  // count of the vertical col. used by head.
+        };
+        void *data;  // unowned.
+};
 //
-// // The dancing link table used to solve the problem.
-// struct Table {
-//       private:
-//         size_t     mNumNodesTotal;
-//         size_t     mNumNodesAdded;
-//         dlin_node *nodes;
-//
-//       public:
-//       public:
-//       private:
-//         auto FillNode( Node &node, std::size_t Id ) -> void;
-//         auto LinkLR( Node *h, size_t end, size_t Id ) -> void;
-//         auto LinkUD( Node *h, size_t id_c, size_t Id ) -> void;
-//         auto CoverColumn( Node *h, size_t c ) -> void;
-//         auto UncoverColumn( Node *h, size_t c ) -> void;
-//         auto Search( std::vector<std::size_t> &sols, std::size_t depth )
-//             -> bool;
-// };
-//
-// void *
-// dlink_get_node_data( struct dlink *p, size_t id )
-// {
-//         return p->nodes[id].data;
-// };
+// The dancing link table used to solve the problem.
+struct dlink_tbl {
+        size_t             num_nodes_total;
+        size_t             num_nodes_added;
+        struct dlink_node *nodes;
+};
+
+//      public:
+//      public:
+//      private:
+//        auto FillNode( Node &node, std::size_t Id ) -> void;
+//        auto LinkLR( Node *h, size_t end, size_t Id ) -> void;
+//        auto LinkUD( Node *h, size_t id_c, size_t Id ) -> void;
+//        auto CoverColumn( Node *h, size_t c ) -> void;
+//        auto UncoverColumn( Node *h, size_t c ) -> void;
+//        auto Search( std::vector<std::size_t> &sols, std::size_t depth )
+//            -> bool;
+//};
+
+void *
+dlink_get_node_data( struct dlink_tbl *p, size_t id )
+{
+        return p->nodes[id].data;
+}
 
 #endif /* ADT_DLINK_H_ */
 
