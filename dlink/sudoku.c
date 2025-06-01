@@ -1,8 +1,8 @@
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
 #include <adt/dlink.h>
-#include <adt/vec.h>
 
 #define SIZE 9
 
