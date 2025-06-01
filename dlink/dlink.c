@@ -104,11 +104,13 @@ dlink_uncover_col_impl( struct dlink_node *h, size_t c )
 }
 
 static error_t
-dlink_search_impl( struct dlink_tbl *p, size_t *sols, size_t k )
+dlink_search_impl( struct dlink_tbl *p, size_t *sols, size_t *num_sol,
+                   size_t k )
 {
         struct dlink_node *h = p->nodes;
 
         if ( h[0].r == 0 ) {
+                *num_sol = k;
                 return OK;
         }
 
@@ -123,7 +125,9 @@ dlink_search_impl( struct dlink_tbl *p, size_t *sols, size_t k )
                 for ( size_t j = h[r].r; j != r; j = h[j].r ) {
                         dlink_cover_col_impl( h, h[j].c );
                 }
-                if ( dlink_search_impl( p, sols, k + 1 ) == OK ) return OK;
+                if ( dlink_search_impl( p, sols, num_sol, k + 1 ) == OK )
+                        return OK;
+
                 for ( size_t j = h[r].l; j != r; j = h[j].l ) {
                         dlink_uncover_col_impl( h, h[j].c );
                 }
@@ -183,7 +187,7 @@ dlink_append_opt( struct dlink_tbl *p, size_t num_ids, size_t *col_ids,
                 printf(
                     "Reserved space is not enough for dancing link table: "
                     "reserved "
-                    "with %zu, used %zu, needed %zu more.",
+                    "with %zu, used %zu, needed %zu more.\n",
                     p->num_nodes_total, offset_id, num_ids );
                 PANIC( );
         }
@@ -208,9 +212,9 @@ dlink_get_node_data( struct dlink_tbl *p, size_t id )
 }
 
 error_t
-dlink_search( struct dlink_tbl *p, size_t *sols )
+dlink_search( struct dlink_tbl *p, size_t *sols, size_t *num_sol )
 {
-        if ( OK == dlink_search_impl( p, sols, 0 ) ) return OK;
+        if ( OK == dlink_search_impl( p, sols, num_sol, 0 ) ) return OK;
         return ENOTEXIST;
 }
 
@@ -218,10 +222,86 @@ dlink_search( struct dlink_tbl *p, size_t *sols )
 
 #ifdef ADT_TEST_H_
 #include <stdio.h>
+#include <string.h>
+
+#define SetHeads3( h, a, b, c ) \
+        ( ( h )[0] = ( a ), ( h )[1] = ( b ), ( h )[2] = ( c ) )
+#define SetHeads2( h, a, b ) ( ( h )[0] = ( a ), ( h )[1] = ( b ) )
+
+#define EXPECT_TRUE( eq_condition, msg )                 \
+        do {                                             \
+                if ( !( eq_condition ) ) {               \
+                        printf( "Assertion failed.\n" ); \
+                        printf( msg "\n" );              \
+                        PANIC( );                        \
+                }                                        \
+        } while ( 0 )
 
 int
 main( void )
 {
+        // Exact cover problem: Cover all columns of a matrix exactly once.
+        //
+        //        1 2 3 4 5 6 7
+        // row 1: 0 0 1 0 1 1 0    // 3 5 6
+        // row 2: 1 0 0 1 0 0 1    // 1 4 7
+        // row 3: 0 1 1 0 0 1 0    // 2 3 6
+        // row 4: 1 0 0 1 0 0 0    // 1 4
+        // row 5: 0 1 0 0 0 0 1    // 2 7
+        // row 6: 0 0 0 1 1 0 1    // 4 5 7
+        //
+        // solution is
+        // row 1 4 5
+
+        struct dlink_tbl *tbl =
+            dlink_new( /*n_col_heads=*/7, /*n_options_total=*/16 );
+
+        size_t heads3[3];
+        size_t heads2[2];
+
+        // Row 1
+        SetHeads3( heads3, 3, 5, 6 );
+        dlink_append_opt( tbl, 3, heads3, (void *)"r1" );
+        // Row 2
+        SetHeads3( heads3, 1, 4, 7 );
+        dlink_append_opt( tbl, 3, heads3, (void *)"r2" );
+        // Row 3
+        SetHeads3( heads3, 2, 3, 6 );
+        dlink_append_opt( tbl, 3, heads3, (void *)"r3" );
+        // Row 4
+        SetHeads2( heads2, 1, 4 );
+        dlink_append_opt( tbl, 2, heads2, (void *)"r4" );
+        // Row 5
+        SetHeads2( heads2, 2, 7 );
+        dlink_append_opt( tbl, 2, heads2, (void *)"r5" );
+        // Row 6
+        SetHeads3( heads3, 4, 5, 7 );
+        dlink_append_opt( tbl, 3, heads3, (void *)"r3" );
+
+        size_t  sols[6]; /* At most 6. */
+        size_t  num_sols;
+        error_t rc = dlink_search( tbl, sols, &num_sols );
+        EXPECT_TRUE( rc == OK, "found sol" );
+        EXPECT_TRUE( 3 == num_sols, "found sol" );
+
+        // Check header ids.
+        EXPECT_TRUE( 17 == sols[0], "sol 0" );
+        EXPECT_TRUE( 19 == sols[1], "sol 1" );
+        EXPECT_TRUE( 8 == sols[2], "sol 2" );
+
+        // Check option data.
+        EXPECT_TRUE(
+            0 == strcmp( "r4", (char *)dlink_get_node_data( tbl, sols[0] ) ),
+            "sol 0" );
+        EXPECT_TRUE(
+            0 == strcmp( "r5", (char *)dlink_get_node_data( tbl, sols[1] ) ),
+            "sol 1" );
+        EXPECT_TRUE(
+            0 == strcmp( "r1", (char *)dlink_get_node_data( tbl, sols[2] ) ),
+            "sol 2" );
+
+        dlink_free( tbl );
         printf( "Test passed.\n" );
 }
+
 #endif /* ADT_TEST_H_ */

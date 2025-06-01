@@ -34,9 +34,11 @@ void dlink_append_opt( struct dlink_tbl *p, size_t num_ids, size_t *col_ids,
 
 void *dlink_get_node_data( struct dlink_tbl *p, size_t id );
 
-// - Return OK if find a solution and fill the header ids in solution. The
-//   solution must be pre-allocated.
+// Attempt to search a solution.
+//
+// - Return OK if find a solution and fill the header ids in sol. The
+//   sol must be pre-allocated. Number of header ids filled is set in num_sol.
 // - Return ENOTEXIST if no solution
-error_t dlink_search( struct dlink_tbl *p, size_t *solution );
+error_t dlink_search( struct dlink_tbl *p, size_t *sol, size_t *num_sol );
 
 #endif /* ADT_DLINK_H_ */

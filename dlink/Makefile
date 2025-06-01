@@ -12,7 +12,6 @@ CFLAGS   += -I../
 
 ifdef RELEASE
 CFLAGS   += -DNDEBUG -O3 -march=native
-LDFLAGS  += -ffast-math
 else
 CFLAGS   += -g
 endif
