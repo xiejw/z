@@ -1,0 +1,73 @@
+% VERSION: 2024-12-29
+
+% === --- Import the basic template ---------------------------------------- ===
+% See: https://tug.org/TUGboat/tb34-1/tb106olsak-opmac.pdf
+\input opmac
+
+% === --- Load fonts ------------------------------------------------------- ===
+\font\ninett=cmtt9
+\font\secfont=cmss12 %14 seems broken
+\font\subsecfont=cmss10
+
+% === --- Define colors ---------------------------------------------------- ===
+% See http://www.december.com/html/spec/cmykshades.html
+\def\StarbuckGreen{\setcmykcolor{1.0 0 0.5 0.6}}
+
+% === --- Margin note ------------------------------------------------------ ===
+\fixmnotes\right \mnotesize=1.7in \def\mnotehook{\typosize[8/10]\it}
+\mnoteindent=20pt
+\margins/1 letter (1,2.5,,)in
+
+% === --- Hyper Link ------------------------------------------------------- ===
+\hyperlinks \Green \Blue % Internal green, external blue.
+
+% === --- Adjust verbatim size --------------------------------------------- ===
+\def\tthook{\typosize[9/11]}  % Adjust size for verbatim.
+
+% === --- Define \symbol macro --------------------------------------------- ===
+%
+% * It starts with a group and redfines the undercore (_) to be normal char
+% * As all arguments are read when process macro. The macro should be defined as
+%   two macros, so the underscore in the argument can be handled correctly.
+% * \relax makes the \catcode effective immediately. A {} (empty group) or empty
+%   space can work also. This is the space-after-number rule (See TexBook Page
+%   208).
+% * In the second macro, we use the OPmac local color to change the group as
+%   green color.
+\def\symbol{\begingroup\catcode`\_=12\relax\symbolimpl}
+\def\symbolimpl#1{{\ninett #1}\endgroup}
+
+% === --- Define \sec and \subsec macros ----------------------------------- ===
+%
+% This is very similar to the `\date` macro in the format.tex file.
+% - Insert a title in bold.
+% - Skip 5pt vertically.
+% - The first paragraph has no indent. This is done via the \everypar, which is
+%   invoked at the start of each paragraph. It sets an empty box at first and
+%   resets itself.
+% - [New change] A black triangle is inserted left to the margin.
+\def\sec#1{\vskip15pt
+\noindent{\llap{\raise0.95pt\hbox{$\blacktriangleright$ }}\secfont{}#1}\hfill\vskip 5pt
+  \everypar={{\setbox0\lastbox}\everypar={}}}
+
+\def\subsec#1{\vskip10pt \noindent{\underbar{\subsecfont{}#1}}\hfill\vskip 5pt
+  \everypar={{\setbox0\lastbox}\everypar={}}}
+
+% ------------------------------------------------------------------------------
+% \def\begtt{%
+%   \begingroup
+%     \parindent=0mm % remove indent
+%     \def\do##1{\catcode`##1=12 }%
+%     \dospecials
+%     \obeylines
+%     \obeyspaces
+%     \tt
+%     \verbatimaux
+% }
+% \begingroup
+% \catcode`\|=0 %
+% \catcode`\\=12 %
+% |gdef|verbatimaux#1\endtt{#1|endtt}%
+% |endgroup
+% \def\endtt{\endgroup}
+% {\obeyspaces\gdef {\ }}% Omit this for 'explicit' spaces

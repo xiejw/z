@@ -1,0 +1,22 @@
+<h2>Abstractions</h2>
+
+There are three abstractions: <em>Policy</em>, <em>Tensor</em>, <em>Func</em>.
+
+<ul>
+  <li>
+    <em>Policy</em> defines the device of the <em>Tensor</em>, <em>Func</em>,
+    e.g., <code>CPU</code>.  It also specifies the lifetime hints, such as
+    <em>Static</em>, <em>Heap</em>, <em>Slab</em>, etc. In future, sharing
+    policy can be put into <em>Policy</em> as well.
+  </li>
+  <li>
+    <em>Tensor</em> is a physical allocated trunk of data, which has few
+    metdata like <em>Dimentions</em>, <em>Type</em> (<code>f32</code>),
+    <em>Location</em> (data pointer), and associated <em>Policy</em>.
+  </li>
+  <li>
+    <em>Func</em> is pure computation, with assocated <em>Policy</em>. It takes
+    <em>Tensors</em> as inputs and produces <em>Tensor</em> outputs.
+  </li>
+</ul>
+
