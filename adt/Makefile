@@ -8,6 +8,8 @@ BUILD     = .build
 CFLAGS   += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
+CFLAGS   += -I..
+
 ifdef RELEASE
 CFLAGS   += -DNDEBUG -O3 -march=native
 LDFLAGS  += -ffast-math
