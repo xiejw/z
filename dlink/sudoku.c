@@ -1,9 +1,8 @@
-#include <cstring>
-#include <vector>
+#include <stdio.h>
+#include <string.h>
 
-#include <algos/dal.h>
-
-#include <eve/base/log.h>
+#include <adt/dlink.h>
+#include <adt/vec.h>
 
 #define SIZE 9
 
@@ -59,31 +58,16 @@ static const int PROLBEMS[][SIZE * SIZE] = {
 
 // === --- Prototypes of Helper Methods ------------------------------------ ===
 //
-struct Option;  // Forward def.
-using OptionVec = std::vector<Option>;
-using DLTable   = eve::algos::dal::Table;
 
-struct Option {
+// An option is to put a digit k into cell (x,y).
+struct opt {
         int x;
         int y;
         int k;
 };
 
-static auto PrintProblem( const int *problem ) -> void;
-
-/* Seach all options that on (x,y) the digit k is allowed to be put there.
- *
- * The argument options must have enough capacity to hold all potential
- * options
- */
-static auto FindAllOptions( const int *problem, OptionVec &options ) -> size_t;
-static auto HideColHeaders( DLTable &t, const int *problem ) -> void;
-static auto InsertOptions( DLTable &t, const OptionVec &options ) -> void;
-static auto PrintSolution( DLTable &t, const int *problem,
-                           std::vector<std::size_t> &sols ) -> void;
-
-/* For a digit k (1-based) in cell (i,j), together called placement, it will
- * cover four column headers ids:
+/* For a digit k (1-based) in cell (i,j), together called option, it will
+ * cover four item ids:
  *
  * - pos{i,j}: Represent the cell position. All must have filled by a digit.
  * - row{i,k}: Represent the row with digit. Each row must have all digits.
@@ -92,77 +76,22 @@ static auto PrintSolution( DLTable &t, const int *problem,
  * - box{x,k}: Represent the box with digit where x = 3 * floor(i/3) +
  *             floor(j/3).  Each box must have all digits.
  *
- * NOTE: There is an optimization in the code to use union to cast HeaderIds to
+ * NOTE: There is an optimization in the code to use union to cast item_ids to
  * plain size_t array.
  */
-struct HeaderIds {
+struct item_ids {
         size_t pos;
         size_t row;
         size_t col;
         size_t box;
 };
-static_assert( std::is_trivial_v<HeaderIds> == true &&
-               std::is_standard_layout_v<HeaderIds> == true );
-
-static auto GenerateColHeaderIdsForPlacement( int i, int j, int k )
-    -> HeaderIds;
-
-// === --- main ------------------------------------------------------------ ===
-//
-auto
-main( ) -> int
-{
-        // === --- Select and Print the Problem ---------------------------- ===
-        //
-        const int *problem = PROLBEMS[PID];
-        logInfo( "Problem:\n" );
-        PrintProblem( problem );
-
-        // === --- Search Options ------------------------------------------ ===
-        //
-        // At most 9^3 options, try all digits in all cells.
-        std::vector<Option> options{ };
-        options.reserve( 9 * 9 * 9 );
-        const size_t options_count = FindAllOptions( problem, options );
-
-        // === --- Step 1: Prepare Dancing Links Table --------------------- ===
-        //
-        // For each option, we need to cover 4 headers (aka items), i.e., cell
-        // position, row with digit column with digit, box with digit, and
-        // digit. This is documented in details in
-        // GenerateColHeaderIdsForPlacement for details.
-
-        DLTable t{ /*n_col_heads=*/4 * 81,
-                   /*n_options_total=*/4 * options_count };
-
-        // === --- Step 2: Hide all Column Headers Filled Already ---------- ===
-        //
-        // The problem has few digits placed already. The column headers
-        // corresponding to them should be uncovered (aka hidden).
-        HideColHeaders( t, problem );
-
-        // === --- Step 3: Append Options to the Dancing Links Table ------- ===
-        //
-        InsertOptions( t, options );
-
-        // === --- Step 4: Print the Solution ------------------------------ ===
-        //
-        if ( auto opt_sols = t.SearchSolution( ); opt_sols ) {
-                logInfo( "Found solution:\n" );
-                PrintSolution( t, problem, opt_sols.value( ) );
-        } else {
-                printf( "No solution.\n" );
-        }
-
-        return 0;
-}
 
 // === --- Helper Methods -------------------------------------------------- ===
 //
 
 // Print the Sudoku Problem on screen.
-auto
-PrintProblem( const int *problem ) -> void
+static void
+print_problem( const int *problem )
 {
         // header
         printf( "+-----+-----+-----+\n" );
@@ -186,8 +115,14 @@ PrintProblem( const int *problem ) -> void
         }
 }
 
-auto
-FindAllOptions( const int *problem, std::vector<Option> &options ) -> size_t
+/* Seach all options that on (x,y) the digit k is allowed to be put there.
+ *
+ * The argument opts must have enough capacity to hold all potential options.
+ *
+ * Returns the option count.
+ */
+static size_t
+find_all_opts( const int *problem, struct opt *opts )
 {
         size_t total = 0;
 
@@ -234,8 +169,8 @@ FindAllOptions( const int *problem, std::vector<Option> &options ) -> size_t
                                         goto not_a_option;
                                 }
 
-                                options.push_back( { .x = x, .y = y, .k = k } );
-                                total++;
+                                opts[total++] =
+                                    (struct opt){ .x = x, .y = y, .k = k };
                         not_a_option:
                                 (void)0;
                         }
@@ -245,76 +180,26 @@ FindAllOptions( const int *problem, std::vector<Option> &options ) -> size_t
 #undef POS
 
         if ( DEBUG ) {
-                logInfo( "total options count %zu\n", total );
-                logInfo( "top 10 options:\n" );
+                printf( "total options count %zu\n", total );
+                printf( "top 10 options:\n" );
                 for ( size_t i = 0; i < 10 && i < total; i++ ) {
-                        logInfo( "  x %d, y %d, k %d\n", options[i].x,
-                                 options[i].y, options[i].k );
+                        printf( "  x %d, y %d, k %d\n", opts[i].x, opts[i].y,
+                                opts[i].k );
                 }
         }
         return total;
 }
 
-auto
-HideColHeaders( DLTable &t, const int *problem ) -> void
+static struct item_ids
+gen_item_ids_for_opt( int i, int j, int k )
 {
-        HeaderIds item_ids;
-        for ( int x = 0; x < SIZE; x++ ) {
-                int offset = x * SIZE;
-                for ( int y = 0; y < SIZE; y++ ) {
-                        int num = problem[offset + y];
-                        if ( num == 0 ) continue;
-
-                        item_ids =
-                            GenerateColHeaderIdsForPlacement( x, y, num );
-                        t.CoverCol( item_ids.pos );
-                        t.CoverCol( item_ids.row );
-                        t.CoverCol( item_ids.col );
-                        t.CoverCol( item_ids.box );
-                }
-        }
-}
-
-auto
-InsertOptions( DLTable &t, const OptionVec &options ) -> void
-{
-        union ItemIds {
-                HeaderIds in;
-                size_t    out[4];
-        } item_ids;
-        for ( auto &opt : options ) {
-                auto *o = &opt;
-                item_ids.in =
-                    GenerateColHeaderIdsForPlacement( o->x, o->y, o->k );
-                t.AppendOption( item_ids.out, (void *)o );
-        }
-}
-
-auto
-PrintSolution( DLTable &t, const int *problem, std::vector<std::size_t> &sols )
-    -> void
-{
-        // Duplicate the problem as we are going to modify it.
-        int solution[SIZE * SIZE];
-        memcpy( solution, problem, sizeof( int ) * SIZE * SIZE );
-
-        for ( auto &opt_id : sols ) {
-                Option *o = (Option *)t.GetNodeData( opt_id );
-                solution[o->x * SIZE + o->y] = o->k;
-        }
-        PrintProblem( solution );
-}
-
-auto
-GenerateColHeaderIdsForPlacement( int i, int j, int k ) -> HeaderIds
-{
-        HeaderIds ids;
-        int       x      = 3 * ( i / 3 ) + ( j / 3 );
-        int       offset = 0;
+        struct item_ids ids;
+        int             x      = 3 * ( i / 3 ) + ( j / 3 );
+        int             offset = 0;
 
         k = k - 1;  // k is 1 based.
 
-        ids.pos = (size_t)( i * SIZE + j + offset + 1 );  // item id is 1 based.
+        ids.pos = (size_t)( i * SIZE + j + offset + 1 );  // item id is 1
         offset += SIZE * SIZE + 1;
 
         ids.row = (size_t)( i * SIZE + k + offset );
@@ -325,4 +210,111 @@ GenerateColHeaderIdsForPlacement( int i, int j, int k ) -> HeaderIds
 
         ids.box = (size_t)( x * SIZE + k + offset );
         return ids;
+}
+
+static void
+cov_item_ids( struct dlink_tbl *t, const int *problem )
+{
+        struct item_ids item_ids;
+        for ( int x = 0; x < SIZE; x++ ) {
+                int offset = x * SIZE;
+                for ( int y = 0; y < SIZE; y++ ) {
+                        int num = problem[offset + y];
+                        if ( num == 0 ) continue;
+
+                        item_ids = gen_item_ids_for_opt( x, y, num );
+                        dlink_cover_item( t, item_ids.pos );
+                        dlink_cover_item( t, item_ids.row );
+                        dlink_cover_item( t, item_ids.col );
+                        dlink_cover_item( t, item_ids.box );
+                }
+        }
+}
+
+static void
+insert_opts( struct dlink_tbl *tbl, size_t opt_count, struct opt *opts )
+{
+        union item_ids_with_arr {
+                struct item_ids in;
+                size_t          out[4];
+        } item_ids;
+        for ( size_t i = 0; i < opt_count; i++ ) {
+                struct opt *o = &opts[i];
+                item_ids.in   = gen_item_ids_for_opt( o->x, o->y, o->k );
+                dlink_append_opt( tbl, 4, item_ids.out, (void *)o );
+        }
+}
+
+static void
+print_sol( struct dlink_tbl *tbl, const int *problem, size_t num_sol,
+           size_t *sol )
+{
+        // Duplicate the problem as we are going to modify it.
+        int solution[SIZE * SIZE];
+        memcpy( solution, problem, sizeof( int ) * SIZE * SIZE );
+
+        for ( size_t i = 0; i < num_sol; i++ ) {
+                size_t      node_id = sol[i];
+                struct opt *o =
+                    (struct opt *)dlink_get_node_data( tbl, node_id );
+                solution[o->x * SIZE + o->y] = o->k;
+        }
+        print_problem( solution );
+}
+
+// === --- main ------------------------------------------------------------ ===
+//
+int
+main( void )
+{
+        // === --- Select and Print the Problem ---------------------------- ===
+        //
+        const int *problem = PROLBEMS[PID];
+        printf( "Problem:\n" );
+        print_problem( problem );
+
+        // === --- Search Options ------------------------------------------ ===
+        //
+        // At most 9^3 options, try all digits in all cells.
+        struct opt   opts[9 * 9 * 9];
+        const size_t opts_count = find_all_opts( problem, opts );
+        (void)opts_count;
+
+        // === --- Step 1: Prepare Dancing Links Table --------------------- ===
+        //
+        // For each option, we need to cover 4 items,
+        // - row with digit
+        // - column with digit,
+        // - box with digit, and
+        // - digit.
+        //
+        // This is documented in details in gen_item_ids_for_opt for details.
+        struct dlink_tbl *tbl =
+            dlink_new( /*n_items=*/4 * 81, /*n_opt_nodes=*/4 * opts_count );
+
+        // === --- Step 2: Hide all Column Headers Filled Already ---------- ===
+        //
+        // The problem has few digits placed already. The item ids
+        // corresponding to them should be covered (aka hidden).
+        cov_item_ids( tbl, problem );
+
+        // === --- Step 3: Append Options to the Dancing Links Table ------- ===
+        //
+        insert_opts( tbl, opts_count, opts );
+
+        // === --- Step 4: Print the Solution ------------------------------ ===
+
+        size_t sol[9 * 9];
+        size_t num_sol;
+
+        if ( OK == dlink_search( tbl, sol, &num_sol ) ) {
+                assert( num_sol <= 9 * 9 );
+                printf( "Found solution:\n" );
+                print_sol( tbl, problem, num_sol, sol );
+        } else {
+                printf( "No solution.\n" );
+        }
+
+        dlink_free( tbl );
+        return 0;
 }

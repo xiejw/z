@@ -24,9 +24,9 @@ endif
 # === Rules --------------------------------------------------------------------
 #
 compile: | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} main.c && ./${BUILD}/a.out
+	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} dlink.c sudoku.c && ./${BUILD}/a.out
 
-release: test
+release: compile
 
 test: CFLAGS += -DADT_TEST_H_=1
 test: | ${BUILD}

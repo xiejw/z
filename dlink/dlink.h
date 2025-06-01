@@ -44,7 +44,7 @@ void dlink_append_opt( struct dlink_tbl *p, size_t num_ids, size_t *item_ids,
 //   pre-allocated. Number of node ids filled is filled in num_sol. For each
 //   option, only one node is filled in sol.
 // - Return ENOTEXIST if no solution
-error_t dlink_search( struct dlink_tbl *p, size_t *sol, size_t *num_sol );
+error_t dlink_search( struct dlink_tbl *p, size_t *sol, _OUT_ size_t *num_sol );
 
 // Extract the priv_data from the node indexed by the (optiona) node_id.
 // Typically, node_id is obtained from the sol array filled by dlink_search.
