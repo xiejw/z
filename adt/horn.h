@@ -31,8 +31,22 @@ void horn_add_clause( struct horn *, int conclusion, int num_hypotheses,
 // Return OK if the horn formula is satisfiable; ENOTEXIST otherwise.
 error_t horn_search( struct horn * );
 
-// After horn_search is running and returns OK, check whether 0-based prop_id
-// is in core or not. Return 1 if in core.
+// After horn_search returns OK, check whether 0-based proposition (specified
+// via prop_id) is in core or not.
+//
+// Return 1 if in core, 0 otherwise.
+//
+// NOTE:
+// - must be called after horn_search.
+// - Core is defined as the propositions which must be true whenever the
+//   boolean function is true (see TAOCP, Vol 4a, Page 58), for example, for
+//   horn clauses like
+//
+//       2
+//       !0 || 1
+//
+//   only 2 is in core, 1 is not as both (bar 0, 2) and (1, 2) are solutions
+//   only 2 is in the minimum vector to make this boolean function be true.
 int horn_is_prop_in_core( struct horn *, int prop_id );
 
 #endif  // ADT_HORN_H_
