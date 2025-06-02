@@ -2,6 +2,8 @@
 #
 UNAME     = $(shell uname)
 BUILD     = .build
+SHELL     = bash
+
 
 # === CFLAGS and LDFLAGS -------------------------------------------------------
 #
@@ -24,14 +26,13 @@ endif
 
 # === Rules --------------------------------------------------------------------
 #
-compile: | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} main.c && ./${BUILD}/a.out
-
 release: test
 
 test: CFLAGS += -DADT_TEST_H_=1
 test: | ${BUILD}
-	clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} vec.c && ./${BUILD}/test
+	clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} vec.c  && echo -n "vec  -- " && ./${BUILD}/test && \
+	clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} horn.c && echo -n "horn -- " && ./${BUILD}/test && \
+	echo "All done."
 
 ${BUILD}:
 	mkdir -p ${BUILD}
