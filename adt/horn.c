@@ -169,8 +169,10 @@ horn_search( struct horn *h )
                 return OK;
         }
 
-        int                      lambda_id = h->num_propositions;
-        struct horn_clause_node *node      = h->clauses;
+        int lambda_id = h->num_propositions;
+        assert( h->props[lambda_id].truth == 0 );
+
+        struct horn_clause_node *node = h->clauses;
         while ( node != NULL ) {
                 struct horn_clause_node *next = node->next;
                 if ( node->clause.conclusion == -1 ) {
@@ -181,7 +183,13 @@ horn_search( struct horn *h )
 
         horn_core_search( h );
 
-        return h->props[lambda_id].truth == 0;
+        return h->props[lambda_id].truth == 1 ? ENOTEXIST : OK;
+}
+
+int
+horn_is_prop_in_core( struct horn *h, int prop_id )
+{
+        return h->props[prop_id].truth;
 }
 
 // === --- Test Code ------------------------------------------------------- ===
@@ -189,9 +197,235 @@ horn_search( struct horn *h )
 #ifdef ADT_TEST_H_
 #include <stdio.h>
 
+#define PANIC( )                     \
+        do {                         \
+                printf( "panic\n" ); \
+                exit( -1 );          \
+        } while ( 0 )
+
+#define EXPECT_TRUE( eq_condition, msg )                 \
+        do {                                             \
+                if ( !( eq_condition ) ) {               \
+                        printf( "Assertion failed.\n" ); \
+                        printf( msg "\n" );              \
+                        PANIC( );                        \
+                }                                        \
+        } while ( 0 )
+
+static char *
+test_new( void )
+{
+        struct horn *h = horn_new( /*num_props=*/3 );
+        horn_free( h );
+        return NULL;
+}
+
+static char *
+test_core_no_progress( void )
+{
+        struct horn *h = horn_new( /*num_props=*/3 );
+
+        // 2
+        // 2
+        // !0 || 1
+        //
+        // expected: core: 2
+
+        horn_add_clause( h, 2, 0, NULL );
+        horn_add_clause( h, 2, 0, NULL );
+        horn_add_clause( h, 1, 1, (int[]){ 0 } );
+
+        horn_core_search( h );
+
+        EXPECT_TRUE( 0 == horn_is_prop_in_core( h, 0 ), "prop_0_truth" );
+        EXPECT_TRUE( 0 == horn_is_prop_in_core( h, 1 ), "prop_1_truth" );
+        EXPECT_TRUE( 1 == horn_is_prop_in_core( h, 2 ), "prop_2_truth" );
+
+        horn_free( h );
+        return NULL;
+}
+
+static char *
+test_core_simple( void )
+{
+        struct horn *h = horn_new( /*num_props=*/5 );
+
+        // 2
+        // !2 || 1
+        // !3 || 0
+        // !1 || !4 || 0
+        // 4
+        //
+        // expected: core: 0, 1, 2, 4
+        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, 2 );
+        HORN_ADD_CLAUSE( h, 1, 1, 2 );
+        HORN_ADD_CLAUSE( h, 0, 1, 3 );
+        HORN_ADD_CLAUSE( h, 0, 2, 1, 4 );
+        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, 4 );
+        horn_add_clause( h, 4, 0, NULL );
+
+        horn_core_search( h );
+
+        EXPECT_TRUE( 1 == horn_is_prop_in_core( h, 0 ), "prop_0_truth" );
+        EXPECT_TRUE( 1 == horn_is_prop_in_core( h, 1 ), "prop_1_truth" );
+        EXPECT_TRUE( 1 == horn_is_prop_in_core( h, 2 ), "prop_2_truth" );
+        EXPECT_TRUE( 0 == horn_is_prop_in_core( h, 3 ), "prop_3_truth" );
+        EXPECT_TRUE( 1 == horn_is_prop_in_core( h, 4 ), "prop_4_truth" );
+
+        horn_free( h );
+        return NULL;
+}
+
+// static char *
+// test_solve_easy( void )
+// {
+//         struct horn *h = horn_new( /*num_props=*/3 );
+//
+//         // 2
+//         // 2
+//         // !0 || 1
+//         //
+//         // expected: yes
+//
+//         horn_add_clause( h, 2, 0, NULL );
+//         horn_add_clause( h, 2, 0, NULL );
+//         horn_add_clause( h, 1, 1, (int[]){ 0 } );
+//
+//         EXPECT_TRUE( "yes", 1 == horn_search( h ) );
+//
+//         horn_free( h );
+//         return NULL;
+// }
+//
+// static char *
+// test_solve_no_solu( void )
+// {
+//         struct horn *h = horn_new( /*num_props=*/3 );
+//
+//         // 2
+//         // 2
+//         // !0 || 1
+//         // 0
+//         // !1
+//         //
+//         // expected: no
+//
+//         horn_add_clause( h, 2, 0, NULL );
+//         horn_add_clause( h, 2, 0, NULL );
+//         horn_add_clause( h, 1, 1, (int[]){ 0 } );
+//         horn_add_clause( h, 0, 0, NULL );
+//         horn_add_clause( h, -1, 1, (int[]){ 1 } );
+//
+//         EXPECT_TRUE( "no", 0 == horn_search( h ) );
+//
+//         horn_free( h );
+//         return NULL;
+// }
+//
+// static char *
+// test_solve_simple( void )
+// {
+//         struct horn *h = horn_new( /*num_props=*/5 );
+//
+//         // 2
+//         // !2 || 1
+//         // !3 || 0
+//         // !1 || !4 || 0
+//         // 4
+//         //
+//         // expected: yes
+//         horn_add_clause( h, 2, 0, NULL );
+//         horn_add_clause( h, 1, 1, (int[]){ 2 } );
+//         horn_add_clause( h, 0, 1, (int[]){ 3 } );
+//         horn_add_clause( h, 0, 2, (int[]){ 1, 4 } );
+//         horn_add_clause( h, 4, 0, NULL );
+//
+//         EXPECT_TRUE( "yes", 1 == horn_search( h ) );
+//
+//         horn_free( h );
+//         return NULL;
+// }
+
+static char *
+test_solve_simple_not_def( void )
+{
+        struct horn *h = horn_new( /*num_props=*/5 );
+
+        // 2
+        // !2 || 1
+        // !3
+        // !1 || !4 || 0
+        // 4
+        //
+        // expected: yes
+        horn_add_clause( h, 2, 0, NULL );
+        horn_add_clause( h, 1, 1, (int[]){ 2 } );
+        horn_add_clause( h, -1, 1, (int[]){ 3 } );
+        horn_add_clause( h, 0, 2, (int[]){ 1, 4 } );
+        horn_add_clause( h, 4, 0, NULL );
+
+        EXPECT_TRUE( OK == horn_search( h ), "expect solution" );
+
+        horn_free( h );
+        return NULL;
+}
+
+static char *
+test_solve_multiple( void )
+{
+        struct horn *h = horn_new( /*num_props=*/3 );
+
+        // 2
+        // !2 || 1
+        // !2 || 0
+        //
+        // expected: yes
+        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, 2 );
+        HORN_ADD_CLAUSE( h, 1, 1, 2 );
+        HORN_ADD_CLAUSE( h, 0, 1, 2 );
+
+        EXPECT_TRUE( OK == horn_search( h ), "yes" );
+
+        EXPECT_TRUE( 1 == horn_is_prop_in_core( h, 0 ), "prop_0_truth" );
+        EXPECT_TRUE( 1 == horn_is_prop_in_core( h, 1 ), "prop_1_truth" );
+        EXPECT_TRUE( 1 == horn_is_prop_in_core( h, 2 ), "prop_2_truth" );
+
+        horn_free( h );
+        return NULL;
+}
+
+static char *
+test_solve_multiple_no_solu( void )
+{
+        struct horn *h = horn_new( /*num_props=*/3 );
+
+        // 2
+        // !2 || 1
+        // !2
+        //
+        // expected: no
+        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, 2 );
+        HORN_ADD_CLAUSE( h, 1, 1, 2 );
+        HORN_ADD_CLAUSE_WO_CONCLUSION( h, 1, 2 );
+
+        EXPECT_TRUE( OK != horn_search( h ), "no solution" );
+
+        horn_free( h );
+        return NULL;
+}
+
 int
 main( void )
 {
+        test_new( );
+        test_core_no_progress( );
+        test_core_simple( );
+        //  test_solve_easy( );
+        //  test_solve_no_solu ();
+        //  test_solve_simple( );
+        test_solve_simple_not_def( );
+        test_solve_multiple( );
+        test_solve_multiple_no_solu( );
         printf( "Test passed.\n" );
 }
 
