@@ -30,9 +30,10 @@ release: test
 
 test: CFLAGS += -DADT_TEST_H_=1
 test: | ${BUILD}
-	clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} vec.c  && echo -n "vec  -- " && ./${BUILD}/test && \
-	clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} horn.c && echo -n "horn -- " && ./${BUILD}/test && \
-	echo "All done."
+	@set -e
+	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} vec.c  && echo -n "vec  -- " && ./${BUILD}/test
+	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} horn.c && echo -n "horn -- " && ./${BUILD}/test
+	@echo "All done."
 
 ${BUILD}:
 	mkdir -p ${BUILD}

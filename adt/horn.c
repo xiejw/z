@@ -200,13 +200,16 @@ horn_is_prop_in_core( struct horn *h, int prop_id )
                 exit( -1 );          \
         } while ( 0 )
 
-#define EXPECT_TRUE( eq_condition, msg )                 \
-        do {                                             \
-                if ( !( eq_condition ) ) {               \
-                        printf( "Assertion failed.\n" ); \
-                        printf( msg "\n" );              \
-                        PANIC( );                        \
-                }                                        \
+#define EXPECT_TRUE( eq_condition, msg ) \
+        _EXPECT_TRUE_IMPL( eq_condition, msg, __FILE__, __LINE__ )
+
+#define _EXPECT_TRUE_IMPL( eq_condition, msg, file, line )                 \
+        do {                                                               \
+                if ( !( eq_condition ) ) {                                 \
+                        printf( "Assertion failed. %s:%d\n", file, line ); \
+                        printf( msg "\n" );                                \
+                        PANIC( );                                          \
+                }                                                          \
         } while ( 0 )
 
 static char *
