@@ -142,6 +142,8 @@ main( void )
                 printf( "%.*s\n", (int)size, buf );
         }
         io_reader_close( r );
+
+        printf( "Test passed.\n" );
         return 0;
 }
 

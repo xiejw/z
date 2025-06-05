@@ -8,6 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "base64.h"
 #include "io.h"
 
 /* === Configuration -------------------------------------------------------- */
@@ -34,8 +35,8 @@
 /* === Data Structure --------------------------------------------------------
  */
 typedef struct {
-        unsigned char *piece;
-        int            id;
+        char *piece;
+        int   id;
 } MergePiece;
 
 typedef struct {
@@ -137,94 +138,6 @@ tok_free( Tokenizer *p )
         }
 }
 
-/* One time initialized lookup table to avoid switch cost during base64
- * decoding.
- *
- * See base54_lookup_tbl_init why 1 is here.
- */
-unsigned char BASE64_LOOKUP_TBL[256] = { 1 };
-
-/* One time initialize the base64 lookup table. */
-void
-base54_lookup_tbl_init( void )
-{
-        /* Non one means this has been initialized. */
-        if ( BASE64_LOOKUP_TBL[0] != 1 ) return;
-
-        unsigned char idx = 0;
-        for ( char i = 'A'; i <= 'Z'; i++ ) {
-                BASE64_LOOKUP_TBL[(int)i] = idx++;
-        }
-        assert( idx == 26 );
-
-        for ( char i = 'a'; i <= 'z'; i++ ) {
-                BASE64_LOOKUP_TBL[(int)i] = idx++;
-        }
-        assert( idx == 26 + 26 );
-
-        for ( char i = '0'; i <= '9'; i++ ) {
-                BASE64_LOOKUP_TBL[(int)i] = idx++;
-        }
-        assert( idx == 26 + 26 + 10 );
-
-        BASE64_LOOKUP_TBL[(int)'+'] = idx++;
-        BASE64_LOOKUP_TBL[(int)'/'] = idx++;
-        assert( idx == 64 );
-
-        BASE64_LOOKUP_TBL[(int)'='] = 0;
-
-        BASE64_LOOKUP_TBL[0] = 0; /* Record init is done. */
-}
-
-/* Decode the input string buf with length len and return a malloc-allocated
- * string for the decoded result. Caller takes the ownership of the output.
- *
- * Check https://en.wikipedia.org/wiki/Base64 for reference.
- *
- * Algorithm
- * - Unpack 4 chars each time. Fill the bits into the 3 chars of the
- *   output.
- * - The '=' padding is ignored as it just becomes a NULL terminator.
- */
-unsigned char *
-base64_decode( char *buf, size_t len )
-{
-        base54_lookup_tbl_init( );
-        assert( len > 0 && len % 4 == 0 );
-        unsigned char *output = malloc( len / 4 * 3 + 1 );
-
-        /* Once lookup up table is initialized, all valid chars, except '=' or
-         * 'A', should have non zero value. */
-#define CHECK_VALID_BASE64_CH( idx )                          \
-        assert( buf[( idx )] == '=' || buf[( idx )] == 'A' || \
-                BASE64_LOOKUP_TBL[(int)buf[( idx )]] != 0 )
-
-        size_t output_idx = 0;
-        for ( size_t i = 0; i < len; i += 4 ) {
-                CHECK_VALID_BASE64_CH( i );
-                CHECK_VALID_BASE64_CH( i + 1 );
-                CHECK_VALID_BASE64_CH( i + 2 );
-                CHECK_VALID_BASE64_CH( i + 3 );
-
-                unsigned char a = BASE64_LOOKUP_TBL[(int)buf[i]];
-                unsigned char b = BASE64_LOOKUP_TBL[(int)buf[i + 1]];
-                unsigned char c = BASE64_LOOKUP_TBL[(int)buf[i + 2]];
-                unsigned char d = BASE64_LOOKUP_TBL[(int)buf[i + 3]];
-
-                output[output_idx++] =
-                    (unsigned char)( ( a << 2 ) | ( b >> 4 ) );
-                output[output_idx++] =
-                    (unsigned char)( ( ( b & 0xF ) << 4 ) | ( c >> 2 ) );
-                output[output_idx++] =
-                    (unsigned char)( ( ( c & 0x3 ) << 6 ) | d );
-        }
-
-#undef CHECK_VALID_BASE64_CH
-
-        output[output_idx] = '\0';
-        return output;
-}
-
 /* Process one line read from tokenizer model file.
  *
  * This function does not assume buf ends with NULL. The length is provided as
@@ -254,8 +167,7 @@ tok_process_line( Tokenizer *p, char *buf, size_t len )
                 "expect one space only for each line in tokenizer model file" );
 
         /* Decode merge-able piece */
-        unsigned char *piece =
-            base64_decode( buf, (size_t)( space_ptr - buf ) );
+        char *piece = base64_decode( buf, (size_t)( space_ptr - buf ) );
 
         /* Decode rank id */
         char   id_buf[TOK_MAX_ID_LEN]; /* strtol expects NULL-terminator.*/
