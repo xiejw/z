@@ -5,7 +5,6 @@
 
 #include <adt/types.h>
 
-
 // === --- IO Utils -------------------------------------------------------- ===
 
 // Forward declaration.

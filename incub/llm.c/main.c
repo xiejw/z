@@ -34,8 +34,8 @@
 /* === Data Structure --------------------------------------------------------
  */
 typedef struct {
-        char *piece;
-        int   id;
+        unsigned char *piece;
+        int            id;
 } MergePiece;
 
 typedef struct {
@@ -142,7 +142,7 @@ tok_free( Tokenizer *p )
  *
  * See base54_lookup_tbl_init why 1 is here.
  */
-char BASE64_LOOKUP_TBL[256] = { 1 };
+unsigned char BASE64_LOOKUP_TBL[256] = { 1 };
 
 /* One time initialize the base64 lookup table. */
 void
@@ -151,7 +151,7 @@ base54_lookup_tbl_init( void )
         /* Non one means this has been initialized. */
         if ( BASE64_LOOKUP_TBL[0] != 1 ) return;
 
-        char idx = 0;
+        unsigned char idx = 0;
         for ( char i = 'A'; i <= 'Z'; i++ ) {
                 BASE64_LOOKUP_TBL[(int)i] = idx++;
         }
@@ -186,12 +186,12 @@ base54_lookup_tbl_init( void )
  *   output.
  * - The '=' padding is ignored as it just becomes a NULL terminator.
  */
-char *
+unsigned char *
 base64_decode( char *buf, size_t len )
 {
         base54_lookup_tbl_init( );
         assert( len > 0 && len % 4 == 0 );
-        char *output = malloc( len / 4 * 3 + 1 );
+        unsigned char *output = malloc( len / 4 * 3 + 1 );
 
         /* Once lookup up table is initialized, all valid chars, except '=' or
          * 'A', should have non zero value. */
@@ -206,15 +206,17 @@ base64_decode( char *buf, size_t len )
                 CHECK_VALID_BASE64_CH( i + 2 );
                 CHECK_VALID_BASE64_CH( i + 3 );
 
-                char a = BASE64_LOOKUP_TBL[(int)buf[i]];
-                char b = BASE64_LOOKUP_TBL[(int)buf[i + 1]];
-                char c = BASE64_LOOKUP_TBL[(int)buf[i + 2]];
-                char d = BASE64_LOOKUP_TBL[(int)buf[i + 3]];
+                unsigned char a = BASE64_LOOKUP_TBL[(int)buf[i]];
+                unsigned char b = BASE64_LOOKUP_TBL[(int)buf[i + 1]];
+                unsigned char c = BASE64_LOOKUP_TBL[(int)buf[i + 2]];
+                unsigned char d = BASE64_LOOKUP_TBL[(int)buf[i + 3]];
 
-                output[output_idx++] = (char)( ( a << 2 ) + ( b >> 4 ) );
                 output[output_idx++] =
-                    (char)( ( ( b & 0xF ) << 4 ) + ( c >> 2 ) );
-                output[output_idx++] = (char)( ( ( c & 0x4 ) << 6 ) + d );
+                    (unsigned char)( ( a << 2 ) | ( b >> 4 ) );
+                output[output_idx++] =
+                    (unsigned char)( ( ( b & 0xF ) << 4 ) | ( c >> 2 ) );
+                output[output_idx++] =
+                    (unsigned char)( ( ( c & 0x3 ) << 6 ) | d );
         }
 
 #undef CHECK_VALID_BASE64_CH
@@ -252,7 +254,8 @@ tok_process_line( Tokenizer *p, char *buf, size_t len )
                 "expect one space only for each line in tokenizer model file" );
 
         /* Decode merge-able piece */
-        char *piece = base64_decode( buf, (size_t)( space_ptr - buf ) );
+        unsigned char *piece =
+            base64_decode( buf, (size_t)( space_ptr - buf ) );
 
         /* Decode rank id */
         char   id_buf[TOK_MAX_ID_LEN]; /* strtol expects NULL-terminator.*/
@@ -274,6 +277,13 @@ tok_process_line( Tokenizer *p, char *buf, size_t len )
         p->pieces[rank_id].id    = rank_id;
 
         DEBUG( "decode %s rank %d\n", piece, rank_id );
+        if ( rank_id >= 127990 ) {
+                printf( "%d: ", rank_id );  // e994a6
+                for ( int i = 0; piece[i] != '\0'; i++ ) {
+                        printf( "%02x", (unsigned char)piece[i] );
+                }
+                printf( "\n" );
+        }
 }
 
 /* Read tokenizer model file and create a tokenizer after that.
@@ -283,17 +293,17 @@ tok_process_line( Tokenizer *p, char *buf, size_t len )
 void
 tok_load( Tokenizer *p )
 {
-        char   buf[TOK_READ_BUF_SIZE];
-        char   line[TOK_READ_BUF_SIZE];
-        size_t line_idx = 0;
+        struct io_reader *r;
+        error_t           err = io_reader_open( TOK_FILE, &r );
 
-        /* The heavy work is reading file line by line and process them.
-         *
-         * For performance, we read page by page and extract lines from it.
-         */
+        char  *buf;
+        size_t size;
+        while ( ( err = io_reader_nextline( r, &buf, &size, NULL ) ) == OK ) {
+                tok_process_line( p, buf, size );
+        }
+        io_reader_close( r );
 
         assert( p->pieces[TOK_MERGE_PIECE_COUNT - 1].piece != NULL );
-        close( fd );
 }
 
 /* === Main ----------------------------------------------------------------- */

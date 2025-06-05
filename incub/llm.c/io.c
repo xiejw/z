@@ -1,10 +1,9 @@
 #include "io.h"
 
-#include <string.h>
-#include <stdio.h>
 #include <assert.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
+#include <unistd.h>
 
 #define READ_BUF_SIZE 4096
 
@@ -74,7 +73,7 @@ fill_buf:
                 return EIO;
         }
 
-        r->end += (size_t) c;
+        r->end += (size_t)c;
         assert( r->end <= READ_BUF_SIZE );
         goto scan_line;
 
@@ -126,6 +125,11 @@ move_line_and_fillbuf:
         goto fill_buf;
 }
 
+/* === --- Test Code -------------------------------------------------------- */
+
+#ifdef MLM_TEST_H_
+#include <stdio.h>
+
 int
 main( void )
 {
@@ -140,3 +144,5 @@ main( void )
         io_reader_close( r );
         return 0;
 }
+
+#endif /* MLM_TEST_H_ */

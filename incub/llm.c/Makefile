@@ -40,9 +40,10 @@ CFLAGS   += -DTOK_FILE="\"${TOK_FILE}\""
 
 # === Rules --------------------------------------------------------------------
 #
-compile:  | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} main.c ${LDFLAGS} && ./${BUILD}/a.out
+main:  | ${BUILD}
+	clang -o ${BUILD}/a.out ${CFLAGS} io.c main.c ${LDFLAGS} && ./${BUILD}/a.out
 
+io: CFLAGS += -DMLM_TEST_H_
 io:  | ${BUILD}
 	clang -o ${BUILD}/a.out ${CFLAGS} io.c ${LDFLAGS} && ./${BUILD}/a.out
 
