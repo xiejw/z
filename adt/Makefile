@@ -7,7 +7,7 @@ SHELL     = bash
 
 # === CFLAGS and LDFLAGS -------------------------------------------------------
 #
-CFLAGS   += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
+CFLAGS   += -std=c11 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
 CFLAGS   += -I..
@@ -31,8 +31,9 @@ release: test
 test: CFLAGS += -DADT_TEST_H_=1
 test: | ${BUILD}
 	@set -e
-	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} vec.c  && echo -n "vec  -- " && ./${BUILD}/test
-	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} horn.c && echo -n "horn -- " && ./${BUILD}/test
+	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} vec.c   && echo -n "vec   -- " && ./${BUILD}/test
+	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} horn.c  && echo -n "horn  -- " && ./${BUILD}/test
+	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} dlink.c && echo -n "dlink -- " && ./${BUILD}/test
 	@echo "All done."
 
 ${BUILD}:
