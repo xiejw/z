@@ -8,6 +8,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "io.h"
+
 /* === Configuration -------------------------------------------------------- */
 #ifndef TOK_FILE
 #error TOK_FILE should be passed via "-DTOK_FILE"
@@ -289,42 +291,6 @@ tok_load( Tokenizer *p )
          *
          * For performance, we read page by page and extract lines from it.
          */
-        int fd = open( TOK_FILE, O_RDONLY );
-        if ( fd == -1 ) PANIC( "failed to open tok file" );
-
-        while ( 1 ) {
-                ssize_t c = read( fd, buf, TOK_READ_BUF_SIZE );
-                if ( c < 0 ) PANIC( "unexpected tok file read error." );
-                if ( c == 0 ) {
-                        /* Final line in buffer */
-                        if ( line_idx > 0 ) {
-                                assert( line_idx <= TOK_READ_BUF_SIZE );
-                                tok_process_line( p, line, line_idx );
-                        }
-                        break;
-                }
-
-                size_t start = 0;
-                while ( 1 ) {
-                        size_t end = start;
-                        for ( ; buf[end] != '\n' && end < (size_t)c; end++ ) {
-                        }
-                        if ( end == (size_t)c ) {
-                                assert( end - start + line_idx <=
-                                        TOK_READ_BUF_SIZE );
-                                memcpy( line + line_idx, buf + start,
-                                        end - start );
-                                line_idx += end - start;
-                                break;
-                        }
-
-                        /* Found a line */
-                        memcpy( line + line_idx, buf + start, end - start );
-                        tok_process_line( p, line, end - start + line_idx );
-                        line_idx = 0;
-                        start    = end + 1;
-                }
-        }
 
         assert( p->pieces[TOK_MERGE_PIECE_COUNT - 1].piece != NULL );
         close( fd );

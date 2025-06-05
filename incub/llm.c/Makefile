@@ -6,8 +6,10 @@ TOK_FILE  = ${HOME}/.llama/checkpoints/Llama3.1-8B-Instruct/tokenizer.model
 
 # === CFLAGS and LDFLAGS -------------------------------------------------------
 #
-CFLAGS   += -std=c99 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
+CFLAGS   += -std=c11 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
+
+CFLAGS   += -I../..  # pick up adt
 
 ifdef RELEASE
 CFLAGS   += -DNDEBUG -O3 -march=native
@@ -41,6 +43,8 @@ CFLAGS   += -DTOK_FILE="\"${TOK_FILE}\""
 compile:  | ${BUILD}
 	clang -o ${BUILD}/a.out ${CFLAGS} main.c ${LDFLAGS} && ./${BUILD}/a.out
 
+io:  | ${BUILD}
+	clang -o ${BUILD}/a.out ${CFLAGS} io.c ${LDFLAGS} && ./${BUILD}/a.out
 
 ${BUILD}:
 	mkdir -p ${BUILD}

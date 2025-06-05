@@ -21,6 +21,8 @@ typedef int error_t;
 #define EMALLOC   -2
 #define ENOTEXIST -3
 #define ENOTIMPL  -4
+#define EIO       -5
+#define EEOF      -6
 
 // Function Parameter Annotations
 #define _MUT_       // The field might be mutated if new address is allocated
