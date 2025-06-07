@@ -3,13 +3,17 @@
 UNAME     = $(shell uname)
 BUILD     = .build
 TOK_FILE  = ${HOME}/.llama/checkpoints/Llama3.1-8B-Instruct/tokenizer.model
+ADT_ROOT  = ../..
+ADT_DIR   = ${ADT_ROOT}/adt
 
 # === CFLAGS and LDFLAGS -------------------------------------------------------
 #
 CFLAGS   += -std=c11 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
-CFLAGS   += -I../..  # pick up adt
+# Pick up adt
+CFLAGS   += -I${ADT_ROOT}
+LDFLAGS  += ${ADT_DIR}/sds.c
 
 ifdef RELEASE
 CFLAGS   += -DNDEBUG -O3 -march=native

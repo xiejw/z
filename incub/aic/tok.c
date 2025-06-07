@@ -10,6 +10,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <adt/sds.h>
+
 #include "base64.h"
 #include "io.h"
 
@@ -130,18 +132,18 @@ tok_process_line( struct tokenizer *p, char *buf, size_t len )
 #ifndef NDBUG
         /* Perform sanity check. See tok_mergable_ranks for details. */
         if ( rank_id >= tok_mergable_ranks_starting_id ) {
-                char buf[200] = { 0 };
-                int  i;
+                sds_t s = sds_empty_with_cap( 200 );
+                int   i;
                 for ( i = 0; mergable[i] != '\0'; i++ ) {
-                        sprintf( buf + i * 2, "%02x",
-                                 (unsigned char)mergable[i] );
+                        sds_cat_printf( &s, "%02x",
+                                        (unsigned char)mergable[i] );
                 }
-                buf[i * 2] = '\0';
                 const char *expected_piece =
                     tok_mergable_ranks[rank_id -
                                        tok_mergable_ranks_starting_id];
-                DEBUG( "expect %s got %s\n", expected_piece, buf );
-                assert( 0 == strcmp( expected_piece, buf ) );
+                DEBUG( "expect %s got %s\n", expected_piece, s );
+                assert( 0 == strcmp( expected_piece, s ) );
+                sds_free( s );
         }
 #endif
 }
