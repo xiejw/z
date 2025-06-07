@@ -4,116 +4,114 @@
 #include <stdlib.h>
 #include <string.h>  // memcpy/memset
 
+// === --- Implementation -------------------------------------------------- ===
+//
 static const int SDS_DEFAULT_ALLOCATE_SPACE = 16;
-
-// -----------------------------------------------------------------------------
-// implementation.
-// -----------------------------------------------------------------------------
 
 static inline sds_t _sdsRaw( const void *init, size_t len, size_t cap );
 
 sds_t
-sdsEmptyWithCap( size_t cap )
+sds_empty_with_cap( size_t cap )
 {
         sds_t            s    = _sdsRaw( NULL, 0, cap );
-        struct sds_head *phdr = SDS_HEAD( s );
+        struct sds_head *phdr = _SDS_HEAD( s );
         phdr->len             = 0;
         s[0]                  = '\0';
         return s;
 }
 
 sds_t
-sdsNew( const char *init )
+sds_new( const char *init )
 {
         size_t initlen = ( init == NULL ) ? 0 : strlen( init );
         size_t cap     = initlen;
 
         sds_t            s    = _sdsRaw( init, initlen, cap );
-        struct sds_head *phdr = SDS_HEAD( s );
+        struct sds_head *phdr = _SDS_HEAD( s );
         phdr->len             = initlen;
         s[initlen]            = '\0';
         return s;
 }
 
 sds_t
-sdsEmpty( void )
+sds_empty( void )
 {
-        return sdsNew( "" );
+        return sds_new( "" );
 }
 
 sds_t
-sdsDup( const sds_t s )
+sds_dup( const sds_t s )
 {
-        size_t len   = sdsLen( s );
-        sds_t  new_s = _sdsRaw( s, len, sdsCap( s ) );
+        size_t len   = sds_len( s );
+        sds_t  new_s = _sdsRaw( s, len, sds_cap( s ) );
 
-        struct sds_head *phdr = SDS_HEAD( new_s );
+        struct sds_head *phdr = _SDS_HEAD( new_s );
         phdr->len             = len;
         new_s[len]            = '\0';
         return new_s;
 }
 
 void
-sdsFree( sds_t s )
+sds_free( sds_t s )
 {
         if ( s == NULL ) return;
-        free( (void *)SDS_HEAD( s ) );
+        free( (void *)_SDS_HEAD( s ) );
 }
 
 void
-sdsReserve( sds_t *s, size_t new_len )
+sds_reserve( sds_t *s, size_t new_len )
 {
-        size_t cap = sdsCap( *s );
+        size_t cap = sds_cap( *s );
         if ( cap >= new_len ) return;
 
         new_len *= 2;
 
         size_t hdrlen = sizeof( struct sds_head );
-        void  *buf    = SDS_HEAD( *s );
+        void  *buf    = _SDS_HEAD( *s );
         buf           = realloc( buf, hdrlen + new_len + 1 );
         if ( buf == NULL ) {
                 *s = NULL;
                 return;
         }
         *s = (sds_t)buf + hdrlen;
-        sdsSetCap( *s, new_len );
+        sds_set_cap( *s, new_len );
 }
 
 void
-sdsCatLen( sds_t *s, const void *t, size_t len )
+sds_cat_len( sds_t *s, const void *t, size_t len )
 {
-        size_t curlen = sdsLen( *s );
+        size_t curlen = sds_len( *s );
         size_t newlen = curlen + len;
-        sdsReserve( s, newlen );
+        sds_reserve( s, newlen );
         if ( *s == NULL ) return;
         memcpy( ( *s ) + curlen, t, len );
-        sdsSetLen( *s, newlen );
+        sds_set_len( *s, newlen );
         ( *s )[newlen] = '\0';
 }
 
 void
-sdsCat( sds_t *s, const char *t )
+sds_cat( sds_t *s, const char *t )
 {
-        sdsCatLen( s, t, strlen( t ) );
+        sds_cat_len( s, t, strlen( t ) );
 }
 
 void
-sdsCatSds( sds_t *s, const sds_t t )
+sds_cat_sds( sds_t *s, const sds_t t )
 {
-        sdsCatLen( s, t, sdsLen( t ) );
+        sds_cat_len( s, t, sds_len( t ) );
 }
 
 void
-sdsCatPrintf( sds_t *s, const char *fmt, ... )
+sds_cat_printf( sds_t *s, const char *fmt, ... )
 {
         va_list ap;
         va_start( ap, fmt );
-        sdsCatVprintf( s, fmt, ap );
+        sds_cat_vprintf( s, fmt, ap );
         va_end( ap );
 }
 
 void
-sdsCatVprintf( sds_t *s, const char *fmt, va_list ap )
+sds_cat_vprintf( sds_t *s, const char *fmt, va_list ap )
 {
         va_list cpy;
         char    staticbuf[1024], *buf = staticbuf;
@@ -122,9 +120,9 @@ sdsCatVprintf( sds_t *s, const char *fmt, va_list ap )
         assert( buflen >= 2 );
         // fast path first. Use the remaining area if possible for speed.
         {
-                size_t avail = sdsAvail( *s );
+                size_t avail = sds_avail( *s );
                 if ( buflen <= avail ) {
-                        size_t cur_len = sdsLen( *s );
+                        size_t cur_len = sds_len( *s );
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wshadow"
@@ -135,7 +133,7 @@ sdsCatVprintf( sds_t *s, const char *fmt, va_list ap )
                         va_end( cpy );
                         if ( buf[buflen - 2] == '\0' ) {
                                 size_t inc_len = strlen( buf );
-                                sdsSetLen( *s, cur_len + inc_len );
+                                sds_set_len( *s, cur_len + inc_len );
                                 return;
                         }
                         // fall through
@@ -177,46 +175,34 @@ sdsCatVprintf( sds_t *s, const char *fmt, va_list ap )
 
         /* Finally concat the obtained string to the SDS string and return it.
          */
-        sdsCat( s, buf );
+        sds_cat( s, buf );
         if ( buf != staticbuf ) free( buf );
 }
 
 void
-sdsCpyLen( sds_t *s, const char *t, size_t len )
+sds_cpy_len( sds_t *s, const char *t, size_t len )
 {
-        sdsReserve( s, len );
+        sds_reserve( s, len );
         if ( *s == NULL ) return;
         memcpy( *s, t, len );
         ( *s )[len] = '\0';
-        sdsSetLen( *s, len );
+        sds_set_len( *s, len );
         return;
 }
 void
-sdsCpy( sds_t *s, const char *t )
+sds_cpy( sds_t *s, const char *t )
 {
-        sdsCpyLen( s, t, strlen( t ) );
+        sds_cpy_len( s, t, strlen( t ) );
 }
 
-// compare two sds strings s1 and s2 with memcmp().
-//
-// Return value:
-//
-//     positive if s1 > s2.
-//     negative if s1 < s2.
-//     0 if s1 and s2 are exactly the same binary string.
-//
-// If two strings share exactly the same prefix, but one of the two has
-// additional characters, the longer string is considered to be greater than
-// the smaller one.
-//
 int
-sdsCmp( const sds_t s1, const sds_t s2 )
+sds_cmp( const sds_t s1, const sds_t s2 )
 {
         size_t l1, l2, minlen;
         int    cmp;
 
-        l1     = sdsLen( s1 );
-        l2     = sdsLen( s2 );
+        l1     = sds_len( s1 );
+        l2     = sds_len( s2 );
         minlen = ( l1 < l2 ) ? l1 : l2;
         cmp    = memcmp( s1, s2, minlen );
         if ( cmp == 0 ) return l1 > l2 ? 1 : ( l1 < l2 ? -1 : 0 );
@@ -257,6 +243,14 @@ _sdsRaw( const void *init, size_t len, size_t cap )
 int
 main( void )
 {
+        sds_t s = sds_new( "hello " );
+        assert( 0 == strcmp( "hello ", s ) );
+
+        sds_cat_printf( &s, "%s", "world" );
+        assert( 0 == strcmp( "hello world", s ) );
+
+        sds_free( s );
+
         printf( "Test passed.\n" );
         return 0;
 }
