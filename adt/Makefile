@@ -32,6 +32,7 @@ test: CFLAGS += -DADT_TEST_H_=1
 test: | ${BUILD}
 	@set -e
 	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} vec.c   && echo -n "vec   -- " && ./${BUILD}/test
+	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} sds.c   && echo -n "sds   -- " && ./${BUILD}/test
 	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} horn.c  && echo -n "horn  -- " && ./${BUILD}/test
 	@clang -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} dlink.c && echo -n "dlink -- " && ./${BUILD}/test
 	@echo "All done."
