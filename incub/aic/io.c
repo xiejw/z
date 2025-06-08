@@ -143,8 +143,9 @@ move_line_and_fillbuf:
 int
 main( void )
 {
+        struct ctx       *ctx = ctx_new( );
         struct io_reader *r;
-        error_t           err = io_reader_open( "io.c", &r );
+        error_t           err = io_reader_open( ctx, "io.c", &r );
 
         char  *buf;
         size_t size;
@@ -152,6 +153,7 @@ main( void )
                 printf( "%.*s\n", (int)size, buf );
         }
         io_reader_close( r );
+        ctx_free( ctx );
 
         printf( "Test passed.\n" );
         return 0;

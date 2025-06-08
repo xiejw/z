@@ -49,7 +49,7 @@ main:  | ${BUILD}
 
 io: CFLAGS += -DAIC_TEST_H_
 io:  | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} io.c ${LDFLAGS} && ./${BUILD}/a.out
+	clang -o ${BUILD}/a.out ${CFLAGS} ctx.c io.c ${LDFLAGS} && ./${BUILD}/a.out
 
 base64: CFLAGS += -DAIC_TEST_H_
 base64:  | ${BUILD}
