@@ -21,7 +21,7 @@ io_reader_open( const char *name, _OUT_ struct io_reader **out )
         struct io_reader *p = malloc( sizeof( *p ) );
         assert( p != NULL );
         int fd = open( name, O_RDONLY );
-        assert( fd >= 0 );
+        if ( fd < 0 ) return EIO;
         p->fd  = fd;
         p->err = OK;
         p->idx = 0;

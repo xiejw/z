@@ -1,17 +1,37 @@
 #include "tok.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+
 /* === Configuration -------------------------------------------------------- */
 #ifndef TOK_FILE
 #error TOK_FILE should be passed via "-DTOK_FILE"
 #endif
+
+#define PANIC( )                     \
+        do {                         \
+                printf( "panic\n" ); \
+                exit( -1 );          \
+        } while ( 0 )
+
+#define PANIC_IF_ERR( err ) _PANIC_IF_ERR( err, __FILE__, __LINE__ )
+
+#define _PANIC_IF_ERR( err, file, line )                            \
+        do {                                                        \
+                if ( ( err ) != OK ) {                              \
+                        printf( "file %s, line %d\n", file, line ); \
+                        PANIC( );                                   \
+                }                                                   \
+        } while ( 0 )
 
 /* === Main ----------------------------------------------------------------- */
 
 int
 main( void )
 {
-        struct tokenizer *p = tok_new( );
-        tok_load( p, TOK_FILE );
+        struct tokenizer *p;
+        error_t           err = tok_new( &p, TOK_FILE );
+        PANIC_IF_ERR( err );
         tok_encode( p, "hello world   " );
         tok_free( p );
 }

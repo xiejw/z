@@ -5,14 +5,12 @@
 
 struct tokenizer;
 
-struct tokenizer *tok_new( void );
-void              tok_free( struct tokenizer *p );
-
 /* Read tokenizer model file and create a tokenizer after that.
  *
  * Tokenizer model file should consist of lines of merge-able bytes with rank.
  */
-error_t tok_load( struct tokenizer *p, const char *model_fname );
+error_t tok_new( struct tokenizer **pp, const char *tok_model_name );
+void    tok_free( struct tokenizer *p );
 
 void tok_encode( struct tokenizer *p, const char *text );
 
