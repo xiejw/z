@@ -223,9 +223,10 @@ tok_free( struct tokenizer *p )
 }
 
 void
-tok_encode( struct tokenizer *p, const char *text )
+tok_encode( struct tokenizer *p, const char *text, vec_t( int ) * ps )
 {
         char **words;
         int    word_count;
         tok_split_text_to_words( p, text, &words, &word_count );
+        (void)ps;
 }

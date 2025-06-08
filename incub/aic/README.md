@@ -1,6 +1,5 @@
-## <span style='padding-top:0.3em'>AI</span>-C
+## AIC
 
- <span style='padding-top:0.3em'>AI</span>-C
 Artificial Intelligence Compute or AI Infrastrutre Compute.
 
 ### Staring Project

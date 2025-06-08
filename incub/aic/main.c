@@ -32,6 +32,10 @@ main( void )
         struct tokenizer *p;
         error_t           err = tok_new( &p, TOK_FILE );
         PANIC_IF_ERR( err );
-        tok_encode( p, "hello world   " );
+
+        vec_t( int ) tokens = vec_new( );
+        tok_encode( p, "hello world   ", &tokens );
+
+        vec_free( tokens );
         tok_free( p );
 }
