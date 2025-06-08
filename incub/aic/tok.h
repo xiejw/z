@@ -1,8 +1,10 @@
-#ifndef MLM_TOK_H_
-#define MLM_TOK_H_
+#ifndef AIC_TOK_H_
+#define AIC_TOK_H_
 
 #include <adt/types.h>
 #include <adt/vec.h>
+
+#include "ctx.h"
 
 struct tokenizer;
 
@@ -10,10 +12,11 @@ struct tokenizer;
  *
  * Tokenizer model file should consist of lines of merge-able bytes with rank.
  */
-error_t tok_new( struct tokenizer **pp, const char *tok_model_name );
+error_t tok_new( struct ctx *ctx, const char *tok_model_name,
+                 struct tokenizer **pp );
 void    tok_free( struct tokenizer *p );
 
 /* Encodes the text and puts all tokens into ps.*/
 void tok_encode( struct tokenizer *p, const char *text, vec_t( int ) * ps );
 
-#endif /* MLM_TOK_H_ */
+#endif /* AIC_TOK_H_ */

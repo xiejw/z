@@ -39,9 +39,6 @@
 #define DEBUG_PRINT 0
 #endif
 
-#define DEBUG \
-        if ( DEBUG_PRINT ) printf
-
 // === Data Structure ------------------------------------------------------ ===
 struct mergable_rank {
         char *mergable; /* owned. */
@@ -49,6 +46,7 @@ struct mergable_rank {
 };
 
 struct tokenizer {
+        struct ctx          *ctx;
         struct mergable_rank mergable_ranks[TOK_MERGE_PIECE_COUNT];
 };
 
@@ -173,12 +171,12 @@ tok_process_one_line_of_model_file( struct tokenizer *p, char *buf, size_t len )
 }
 
 static error_t
-tok_load_model_file( struct tokenizer *p, const char *fname )
+tok_load_model_file( struct ctx *ctx, struct tokenizer *p, const char *fname )
 {
         struct io_reader *r   = NULL;
-        error_t           err = io_reader_open( fname, &r );
+        error_t           err = io_reader_open( ctx, fname, &r );
         if ( err != OK ) {
-                DEBUG( "failed to open tok model name: %s\n", fname );
+                EMIT_ERROR_NOTE( ctx, "failed to open tokenizer model file." );
                 return err;
         }
 
@@ -192,7 +190,8 @@ tok_load_model_file( struct tokenizer *p, const char *fname )
         }
         err = OK;
         assert( p->mergable_ranks[TOK_MERGE_PIECE_COUNT - 1].mergable != NULL );
-        DEBUG( "Passed. tok_mergable_ranks sanity check.\n" );
+        if ( DEBUG_PRINT )
+                LOG_DEBUG( ctx, "Passed. tok_mergable_ranks sanity check." );
 
 cleanup:
         io_reader_close( r );
@@ -202,13 +201,14 @@ cleanup:
 // === Implementation ------------------------------------------------------ ===
 //
 error_t
-tok_new( struct tokenizer **pp, const char *tok_model_name )
+tok_new( struct ctx *ctx, const char *tok_model_name, struct tokenizer **pp )
 {
         struct tokenizer *p = calloc( 1, sizeof( *p ) );
         assert( p != NULL );
-        error_t err = tok_load_model_file( p, tok_model_name );
+        error_t err = tok_load_model_file( ctx, p, tok_model_name );
         if ( err != OK ) return err;
-        *pp = p;
+        p->ctx = ctx;
+        *pp    = p;
         return OK;
 }
 

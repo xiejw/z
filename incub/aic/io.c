@@ -1,6 +1,7 @@
 #include "io.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
@@ -8,20 +9,27 @@
 #define READ_BUF_SIZE 4096
 
 struct io_reader {
-        int     fd;
-        char    line[READ_BUF_SIZE];
-        error_t err;
-        size_t  idx; /* The next char to be consided for next call. */
-        size_t  end; /* The end marker in line buffer which has been filled. */
+        struct ctx *ctx; /* Unowned */
+        int         fd;
+        char        line[READ_BUF_SIZE];
+        error_t     err;
+        size_t      idx; /* The next char to be consided for next call. */
+        size_t end; /* The end marker in line buffer which has been filled. */
 };
 
 error_t
-io_reader_open( const char *name, _OUT_ struct io_reader **out )
+io_reader_open( struct ctx *ctx, const char *name,
+                _OUT_ struct io_reader **out )
 {
         struct io_reader *p = malloc( sizeof( *p ) );
         assert( p != NULL );
         int fd = open( name, O_RDONLY );
-        if ( fd < 0 ) return EIO;
+        if ( fd < 0 ) {
+                EMIT_ERROR_NOTE( ctx, "failed to open file %s: %s", name,
+                                 strerror( errno ) );
+                return EIO;
+        }
+        p->ctx = ctx;
         p->fd  = fd;
         p->err = OK;
         p->idx = 0;
@@ -69,6 +77,8 @@ fill_buf:
         }
 
         if ( c < 0 ) {
+                EMIT_ERROR_NOTE( r->ctx, "failed to read files: %s",
+                                 strerror( errno ) );
                 r->err = EIO;
                 return EIO;
         }
@@ -127,7 +137,7 @@ move_line_and_fillbuf:
 
 /* === --- Test Code -------------------------------------------------------- */
 
-#ifdef MLM_TEST_H_
+#ifdef AIC_TEST_H_
 #include <stdio.h>
 
 int
@@ -147,4 +157,4 @@ main( void )
         return 0;
 }
 
-#endif /* MLM_TEST_H_ */
+#endif /* AIC_TEST_H_ */

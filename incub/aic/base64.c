@@ -85,7 +85,7 @@ base64_decode( char *buf, size_t len )
 
 /* === --- Test Code -------------------------------------------------------- */
 
-#ifdef MLM_TEST_H_
+#ifdef AIC_TEST_H_
 #include <stdio.h>
 #include <string.h>
 
@@ -113,4 +113,4 @@ main( void )
         return 0;
 }
 
-#endif /* MLM_TEST_H_ */
+#endif /* AIC_TEST_H_ */

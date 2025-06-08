@@ -1,5 +1,5 @@
-#ifndef MLM_BASE64_H_
-#define MLM_BASE64_H_
+#ifndef AIC_BASE64_H_
+#define AIC_BASE64_H_
 
 #include <stdlib.h>
 
@@ -15,4 +15,4 @@
  */
 char *base64_decode( char *buf, size_t len );
 
-#endif /* MLM_BASE64_H_ */
+#endif /* AIC_BASE64_H_ */

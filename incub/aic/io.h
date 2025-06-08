@@ -1,16 +1,18 @@
-#ifndef MLM_IO_H_
-#define MLM_IO_H_
+#ifndef AIC_IO_H_
+#define AIC_IO_H_
 
 #include <stdlib.h>
 
 #include <adt/types.h>
+#include "ctx.h"
 
 // === --- IO Utils -------------------------------------------------------- ===
 
 // Forward declaration.
 struct io_reader;
 
-error_t io_reader_open( const char *name, _OUT_ struct io_reader **out );
+error_t io_reader_open( struct ctx *, const char *name,
+                        _OUT_ struct io_reader **out );
 void    io_reader_close( struct io_reader * );
 
 /* Read one line from the underlying file and point to the buffer via buf along
@@ -31,4 +33,4 @@ void    io_reader_close( struct io_reader * );
  */
 error_t io_reader_nextline( struct io_reader *, _OUT_ char **buf,
                             _OUT_ size_t *size, _OUT_ _NULLABLE_ int *partial );
-#endif /* MLM_IO_H_ */
+#endif /* AIC_IO_H_ */
