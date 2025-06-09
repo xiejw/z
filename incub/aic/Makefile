@@ -11,9 +11,16 @@ ADT_DIR   = ${ADT_ROOT}/adt
 CFLAGS   += -std=c11 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
-# Pick up adt
+# ADT
 CFLAGS   += -I${ADT_ROOT}
-LDFLAGS  += ${ADT_DIR}/sds.c
+LDFLAGS  += ${ADT_DIR}/sds.c ${ADT_DIR}/vec.c
+
+# Pcre2
+LDFLAGS  += -lpcre2-8
+ifeq ($(UNAME), Darwin)
+CFLAGS   += -I$(shell brew --prefix pcre2)/include
+LDFLAGS  += -L$(shell brew --prefix pcre2)/lib
+endif
 
 ifdef RELEASE
 CFLAGS   += -DNDEBUG -O3 -march=native

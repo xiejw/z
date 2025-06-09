@@ -25,13 +25,21 @@
 #include <time.h>
 #include <unistd.h>
 
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+
 #include <adt/sds.h>
+#include <adt/vec.h>
 
 #include "base64.h"
 #include "io.h"
 
 #define TOK_MAX_ID_LEN        10
 #define TOK_MERGE_PIECE_COUNT 128000
+
+#define TOK_SPLIT_PAT                                                          \
+        "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1," \
+        "3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
 
 #ifndef NDEBUG
 #define DEBUG_PRINT 1
@@ -48,28 +56,60 @@ struct mergable_rank {
 struct tokenizer {
         struct ctx          *ctx;
         struct mergable_rank mergable_ranks[TOK_MERGE_PIECE_COUNT];
+        pcre2_code          *re;
+        pcre2_match_data    *match_data;
 };
 
-// === Private Helper Methods----------------------------------------------- ===
+// === --- Private Helper Methods ------------------------------------------ ===
 
-/* === State Machine to split text into words ----------------------------------
+/* Split the text into words.
  *
  * The entire world is "copying" OpenAI's tiktoken. It uses a quite complex
  * regexp to split text into words before applying bpe.
  *
- * Instead of using a fancy dependency, e.g, pcre2, here I wrote a state
- * machine manually. The downside is unicode support becomes a feature request
- * later to understand \p{L} and \p{N}; in addition to correctly parse unicode
- * byte stream.
+ * There are two approaches
+ * - Using a established library, e.g., pcre2, which support lookahead and
+ * unicode.
+ * - Writing a state machine manually. The downside is unicode support becomes
+ *   a feature request later to understand \p{L} and \p{N}; in addition to
+ *   correctly parse unicode byte stream.
+ *
+ * Here, pcre2 is used first.
  */
 static void
 tok_split_text_to_words( struct tokenizer *p, const char *text,
-                         /*output*/ char ***words, int *count )
+                         _OUT_ vec_t( size_t ) * pwords_idx )
 {
-        (void)p;
-        (void)text;
-        (void)words;
-        (void)count;
+        PCRE2_SPTR subject        = (PCRE2_SPTR)text;
+        PCRE2_SIZE subject_length = strlen( text );
+
+        size_t i = 0;
+        vec_push( pwords_idx, i );
+
+        while ( i < subject_length ) {
+                int rc = pcre2_match(
+                    p->re,          /* the compiled pattern */
+                    subject,        /* the subject string */
+                    subject_length, /* the length of the subject */
+                    i,              /* start at offset in the subject */
+                    0,              /* default options */
+                    p->match_data,  /* block for storing the result */
+                    NULL );         /* use default match context */
+
+                assert( rc > 0 );
+                assert( rc == 1 );
+
+                PCRE2_SIZE *ovector =
+                    pcre2_get_ovector_pointer( p->match_data );
+
+                assert( ovector[0] == i );
+                LOG_DEBUG( p->ctx,
+                           "Found split word (from %2d to %2d) `%.*s`\n",
+                           (int)i, (int)ovector[1], (int)( ovector[1] - i ),
+                           text + i );
+                i = ovector[1];
+                vec_push( pwords_idx, i );
+        }
 }
 
 // === Tokenizer Model File and Mergable Ranks ---------------------------------
@@ -171,12 +211,13 @@ tok_process_one_line_of_model_file( struct tokenizer *p, char *buf, size_t len )
 }
 
 static error_t
-tok_load_model_file( struct ctx *ctx, struct tokenizer *p, const char *fname )
+tok_load_model_file( struct tokenizer *p, const char *fname )
 {
         struct io_reader *r   = NULL;
-        error_t           err = io_reader_open( ctx, fname, &r );
+        error_t           err = io_reader_open( p->ctx, fname, &r );
         if ( err != OK ) {
-                EMIT_ERROR_NOTE( ctx, "failed to open tokenizer model file." );
+                EMIT_ERROR_NOTE( p->ctx,
+                                 "failed to open tokenizer model file." );
                 return err;
         }
 
@@ -191,11 +232,41 @@ tok_load_model_file( struct ctx *ctx, struct tokenizer *p, const char *fname )
         err = OK;
         assert( p->mergable_ranks[TOK_MERGE_PIECE_COUNT - 1].mergable != NULL );
         if ( DEBUG_PRINT )
-                LOG_DEBUG( ctx, "Passed. tok_mergable_ranks sanity check." );
+                LOG_DEBUG( p->ctx, "Passed. tok_mergable_ranks sanity check." );
 
 cleanup:
         io_reader_close( r );
         return err;
+}
+
+static error_t
+tok_compile_word_splitting_re( struct tokenizer *p )
+{
+        PCRE2_SPTR pattern = (const unsigned char *)TOK_SPLIT_PAT;  // TODO
+
+        PCRE2_SIZE  erroroffset;
+        int         errornumber;
+        pcre2_code *re = pcre2_compile(
+            pattern,               /* the pattern */
+            PCRE2_ZERO_TERMINATED, /* indicates pattern is zero-terminated */
+            PCRE2_UTF,             /* default options */
+            &errornumber,          /* for error number */
+            &erroroffset,          /* for error offset */
+            NULL );                /* use default compile context */
+
+        if ( re == NULL ) {
+                PCRE2_UCHAR buffer[256];
+                pcre2_get_error_message( errornumber, buffer,
+                                         sizeof( buffer ) );
+                EMIT_ERROR_NOTE( p->ctx,
+                                 "PCRE2 compilation failed at offset %d: %s\n",
+                                 (int)erroroffset, buffer );
+                return ERROR;
+        }
+
+        p->re         = re;
+        p->match_data = pcre2_match_data_create_from_pattern( re, NULL );
+        return OK;
 }
 
 // === Implementation ------------------------------------------------------ ===
@@ -205,10 +276,15 @@ tok_new( struct ctx *ctx, const char *tok_model_name, struct tokenizer **pp )
 {
         struct tokenizer *p = calloc( 1, sizeof( *p ) );
         assert( p != NULL );
-        error_t err = tok_load_model_file( ctx, p, tok_model_name );
+
+        p->ctx      = ctx;
+        error_t err = tok_load_model_file( p, tok_model_name );
         if ( err != OK ) return err;
-        p->ctx = ctx;
-        *pp    = p;
+
+        err = tok_compile_word_splitting_re( p );
+        if ( err != OK ) return err;
+
+        *pp = p;
         return OK;
 }
 
@@ -219,14 +295,16 @@ tok_free( struct tokenizer *p )
         for ( int i = 0; i < TOK_MERGE_PIECE_COUNT; i++ ) {
                 free( p->mergable_ranks[i].mergable );
         }
+        pcre2_match_data_free( p->match_data );
+        pcre2_code_free( p->re );
         free( p );
 }
 
 void
 tok_encode( struct tokenizer *p, const char *text, vec_t( int ) * ps )
 {
-        char **words;
-        int    word_count;
-        tok_split_text_to_words( p, text, &words, &word_count );
+        vec_t( size_t ) words_idx = vec_new( );
+        tok_split_text_to_words( p, text, &words_idx );
         (void)ps;
+        vec_free( words_idx );
 }
