@@ -30,8 +30,9 @@ main( void )
         error_t           err = tok_new( ctx, TOK_FILE, &p );
         PANIC_IF_ERR( err, ctx );
 
-        vec_t( int ) tokens = vec_new( );
-        tok_encode( p, "hello world   ", &tokens );
+        vec_t( size_t ) tokens = vec_new( );
+        err                    = tok_encode( p, "hello world   ", &tokens );
+        PANIC_IF_ERR( err, ctx );
 
         vec_free( tokens );
         tok_free( p );

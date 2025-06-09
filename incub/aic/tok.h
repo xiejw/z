@@ -16,7 +16,8 @@ error_t tok_new( struct ctx *ctx, const char *tok_model_name,
                  struct tokenizer **pp );
 void    tok_free( struct tokenizer *p );
 
-/* Encodes the text and puts all tokens into ps.*/
-void tok_encode( struct tokenizer *p, const char *text, vec_t( int ) * ps );
+/* Encodes the text and puts all tokens into ptokens.*/
+error_t tok_encode( struct tokenizer *p, const char *text,
+                    vec_t( size_t ) * ptokens );
 
 #endif /* AIC_TOK_H_ */

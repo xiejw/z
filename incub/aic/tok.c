@@ -62,6 +62,8 @@ struct tokenizer {
 
 // === --- Private Helper Methods ------------------------------------------ ===
 
+// === BPE Algorithms ----------------------------------------------------------
+
 /* Split the text into words.
  *
  * The entire world is "copying" OpenAI's tiktoken. It uses a quite complex
@@ -76,12 +78,14 @@ struct tokenizer {
  *
  * Here, pcre2 is used first.
  */
-static void
+static error_t
 tok_split_text_to_words( struct tokenizer *p, const char *text,
                          _OUT_ vec_t( size_t ) * pwords_idx )
 {
         PCRE2_SPTR subject        = (PCRE2_SPTR)text;
         PCRE2_SIZE subject_length = strlen( text );
+
+        if ( subject_length == 0 ) return OK;
 
         size_t i = 0;
         vec_push( pwords_idx, i );
@@ -96,8 +100,11 @@ tok_split_text_to_words( struct tokenizer *p, const char *text,
                     p->match_data,  /* block for storing the result */
                     NULL );         /* use default match context */
 
-                assert( rc > 0 );
-                assert( rc == 1 );
+                if ( rc != 1 ) {
+                        EMIT_ERROR_NOTE(
+                            p->ctx, "unexpected internal error: rc = %d", rc );
+                        return ERROR;
+                }
 
                 PCRE2_SIZE *ovector =
                     pcre2_get_ovector_pointer( p->match_data );
@@ -110,6 +117,19 @@ tok_split_text_to_words( struct tokenizer *p, const char *text,
                 i = ovector[1];
                 vec_push( pwords_idx, i );
         }
+        return OK;
+}
+
+error_t
+tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
+         vec_t( size_t ) * ptokens )
+{
+        (void)p;
+        (void)text;
+        (void)start;
+        (void)end;
+        (void)ptokens;
+        return OK;
 }
 
 // === Tokenizer Model File and Mergable Ranks ---------------------------------
@@ -300,11 +320,37 @@ tok_free( struct tokenizer *p )
         free( p );
 }
 
-void
-tok_encode( struct tokenizer *p, const char *text, vec_t( int ) * ps )
+error_t
+tok_encode( struct tokenizer *p, const char *text, vec_t( size_t ) * ptokens )
 {
+        error_t err = OK;
+
         vec_t( size_t ) words_idx = vec_new( );
-        tok_split_text_to_words( p, text, &words_idx );
-        (void)ps;
+        err = tok_split_text_to_words( p, text, &words_idx );
+        if ( err != OK ) {
+                EMIT_ERROR_NOTE( p->ctx,
+                                 "unexpected error during splitting words" );
+                goto cleanup;
+        }
+
+        size_t id_count = vec_size( words_idx );
+        if ( id_count == 0 ) goto cleanup;
+
+        assert( id_count > 1 );  // 0 and end are inserted anyway.
+
+        for ( size_t i = 0; i < id_count - 1; i++ ) {
+                size_t start = words_idx[i];
+                size_t end   = words_idx[i + 1];
+
+                err = tok_bpe( p, text, start, end, ptokens );
+                if ( err != OK ) {
+                        EMIT_ERROR_NOTE(
+                            p->ctx, "unexpected error during encoding words" );
+                        goto cleanup;
+                }
+        }
+
+cleanup:
         vec_free( words_idx );
+        return err;
 }
