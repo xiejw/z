@@ -34,8 +34,9 @@
 #include "base64.h"
 #include "io.h"
 
-#define TOK_MAX_ID_LEN        10
-#define TOK_MERGE_PIECE_COUNT 128000
+#define TOK_MAX_ID_LEN            10
+#define TOK_MERGE_PIECE_COUNT     128000
+#define TOK_MERGE_PIECE_HASH_SIZE 256000
 
 #define TOK_SPLIT_PAT                                                          \
         "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1," \
@@ -54,10 +55,15 @@ struct mergable_rank {
 };
 
 struct tokenizer {
-        struct ctx          *ctx;
-        struct mergable_rank mergable_ranks[TOK_MERGE_PIECE_COUNT];
-        pcre2_code          *re;
-        pcre2_match_data    *match_data;
+        struct ctx *ctx; /* Unowned. */
+
+        /* Used for splitting words. */
+        pcre2_code       *re;
+        pcre2_match_data *match_data;
+
+        /* Used for bpe. */
+        struct mergable_rank  mergable_ranks[TOK_MERGE_PIECE_COUNT];
+        struct mergable_rank *hashes[TOK_MERGE_PIECE_HASH_SIZE];
 };
 
 // === --- Private Helper Methods ------------------------------------------ ===
@@ -130,6 +136,52 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
         (void)end;
         (void)ptokens;
         return OK;
+}
+
+// === Simple Hash Table -------------------------------------------------------
+
+static size_t
+hash_fn( const char *text, size_t len )
+{
+        size_t h = 0;
+        for ( size_t i = 0; i < len; i++ ) {
+                const char c = text[i];
+                h += (size_t)c;
+                h *= 37;
+        }
+        return h;
+}
+
+static void
+hash_init( struct mergable_rank *mergable_ranks, struct mergable_rank **hashes )
+{
+        int conflict_cnt  = 0;
+        int conflict_cnt5 = 0;
+        memset( hashes, 0,
+                sizeof( struct mergable_rank * ) * TOK_MERGE_PIECE_HASH_SIZE );
+        for ( int i = 0; i < TOK_MERGE_PIECE_COUNT; i++ ) {
+                const char *text = mergable_ranks[i].mergable;
+                size_t      hash = hash_fn( text, strlen( text ) );
+                hash %= TOK_MERGE_PIECE_HASH_SIZE;
+                if ( hashes[hash] == NULL ) {
+                        hashes[hash] = &mergable_ranks[i];
+                        continue;
+                }
+                conflict_cnt++;
+
+                size_t count = 1;
+                while ( 1 ) {
+                        hash += count++;
+                        if ( count == 5 ) conflict_cnt5++;
+                        if ( hash >= TOK_MERGE_PIECE_HASH_SIZE )
+                                hash -= TOK_MERGE_PIECE_HASH_SIZE;
+                        if ( hashes[hash] == NULL ) {
+                                hashes[hash] = &mergable_ranks[i];
+                                break;
+                        }
+                }
+        }
+        printf( "conflicts %d conflict 5 %d\n", conflict_cnt, conflict_cnt5 );
 }
 
 // === Tokenizer Model File and Mergable Ranks ---------------------------------
@@ -300,6 +352,8 @@ tok_new( struct ctx *ctx, const char *tok_model_name, struct tokenizer **pp )
         p->ctx      = ctx;
         error_t err = tok_load_model_file( p, tok_model_name );
         if ( err != OK ) return err;
+
+        hash_init( p->mergable_ranks, p->hashes );
 
         err = tok_compile_word_splitting_re( p );
         if ( err != OK ) return err;
