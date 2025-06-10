@@ -42,6 +42,8 @@
         "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1," \
         "3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
 
+#define TOK_LOGGING_PREFIX "[Tok] "
+
 #ifndef NDEBUG
 #define DEBUG_PRINT 1
 #else
@@ -104,7 +106,9 @@ hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
 #endif
         }
 #ifndef NDEBUG
-        LOG_DEBUG( ctx, "Max hash chain size for mergeable_rank is %d",
+        LOG_DEBUG( ctx,
+                   TOK_LOGGING_PREFIX
+                   "Max hash chain size for mergeable_rank is %d",
                    (int)max_hash_chain_count );
 #else
         (void)ctx;
@@ -192,6 +196,7 @@ tok_split_text_to_words( struct tokenizer *p, const char *text,
 
                 assert( ovector[0] == i );
                 LOG_DEBUG( p->ctx,
+                           TOK_LOGGING_PREFIX
                            "Found split word (from %2d to %2d) `%.*s`\n",
                            (int)i, (int)ovector[1], (int)( ovector[1] - i ),
                            text + i );
@@ -208,9 +213,11 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
         struct mergeable_rank *mergeable_rank =
             hash_search( p->hashes, text + start, end - start );
         if ( mergeable_rank != NULL ) {
-                printf( "found mergeable_ranks for `%.*s`: `%s` %d\n",
-                        (int)(end - start), text + start, mergeable_rank->mergeable,
-                        mergeable_rank->rank );
+                LOG_DEBUG( p->ctx,
+                           TOK_LOGGING_PREFIX
+                           "found mergeable_ranks for `%.*s`: `%s` %d\n",
+                           (int)( end - start ), text + start,
+                           mergeable_rank->mergeable, mergeable_rank->rank );
         }
         (void)ptokens;
         return OK;
@@ -337,7 +344,7 @@ tok_load_model_file( struct tokenizer *p, const char *fname )
         assert( p->mergeable_ranks[TOK_MERGE_PIECE_COUNT - 1].mergeable !=
                 NULL );
         if ( DEBUG_PRINT )
-                LOG_DEBUG( p->ctx,
+                LOG_DEBUG( p->ctx, TOK_LOGGING_PREFIX
                            "Passed. tok_mergeable_ranks sanity check." );
 
 cleanup:
