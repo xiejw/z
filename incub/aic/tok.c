@@ -49,8 +49,8 @@
 #endif
 
 // === Data Structure ------------------------------------------------------ ===
-struct mergable_rank {
-        char *mergable; /* owned. */
+struct mergeable_rank {
+        char *mergeable; /* owned. */
         int   rank;
 };
 
@@ -62,11 +62,86 @@ struct tokenizer {
         pcre2_match_data *match_data;
 
         /* Used for bpe. */
-        struct mergable_rank  mergable_ranks[TOK_MERGE_PIECE_COUNT];
-        struct mergable_rank *hashes[TOK_MERGE_PIECE_HASH_SIZE];
+        struct mergeable_rank mergeable_ranks[TOK_MERGE_PIECE_COUNT];
+        vec_t( struct mergeable_rank * ) hashes[TOK_MERGE_PIECE_HASH_SIZE];
 };
 
 // === --- Private Helper Methods ------------------------------------------ ===
+
+// === Simple Hash Table -------------------------------------------------------
+
+static size_t
+hash_fn( const char *text, size_t len )
+{
+        size_t h = 0;
+        for ( size_t i = 0; i < len; i++ ) {
+                const char c = text[i];
+                h += (size_t)c;
+                h *= 37;
+        }
+        return h;
+}
+
+static void
+hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
+           vec_t( struct mergeable_rank * ) * hashes )
+{
+#ifndef NDEBUG
+        size_t max_hash_chain_count = 0;
+#endif
+        memset( hashes, 0,
+                sizeof( vec_t( struct mergeable_rank * ) ) *
+                    TOK_MERGE_PIECE_HASH_SIZE );
+        for ( int i = 0; i < TOK_MERGE_PIECE_COUNT; i++ ) {
+                const char *text = mergeable_ranks[i].mergeable;
+                size_t      hash = hash_fn( text, strlen( text ) );
+                hash %= TOK_MERGE_PIECE_HASH_SIZE;
+                vec_push( &hashes[hash], &mergeable_ranks[i] );
+#ifndef NDEBUG
+                size_t vec_size = vec_size( hashes[hash] );
+                if ( vec_size > max_hash_chain_count )
+                        max_hash_chain_count = vec_size;
+#endif
+        }
+#ifndef NDEBUG
+        LOG_DEBUG( ctx, "Max hash chain size for mergeable_rank is %d",
+                   (int)max_hash_chain_count );
+#else
+        (void)ctx;
+#endif
+}
+
+static void
+hash_deinit( vec_t( struct mergeable_rank * ) * hashes )
+{
+        for ( int i = 0; i < TOK_MERGE_PIECE_HASH_SIZE; i++ ) {
+                vec_free( hashes[i] );
+        }
+}
+
+// Null if not found
+static struct mergeable_rank *
+hash_search( vec_t( struct mergeable_rank * ) * hashes, const char *text,
+             size_t len )
+{
+        size_t hash = hash_fn( text, len );
+        hash %= TOK_MERGE_PIECE_HASH_SIZE;
+        vec_t( struct mergeable_rank * ) p = hashes[hash];
+        size_t vec_size                    = vec_size( p );
+        if ( vec_size == 0 ) return NULL;
+        for ( size_t i = 0; i < vec_size; i++ ) {
+                struct mergeable_rank *candidate = p[i];
+                const char            *mergeable = candidate->mergeable;
+                for ( size_t x = 0; x < len; x++ ) {
+                        if ( mergeable[x] != text[x] ) {
+                                candidate = NULL;
+                                break;
+                        }
+                }
+                if ( candidate != NULL ) return candidate;
+        }
+        return NULL;
+}
 
 // === BPE Algorithms ----------------------------------------------------------
 
@@ -130,58 +205,15 @@ error_t
 tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
          vec_t( size_t ) * ptokens )
 {
-        (void)p;
-        (void)text;
-        (void)start;
-        (void)end;
+        struct mergeable_rank *mergeable_rank =
+            hash_search( p->hashes, text + start, end - start );
+        if ( mergeable_rank != NULL ) {
+                printf( "found mergeable_ranks for `%.*s`: `%s` %d\n",
+                        (int)(end - start), text + start, mergeable_rank->mergeable,
+                        mergeable_rank->rank );
+        }
         (void)ptokens;
         return OK;
-}
-
-// === Simple Hash Table -------------------------------------------------------
-
-static size_t
-hash_fn( const char *text, size_t len )
-{
-        size_t h = 0;
-        for ( size_t i = 0; i < len; i++ ) {
-                const char c = text[i];
-                h += (size_t)c;
-                h *= 37;
-        }
-        return h;
-}
-
-static void
-hash_init( struct mergable_rank *mergable_ranks, struct mergable_rank **hashes )
-{
-        int conflict_cnt  = 0;
-        int conflict_cnt5 = 0;
-        memset( hashes, 0,
-                sizeof( struct mergable_rank * ) * TOK_MERGE_PIECE_HASH_SIZE );
-        for ( int i = 0; i < TOK_MERGE_PIECE_COUNT; i++ ) {
-                const char *text = mergable_ranks[i].mergable;
-                size_t      hash = hash_fn( text, strlen( text ) );
-                hash %= TOK_MERGE_PIECE_HASH_SIZE;
-                if ( hashes[hash] == NULL ) {
-                        hashes[hash] = &mergable_ranks[i];
-                        continue;
-                }
-                conflict_cnt++;
-
-                size_t count = 1;
-                while ( 1 ) {
-                        hash += count++;
-                        if ( count == 5 ) conflict_cnt5++;
-                        if ( hash >= TOK_MERGE_PIECE_HASH_SIZE )
-                                hash -= TOK_MERGE_PIECE_HASH_SIZE;
-                        if ( hashes[hash] == NULL ) {
-                                hashes[hash] = &mergable_ranks[i];
-                                break;
-                        }
-                }
-        }
-        printf( "conflicts %d conflict 5 %d\n", conflict_cnt, conflict_cnt5 );
 }
 
 // === Tokenizer Model File and Mergable Ranks ---------------------------------
@@ -196,11 +228,11 @@ tok_find_next_space( const char *buf, int len )
         return ( i == len ) ? -1 : i;
 }
 
-/* A static array for the mergable_ranks from 127990 to 127999. This table is
+/* A static array for the mergeable_ranks from 127990 to 127999. This table is
  * printed in the Python world so we could sanity check whether the logic here
  * is correct or not. */
-static const int   tok_mergable_ranks_starting_id = 127990;
-static const char *tok_mergable_ranks[]           = {
+static const int   tok_mergeable_ranks_starting_id = 127990;
+static const char *tok_mergeable_ranks[]           = {
     /* 127990=*/"e0b98ce0b881e0b8a3",
     /* 127991 */ "ceb6ceb1",
     /* 127992 */ "20eb8d94ec9ab1",
@@ -241,7 +273,7 @@ tok_process_one_line_of_model_file( struct tokenizer *p, char *buf, size_t len )
                 "expect one space only for each line in tokenizer model file" );
 
         /* Decode merge-able piece */
-        char *mergable = base64_decode( buf, (size_t)space_id );
+        char *mergeable = base64_decode( buf, (size_t)space_id );
 
         /* Decode rank id */
         char   id_buf[TOK_MAX_ID_LEN]; /* strtol expects NULL-terminator.*/
@@ -256,25 +288,25 @@ tok_process_one_line_of_model_file( struct tokenizer *p, char *buf, size_t len )
 
         /* Store into Tokenizer */
         assert( rank_id >= 0 && rank_id <= TOK_MERGE_PIECE_COUNT );
-        assert( p->mergable_ranks[rank_id].mergable == NULL );
+        assert( p->mergeable_ranks[rank_id].mergeable == NULL );
         /* The model file is sequentially recorded. */
         assert( rank_id == 0 ||
-                p->mergable_ranks[rank_id - 1].mergable != NULL );
-        p->mergable_ranks[rank_id].mergable = mergable;
-        p->mergable_ranks[rank_id].rank     = rank_id;
+                p->mergeable_ranks[rank_id - 1].mergeable != NULL );
+        p->mergeable_ranks[rank_id].mergeable = _MOVED_IN_ mergeable;
+        p->mergeable_ranks[rank_id].rank      = rank_id;
 
 #ifndef NDBUG
-        /* Perform sanity check. See tok_mergable_ranks for details. */
-        if ( rank_id >= tok_mergable_ranks_starting_id ) {
+        /* Perform sanity check. See tok_mergeable_ranks for details. */
+        if ( rank_id >= tok_mergeable_ranks_starting_id ) {
                 sds_t s = sds_empty_with_cap( 200 );
                 int   i;
-                for ( i = 0; mergable[i] != '\0'; i++ ) {
+                for ( i = 0; mergeable[i] != '\0'; i++ ) {
                         sds_cat_printf( &s, "%02x",
-                                        (unsigned char)mergable[i] );
+                                        (unsigned char)mergeable[i] );
                 }
                 const char *expected_piece =
-                    tok_mergable_ranks[rank_id -
-                                       tok_mergable_ranks_starting_id];
+                    tok_mergeable_ranks[rank_id -
+                                        tok_mergeable_ranks_starting_id];
                 // DEBUG( "expect %s got %s\n", expected_piece, s );
                 assert( 0 == strcmp( expected_piece, s ) );
                 sds_free( s );
@@ -302,9 +334,11 @@ tok_load_model_file( struct tokenizer *p, const char *fname )
                 goto cleanup;
         }
         err = OK;
-        assert( p->mergable_ranks[TOK_MERGE_PIECE_COUNT - 1].mergable != NULL );
+        assert( p->mergeable_ranks[TOK_MERGE_PIECE_COUNT - 1].mergeable !=
+                NULL );
         if ( DEBUG_PRINT )
-                LOG_DEBUG( p->ctx, "Passed. tok_mergable_ranks sanity check." );
+                LOG_DEBUG( p->ctx,
+                           "Passed. tok_mergeable_ranks sanity check." );
 
 cleanup:
         io_reader_close( r );
@@ -353,7 +387,7 @@ tok_new( struct ctx *ctx, const char *tok_model_name, struct tokenizer **pp )
         error_t err = tok_load_model_file( p, tok_model_name );
         if ( err != OK ) return err;
 
-        hash_init( p->mergable_ranks, p->hashes );
+        hash_init( ctx, p->mergeable_ranks, p->hashes );
 
         err = tok_compile_word_splitting_re( p );
         if ( err != OK ) return err;
@@ -366,9 +400,12 @@ void
 tok_free( struct tokenizer *p )
 {
         if ( p == NULL ) return;
+
         for ( int i = 0; i < TOK_MERGE_PIECE_COUNT; i++ ) {
-                free( p->mergable_ranks[i].mergable );
+                free( p->mergeable_ranks[i].mergeable );
         }
+        hash_deinit( p->hashes );
+
         pcre2_match_data_free( p->match_data );
         pcre2_code_free( p->re );
         free( p );
