@@ -35,9 +35,9 @@
 #include "io.h"
 #include "util.h"
 
-#define TOK_MAX_ID_LEN            10
-#define TOK_MERGE_PIECE_COUNT     128000
-#define TOK_MERGE_PIECE_HASH_SIZE 256000
+#define TOK_MAX_ID_LEN              10
+#define TOK_MERGEALBE_RANK_COUNT    128000
+#define TOK_MERGEABLE_HASH_TBL_SIZE 131072 /* The next 2 to power int. */
 
 #define TOK_SPLIT_PAT                                                          \
         "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1," \
@@ -65,8 +65,8 @@ struct tokenizer {
         pcre2_match_data *match_data;
 
         /* Used for bpe. */
-        struct mergeable_rank mergeable_ranks[TOK_MERGE_PIECE_COUNT];
-        vec_t( struct mergeable_rank * ) hashes[TOK_MERGE_PIECE_HASH_SIZE];
+        struct mergeable_rank mergeable_ranks[TOK_MERGEALBE_RANK_COUNT];
+        vec_t( struct mergeable_rank * ) hashes[TOK_MERGEABLE_HASH_TBL_SIZE];
 };
 
 // === --- Private Helper Methods ------------------------------------------ ===
@@ -96,10 +96,10 @@ hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
 #ifndef NDEBUG
         size_t max_hash_chain_count = 0;
 #endif
-        for ( int i = 0; i < TOK_MERGE_PIECE_COUNT; i++ ) {
+        for ( int i = 0; i < TOK_MERGEALBE_RANK_COUNT; i++ ) {
                 const char *text = mergeable_ranks[i].mergeable;
                 size_t      hash = hash_fn( text, strlen( text ) );
-                hash %= TOK_MERGE_PIECE_HASH_SIZE;
+                hash &= ( TOK_MERGEABLE_HASH_TBL_SIZE - 1 );
                 vec_push( &hashes[hash], &mergeable_ranks[i] );
 #ifndef NDEBUG
                 size_t vec_size = vec_size( hashes[hash] );
@@ -120,31 +120,26 @@ hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
 static void
 hash_deinit( vec_t( struct mergeable_rank * ) * hashes )
 {
-        for ( int i = 0; i < TOK_MERGE_PIECE_HASH_SIZE; i++ ) {
+        for ( int i = 0; i < TOK_MERGEABLE_HASH_TBL_SIZE; i++ ) {
                 vec_free( hashes[i] );
         }
 }
 
-// Null if not found
+// NULL if not found
 static struct mergeable_rank *
 hash_search( vec_t( struct mergeable_rank * ) * hashes, const char *text,
              size_t len )
 {
         size_t hash = hash_fn( text, len );
-        hash %= TOK_MERGE_PIECE_HASH_SIZE;
+        hash &= ( TOK_MERGEABLE_HASH_TBL_SIZE - 1 );
         vec_t( struct mergeable_rank * ) p = hashes[hash];
         size_t vec_size                    = vec_size( p );
         if ( vec_size == 0 ) return NULL;
+
         for ( size_t i = 0; i < vec_size; i++ ) {
                 struct mergeable_rank *candidate = p[i];
                 const char            *mergeable = candidate->mergeable;
-                for ( size_t x = 0; x < len; x++ ) {
-                        if ( mergeable[x] != text[x] ) {
-                                candidate = NULL;
-                                break;
-                        }
-                }
-                if ( candidate != NULL ) return candidate;
+                if ( 0 == memcmp( mergeable, text, len ) ) return candidate;
         }
         return NULL;
 }
@@ -298,7 +293,7 @@ tok_process_one_line_of_model_file( struct tokenizer *p, char *buf, size_t len )
         assert( endptr == id_buf + id_len );
 
         /* Store into Tokenizer */
-        assert( rank_id >= 0 && rank_id <= TOK_MERGE_PIECE_COUNT );
+        assert( rank_id >= 0 && rank_id <= TOK_MERGEALBE_RANK_COUNT );
         assert( p->mergeable_ranks[rank_id].mergeable == NULL );
         /* The model file is sequentially recorded. */
         assert( rank_id == 0 ||
@@ -345,7 +340,7 @@ tok_load_model_file( struct tokenizer *p, const char *fname )
                 goto cleanup;
         }
         err = OK;
-        assert( p->mergeable_ranks[TOK_MERGE_PIECE_COUNT - 1].mergeable !=
+        assert( p->mergeable_ranks[TOK_MERGEALBE_RANK_COUNT - 1].mergeable !=
                 NULL );
         if ( DEBUG_PRINT )
                 LOG_DEBUG( p->ctx, TOK_LOGGING_PREFIX
@@ -431,7 +426,7 @@ tok_free( struct tokenizer *p )
 {
         if ( p == NULL ) return;
 
-        for ( int i = 0; i < TOK_MERGE_PIECE_COUNT; i++ ) {
+        for ( int i = 0; i < TOK_MERGEALBE_RANK_COUNT; i++ ) {
                 free( p->mergeable_ranks[i].mergeable );
         }
         hash_deinit( p->hashes );
