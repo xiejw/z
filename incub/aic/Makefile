@@ -52,7 +52,7 @@ CFLAGS   += -DTOK_FILE="\"${TOK_FILE}\""
 # === Rules --------------------------------------------------------------------
 #
 main:  | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} ctx.c base64.c io.c tok.c main.c ${LDFLAGS} && ./${BUILD}/a.out
+	clang -o ${BUILD}/a.out ${CFLAGS} ctx.c base64.c io.c tok.c util.c main.c ${LDFLAGS} && ./${BUILD}/a.out
 
 io: CFLAGS += -DAIC_TEST_H_
 io:  | ${BUILD}

@@ -32,6 +32,9 @@ void
 ctx_emit_note( struct ctx *p, enum ctx_note_level note_level, const char *file,
                int line, const char *fmt, ... )
 {
+#ifdef NDEBUG
+        (void)note_level;
+#endif
         assert( note_level == CTX_NOTE_ERROR );
         va_list args;
         va_start( args, fmt );

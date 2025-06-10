@@ -33,6 +33,7 @@
 
 #include "base64.h"
 #include "io.h"
+#include "util.h"
 
 #define TOK_MAX_ID_LEN            10
 #define TOK_MERGE_PIECE_COUNT     128000
@@ -84,6 +85,10 @@ hash_fn( const char *text, size_t len )
         return h;
 }
 
+/* Build a hash table to store all mergeable_ranks.
+ *
+ * NOTE: This function assume hashes array are zero initialized.
+ */
 static void
 hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
            vec_t( struct mergeable_rank * ) * hashes )
@@ -91,9 +96,6 @@ hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
 #ifndef NDEBUG
         size_t max_hash_chain_count = 0;
 #endif
-        memset( hashes, 0,
-                sizeof( vec_t( struct mergeable_rank * ) ) *
-                    TOK_MERGE_PIECE_HASH_SIZE );
         for ( int i = 0; i < TOK_MERGE_PIECE_COUNT; i++ ) {
                 const char *text = mergeable_ranks[i].mergeable;
                 size_t      hash = hash_fn( text, strlen( text ) );
@@ -235,6 +237,7 @@ tok_find_next_space( const char *buf, int len )
         return ( i == len ) ? -1 : i;
 }
 
+#ifndef NDEBUG
 /* A static array for the mergeable_ranks from 127990 to 127999. This table is
  * printed in the Python world so we could sanity check whether the logic here
  * is correct or not. */
@@ -250,6 +253,7 @@ static const char *tok_mergeable_ranks[]           = {
     /* 127997 */ "20d0b2d18bd181d0bed0bad0bed0b9",
     /* 127998 */ "e383bce383bc",
     /* 127999 */ "e994a6" };
+#endif
 
 /* Process one line read from tokenizer model file.
  *
@@ -302,7 +306,7 @@ tok_process_one_line_of_model_file( struct tokenizer *p, char *buf, size_t len )
         p->mergeable_ranks[rank_id].mergeable = _MOVED_IN_ mergeable;
         p->mergeable_ranks[rank_id].rank      = rank_id;
 
-#ifndef NDBUG
+#ifndef NDEBUG
         /* Perform sanity check. See tok_mergeable_ranks for details. */
         if ( rank_id >= tok_mergeable_ranks_starting_id ) {
                 sds_t s = sds_empty_with_cap( 200 );
@@ -387,17 +391,36 @@ tok_compile_word_splitting_re( struct tokenizer *p )
 error_t
 tok_new( struct ctx *ctx, const char *tok_model_name, struct tokenizer **pp )
 {
+        double            start_ms, end_ms;
         struct tokenizer *p = calloc( 1, sizeof( *p ) );
         assert( p != NULL );
 
         p->ctx      = ctx;
+        start_ms    = time_ms_since_epoch( );
         error_t err = tok_load_model_file( p, tok_model_name );
+        end_ms      = time_ms_since_epoch( );
         if ( err != OK ) return err;
 
+        LOG_DEBUG(
+            ctx, TOK_LOGGING_PREFIX "Took %f ms to load tokenizer model file.",
+            end_ms - start_ms );
+
+        start_ms = time_ms_since_epoch( );
         hash_init( ctx, p->mergeable_ranks, p->hashes );
+        end_ms = time_ms_since_epoch( );
 
-        err = tok_compile_word_splitting_re( p );
+        LOG_DEBUG( ctx,
+                   TOK_LOGGING_PREFIX
+                   "Took %f ms to build mergeable_ranks hash table.",
+                   end_ms - start_ms );
+
+        start_ms = time_ms_since_epoch( );
+        err      = tok_compile_word_splitting_re( p );
         if ( err != OK ) return err;
+        end_ms = time_ms_since_epoch( );
+
+        LOG_DEBUG( ctx, TOK_LOGGING_PREFIX "Took %f ms to compile regexp.",
+                   end_ms - start_ms );
 
         *pp = p;
         return OK;
