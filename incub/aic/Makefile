@@ -2,6 +2,8 @@
 #
 UNAME     = $(shell uname)
 BUILD     = .build
+SHELL     = bash
+
 TOK_FILE  = ${HOME}/.llama/checkpoints/Llama3.1-8B-Instruct/tokenizer.model
 ADT_ROOT  = ../..
 ADT_DIR   = ${ADT_ROOT}/adt
@@ -54,18 +56,15 @@ CFLAGS   += -DTOK_FILE="\"${TOK_FILE}\""
 main:  | ${BUILD}
 	clang -o ${BUILD}/a.out ${CFLAGS} ctx.c base64.c io.c tok.c util.c main.c ${LDFLAGS} && ./${BUILD}/a.out
 
-io: CFLAGS += -DAIC_TEST_H_
-io:  | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} ctx.c io.c ${LDFLAGS} && ./${BUILD}/a.out
-
-base64: CFLAGS += -DAIC_TEST_H_
-base64:  | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} base64.c ${LDFLAGS} && ./${BUILD}/a.out
-
 ${BUILD}:
 	mkdir -p ${BUILD}
 
-test: base64 io
+test: CFLAGS += -DAIC_TEST_H_
+test:
+	@set -e
+	@clang -o ${BUILD}/a.out ${CFLAGS} ctx.c io.c ${LDFLAGS} && echo -n "io     -- " && ./${BUILD}/a.out
+	@clang -o ${BUILD}/a.out ${CFLAGS} base64.c ${LDFLAGS}   && echo -n "base64 -- " && ./${BUILD}/a.out
+	@echo "All done."
 
 fmt:
 	~/Workspace/y/tools/clang_format_all.sh .

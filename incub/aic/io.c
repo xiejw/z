@@ -140,21 +140,41 @@ move_line_and_fillbuf:
 #ifdef AIC_TEST_H_
 #include <stdio.h>
 
+#include <adt/sds.h>
+
 int
 main( void )
 {
+        /* Get the content from io_reader. */
         struct ctx       *ctx = ctx_new( );
         struct io_reader *r;
         error_t           err = io_reader_open( ctx, "io.c", &r );
+        sds_t             got = sds_empty( );
 
         char  *buf;
         size_t size;
         while ( ( err = io_reader_nextline( r, &buf, &size, NULL ) ) == OK ) {
-                printf( "%.*s\n", (int)size, buf );
+                sds_cat_printf( &got, "%.*s\n", (int)size, buf );
         }
         io_reader_close( r );
         ctx_free( ctx );
 
+        /* Get the content from posix read. */
+        sds_t expected = sds_empty( );
+        int   fd       = open( "io.c", O_RDONLY );
+        assert( fd >= 0 );
+        ssize_t c;
+        char    iobuf[4096];
+        while ( ( c = read( fd, iobuf, 4096 ) ) > 0 ) {
+                sds_cat_printf( &expected, "%.*s", (int)c, iobuf );
+        }
+        close( fd );
+
+        /* Compare */
+        assert( 0 == strcmp( got, expected ) );
+
+        sds_free( got );
+        sds_free( expected );
         printf( "Test passed.\n" );
         return 0;
 }
