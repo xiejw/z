@@ -5,7 +5,7 @@
 
 #include <adt/sds.h>
 
-#define CTX_OUTPUT_FMT "[file %10s: line %4d] "
+#define CTX_OUTPUT_FMT "[F %6s/L %4d] "
 
 struct ctx {
         sds_t error_msg;

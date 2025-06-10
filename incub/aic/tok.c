@@ -207,17 +207,21 @@ error_t
 tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
          vec_t( size_t ) * ptokens )
 {
+        /* Lookup the mergeable rank for the entire text first. */
         struct mergeable_rank *mergeable_rank =
             hash_search( p->hashes, text + start, end - start );
         if ( mergeable_rank != NULL ) {
-                LOG_DEBUG( p->ctx,
-                           TOK_LOGGING_PREFIX
-                           "found mergeable_ranks for `%.*s`: `%s` %d\n",
-                           (int)( end - start ), text + start,
-                           mergeable_rank->mergeable, mergeable_rank->rank );
+                // LOG_DEBUG( p->ctx,
+                //            TOK_LOGGING_PREFIX
+                //            "found mergeable_ranks for `%.*s`: `%s` %d\n",
+                //            (int)( end - start ), text + start,
+                //            mergeable_rank->mergeable, mergeable_rank->rank );
+                vec_push( ptokens, (size_t)mergeable_rank->rank );
+                return OK;
         }
-        (void)ptokens;
-        return OK;
+
+        EMIT_ERROR_NOTE( p->ctx, "not implemented" );
+        return ENOTIMPL;
 }
 
 // === Tokenizer Model File and Mergable Ranks ---------------------------------
