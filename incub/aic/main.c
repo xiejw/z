@@ -31,7 +31,10 @@ main( void )
         PANIC_IF_ERR( err, ctx );
 
         vec_t( size_t ) tokens = vec_new( );
-        err = tok_encode( p, "What is the answer of 1+1?", &tokens );
+        // err = tok_encode( p, "What is the answer of 1+1?", &tokens );
+        err = tok_encode(
+            p, "What is the answer of the super unbelievably simple math 1+1?",
+            &tokens );
         PANIC_IF_ERR( err, ctx );
 
         printf( "tokens " );

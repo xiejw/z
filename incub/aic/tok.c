@@ -220,7 +220,8 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
                 return OK;
         }
 
-        EMIT_ERROR_NOTE( p->ctx, "not implemented" );
+        EMIT_ERROR_NOTE( p->ctx, "not implemented bpe for word: `%.*s`",
+                         (int)( end - start ), text + start );
         return ENOTIMPL;
 }
 

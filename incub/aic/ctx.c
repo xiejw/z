@@ -36,9 +36,18 @@ ctx_emit_note( struct ctx *p, enum ctx_note_level note_level, const char *file,
         (void)note_level;
 #endif
         assert( note_level == CTX_NOTE_ERROR );
+        int first_msg = sds_len( p->error_msg ) == 0;
+
         va_list args;
         va_start( args, fmt );
+        /* Prints the file and line number. */
         sds_cat_printf( &p->error_msg, CTX_OUTPUT_FMT, file, line );
+        /* Prints the prefix to tell the root cause and later context notes. */
+        if ( first_msg )
+                sds_cat_printf( &p->error_msg, "|> " );
+        else
+                sds_cat_printf( &p->error_msg, "|= " );
+        /* Prints the real messages with a newline if absent. */
         sds_cat_vprintf( &p->error_msg, fmt, args );
         if ( fmt[strlen( fmt ) - 1] != '\n' ) sds_cat( &p->error_msg, "\n" );
         va_end( args );
