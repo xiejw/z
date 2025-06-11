@@ -1,5 +1,5 @@
-compile:
-	cargo run
-
+GOPKG = alc
+run:
+	@go run main.go
 fmt:
-	cargo fmt
+	go fmt ${GOPKG}/...
