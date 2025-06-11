@@ -50,7 +50,7 @@
 
 // === Data Structure ------------------------------------------------------ ===
 struct mergeable_rank {
-        char *mergeable; /* owned. */
+        char *mergeable; /* Owned. */
         int   rank;
 };
 
@@ -81,11 +81,17 @@ struct tokenizer {
 
 // === Simple Hash Table -------------------------------------------------------
 //
-// The design of the hash table is fast. The mergeable_ranks are known at ahead
-// of time. And this is an internal application which is not subject to hash
-// flood attaching. So, the hash function should be really fast and simple.
+// The design of the hash table is to be super fast.  In particular,
+// - No input is assumed to be NULL-terminator. This saves a lot of unnecessary
+//   copies, especially in bpe code.
+// - Super simple hash fn to save compute.
 //
-// We measure the length of the chains which has maximum at 8.
+// The mergeable ranks are known at ahead of time. And this is an internal
+// application which is not subject to hash flood attaching. So, the hash
+// function should be really fast and simple.
+//
+// We measure the length of the chains which has maximum at 8. So conflicts are
+// OK.
 
 static size_t
 hash_fn( const char *text, size_t len )
@@ -158,7 +164,7 @@ hash_search( vec_t( struct mergeable_rank * ) * hashes, size_t tbl_size,
                 /* The next few line is same as
                  * if ( 0 == memcmp( mergeable, text, len ) ) return candidate;
                  *
-                 * But memcmp reads more data then needed which fails asan.
+                 * But memcmp reads more data than needed which fails asan.
                  */
                 for ( size_t x = 0; x < len; x++ ) {
                         if ( text[x] != mergeable[x] ) goto next_iter;
@@ -253,6 +259,54 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
                 vec_push( ptokens, (size_t)mergeable_rank->rank );
                 return OK;
         }
+
+        /* Now try to do real bpe.
+         *
+         * The algorithm
+         * - tries to avoid memory allocations as much as possible, and
+         * - tries to avoid chopping array from the middle, which is used by
+         *   many algorithms.
+         *
+         * To see reference code, check
+         *
+         *  https://github.com/eliben/code-for-blog/blob/main/2024/bpe/encode.go
+         *
+         * The idea, for a text
+         *
+         *     "abcd"
+         *
+         * we record the segment length as
+         *
+         *      1111
+         *
+         * It means each byte itself is a token. Next, we try to find mergeable
+         * rank. We go through "ab" "bc" and "cd" and say "bc" is mergeable
+         * with lowest rank. Then we update the segment length of "b" to be 2
+         * (it has length 2 to cover the next byte "c").
+         *
+         *      1211   # the 1 for "c" is no longer used
+         *
+         * Then we go through the second iteration "abc", "bcd", and if "bcd"
+         * can be merged with lowest rank, the segment length will be updated
+         * as
+         *
+         *      1311   # the 1 for "d" is no longer used
+         *
+         * Until we cannot merge anymore.
+         *
+         * Then we know the final segment information is
+         *
+         *      13**   # the * means we can ignore them
+         *
+         * which means "a" itself is a token, "b" with next two bytes forms
+         * next token. We emit all tokens accordingly.
+         *
+         * In sum, only segment length needs small memory allocation. The rest
+         * is updating the data structure, no movement or copying. This is
+         * possible because hash_fn and hash_search do not assume
+         * NULL-terminator so we can reuse the input text buffer as much as
+         * possible.
+         */
 
         vec_t( size_t ) seg_len_vec = vec_new( );
         vec_reserve( &seg_len_vec, total_len );
@@ -467,10 +521,12 @@ tok_fill_special_tokens( struct tokenizer *tok )
         ADD_SPECIAL_TOKEN( "<|step_id|>" );
         ADD_SPECIAL_TOKEN( "<|start_header_id|>" );
         tok->id_start_of_header = p->rank;
+
         ADD_SPECIAL_TOKEN( "<|end_header_id|>" );
         tok->id_end_of_header = p->rank;
 
         ADD_SPECIAL_TOKEN( "<|eom_id|>" );
+
         ADD_SPECIAL_TOKEN( "<|eot_id|>" );
         tok->id_end_of_turn = p->rank;
         ADD_SPECIAL_TOKEN( "<|python_tag|>" );
