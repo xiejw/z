@@ -20,4 +20,8 @@ void    tok_free( struct tokenizer *p );
 error_t tok_encode( struct tokenizer *p, const char *text,
                     vec_t( size_t ) * ptokens );
 
+/* Encodes the text according to chat format. */
+error_t tok_encode_chat( struct tokenizer *p, const char *text,
+                         vec_t( size_t ) * ptokens );
+
 #endif /* AIC_TOK_H_ */

@@ -32,7 +32,7 @@ main( void )
 
         vec_t( size_t ) tokens = vec_new( );
         // err = tok_encode( p, "What is the answer of 1+1?", &tokens );
-        err = tok_encode(
+        err = tok_encode_chat(
             p, "What is the answer of the super unbelievably simple math 1+1?",
             &tokens );
         PANIC_IF_ERR( err, ctx );

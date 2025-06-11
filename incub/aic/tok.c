@@ -69,6 +69,12 @@ struct tokenizer {
         struct mergeable_rank special_tokens[TOK_RESERVED_SPECIAL_TOKENS_COUNT];
         vec_t( struct mergeable_rank * )
             special_tokens_hashes[TOK_RESERVED_SPECIAL_TOKENS_HASH_TBL_SIZE];
+
+        /* Special ids for fast access */
+        int id_begin_of_text;
+        int id_end_of_turn;
+        int id_start_of_header;
+        int id_end_of_header;
 };
 
 // === --- Private Helper Methods ------------------------------------------ ===
@@ -119,10 +125,9 @@ hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
 #endif
         }
 #ifndef NDEBUG
-        LOG_DEBUG( ctx,
-                   TOK_LOGGING_PREFIX
-                   "Max hash chain size for hash table is %d",
-                   (int)max_hash_chain_count );
+        LOG_DEBUG(
+            ctx, TOK_LOGGING_PREFIX "Max hash chain size for hash table is %d",
+            (int)max_hash_chain_count );
 #else
         (void)ctx;
 #endif
@@ -453,15 +458,21 @@ tok_fill_special_tokens( struct tokenizer *tok )
         p->rank      = TOK_MERGEALBE_RANK_COUNT + ( i++ )
 
         ADD_SPECIAL_TOKEN( "<|begin_of_text|>" );
+        tok->id_begin_of_text = p->rank;
+
         ADD_SPECIAL_TOKEN( "<|end_of_text|>" );
         ADD_SPECIAL_TOKEN( "<|reserved_special_token_0|>" );
         ADD_SPECIAL_TOKEN( "<|reserved_special_token_1|>" );
         ADD_SPECIAL_TOKEN( "<|finetune_right_pad_id|>" );
         ADD_SPECIAL_TOKEN( "<|step_id|>" );
         ADD_SPECIAL_TOKEN( "<|start_header_id|>" );
+        tok->id_start_of_header = p->rank;
         ADD_SPECIAL_TOKEN( "<|end_header_id|>" );
+        tok->id_end_of_header = p->rank;
+
         ADD_SPECIAL_TOKEN( "<|eom_id|>" );
         ADD_SPECIAL_TOKEN( "<|eot_id|>" );
+        tok->id_end_of_turn = p->rank;
         ADD_SPECIAL_TOKEN( "<|python_tag|>" );
         ADD_SPECIAL_TOKEN( "<|image|>" );
 
@@ -631,4 +642,30 @@ tok_encode( struct tokenizer *p, const char *text, vec_t( size_t ) * ptokens )
 cleanup:
         vec_free( words_idx );
         return err;
+}
+
+error_t
+tok_encode_chat( struct tokenizer *p, const char *text,
+                 vec_t( size_t ) * ptokens )
+{
+        vec_push( ptokens, (size_t)p->id_begin_of_text );
+
+        /* Header for user. */
+        vec_push( ptokens, (size_t)p->id_start_of_header );
+        tok_encode( p, "user", ptokens );
+        vec_push( ptokens, (size_t)p->id_end_of_header );
+        tok_encode( p, "\n\n", ptokens );
+
+        /* The real text. */
+        tok_encode( p, text, ptokens );
+
+        /* End this turn. */
+        vec_push( ptokens, (size_t)p->id_end_of_turn );
+
+        /* Header for assistant. */
+        vec_push( ptokens, (size_t)p->id_start_of_header );
+        tok_encode( p, "assistant", ptokens );
+        vec_push( ptokens, (size_t)p->id_end_of_header );
+        tok_encode( p, "\n\n", ptokens );
+        return OK;
 }
