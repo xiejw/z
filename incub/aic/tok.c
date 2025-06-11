@@ -33,6 +33,9 @@
 #define TOK_MERGEALBE_RANK_COUNT    128000
 #define TOK_MERGEABLE_HASH_TBL_SIZE 131072 /* The next 2 to power int. */
 
+#define TOK_RESERVED_SPECIAL_TOKENS_COUNT         256
+#define TOK_RESERVED_SPECIAL_TOKENS_HASH_TBL_SIZE 512
+
 #define TOK_SPLIT_PAT                                                          \
         "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1," \
         "3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
@@ -58,9 +61,14 @@ struct tokenizer {
         pcre2_code       *re;
         pcre2_match_data *match_data;
 
-        /* Used for bpe. */
+        /* Used for bpe + mergeable_ranks. */
         struct mergeable_rank mergeable_ranks[TOK_MERGEALBE_RANK_COUNT];
         vec_t( struct mergeable_rank * ) hashes[TOK_MERGEABLE_HASH_TBL_SIZE];
+
+        /* Used for special tokens. */
+        struct mergeable_rank special_tokens[TOK_RESERVED_SPECIAL_TOKENS_COUNT];
+        vec_t( struct mergeable_rank * )
+            special_tokens_hashes[TOK_RESERVED_SPECIAL_TOKENS_HASH_TBL_SIZE];
 };
 
 // === --- Private Helper Methods ------------------------------------------ ===
@@ -69,8 +77,9 @@ struct tokenizer {
 //
 // The design of the hash table is fast. The mergeable_ranks are known at ahead
 // of time. And this is an internal application which is not subject to hash
-// flood attaching. So, the hash function should be really fast and simple. We
-// measure the length of the chains which has maximum at 8.
+// flood attaching. So, the hash function should be really fast and simple.
+//
+// We measure the length of the chains which has maximum at 8.
 
 static size_t
 hash_fn( const char *text, size_t len )
@@ -86,19 +95,22 @@ hash_fn( const char *text, size_t len )
 
 /* Build a hash table to store all mergeable_ranks.
  *
- * NOTE: This function assume hashes array are zero initialized.
+ * NOTE:
+ * - This function assume hashes array are zero initialized.
+ * - And tbl_size is 2 to the power.
  */
 static void
 hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
-           vec_t( struct mergeable_rank * ) * hashes )
+           size_t item_count, vec_t( struct mergeable_rank * ) * hashes,
+           size_t tbl_size )
 {
 #ifndef NDEBUG
         size_t max_hash_chain_count = 0;
 #endif
-        for ( int i = 0; i < TOK_MERGEALBE_RANK_COUNT; i++ ) {
+        for ( size_t i = 0; i < item_count; i++ ) {
                 const char *text = mergeable_ranks[i].mergeable;
                 size_t      hash = hash_fn( text, strlen( text ) );
-                hash &= ( TOK_MERGEABLE_HASH_TBL_SIZE - 1 );
+                hash &= ( tbl_size - 1 );
                 vec_push( &hashes[hash], &mergeable_ranks[i] );
 #ifndef NDEBUG
                 size_t vec_size = vec_size( hashes[hash] );
@@ -109,7 +121,7 @@ hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
 #ifndef NDEBUG
         LOG_DEBUG( ctx,
                    TOK_LOGGING_PREFIX
-                   "Max hash chain size for mergeable_rank is %d",
+                   "Max hash chain size for hash table is %d",
                    (int)max_hash_chain_count );
 #else
         (void)ctx;
@@ -117,20 +129,20 @@ hash_init( struct ctx *ctx, struct mergeable_rank *mergeable_ranks,
 }
 
 static void
-hash_deinit( vec_t( struct mergeable_rank * ) * hashes )
+hash_deinit( vec_t( struct mergeable_rank * ) * hashes, size_t tbl_size )
 {
-        for ( int i = 0; i < TOK_MERGEABLE_HASH_TBL_SIZE; i++ ) {
+        for ( size_t i = 0; i < tbl_size; i++ ) {
                 vec_free( hashes[i] );
         }
 }
 
 // NULL if not found
 static struct mergeable_rank *
-hash_search( vec_t( struct mergeable_rank * ) * hashes, const char *text,
-             size_t len )
+hash_search( vec_t( struct mergeable_rank * ) * hashes, size_t tbl_size,
+             const char *text, size_t len )
 {
         size_t hash = hash_fn( text, len );
-        hash &= ( TOK_MERGEABLE_HASH_TBL_SIZE - 1 );
+        hash &= ( tbl_size - 1 );
         vec_t( struct mergeable_rank * ) p = hashes[hash];
         size_t vec_size                    = vec_size( p );
         if ( vec_size == 0 ) return NULL;
@@ -220,8 +232,8 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
 {
         const size_t total_len = end - start;
         /* Lookup the mergeable rank for the entire text first. */
-        struct mergeable_rank *mergeable_rank =
-            hash_search( p->hashes, text + start, total_len );
+        struct mergeable_rank *mergeable_rank = hash_search(
+            p->hashes, TOK_MERGEABLE_HASH_TBL_SIZE, text + start, total_len );
 
         // Fast path to encode the entire text piece as one mergeable rank.
         if ( mergeable_rank != NULL ) {
@@ -258,9 +270,9 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
                                 break; /* no more seg to try */
 
                         size_t next_seg_end = next_seg + seg_len_vec[next_seg];
-                        struct mergeable_rank *mergeable_rank =
-                            hash_search( p->hashes, piece + seg_start,
-                                         next_seg_end - seg_start );
+                        struct mergeable_rank *mergeable_rank = hash_search(
+                            p->hashes, TOK_MERGEABLE_HASH_TBL_SIZE,
+                            piece + seg_start, next_seg_end - seg_start );
                         if ( mergeable_rank == NULL ) continue;
 
                         if ( mergeable_rank->rank < candidate_rank ) {
@@ -279,8 +291,9 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
         while ( next_seg < total_len ) {
                 size_t seg_start = next_seg;
                 size_t seg_end   = seg_start + seg_len_vec[seg_start];
-                struct mergeable_rank *mergeable_rank = hash_search(
-                    p->hashes, piece + seg_start, seg_end - seg_start );
+                struct mergeable_rank *mergeable_rank =
+                    hash_search( p->hashes, TOK_MERGEABLE_HASH_TBL_SIZE,
+                                 piece + seg_start, seg_end - seg_start );
                 assert( mergeable_rank != NULL );
                 vec_push( ptokens, (size_t)mergeable_rank->rank );
                 if ( DEBUG_PRINT )
@@ -428,6 +441,48 @@ cleanup:
         return err;
 }
 
+error_t
+tok_fill_special_tokens( struct tokenizer *tok )
+{
+        int                    i = 0;
+        struct mergeable_rank *p;
+
+#define ADD_SPECIAL_TOKEN( str )                \
+        p            = &tok->special_tokens[i]; \
+        p->mergeable = sds_new( ( str ) );      \
+        p->rank      = TOK_MERGEALBE_RANK_COUNT + ( i++ )
+
+        ADD_SPECIAL_TOKEN( "<|begin_of_text|>" );
+        ADD_SPECIAL_TOKEN( "<|end_of_text|>" );
+        ADD_SPECIAL_TOKEN( "<|reserved_special_token_0|>" );
+        ADD_SPECIAL_TOKEN( "<|reserved_special_token_1|>" );
+        ADD_SPECIAL_TOKEN( "<|finetune_right_pad_id|>" );
+        ADD_SPECIAL_TOKEN( "<|step_id|>" );
+        ADD_SPECIAL_TOKEN( "<|start_header_id|>" );
+        ADD_SPECIAL_TOKEN( "<|end_header_id|>" );
+        ADD_SPECIAL_TOKEN( "<|eom_id|>" );
+        ADD_SPECIAL_TOKEN( "<|eot_id|>" );
+        ADD_SPECIAL_TOKEN( "<|python_tag|>" );
+        ADD_SPECIAL_TOKEN( "<|image|>" );
+
+        assert( p->rank == 128011 );
+
+#undef ADD_SPECIAL_TOKEN
+
+        int remaining_ids = TOK_RESERVED_SPECIAL_TOKENS_COUNT - i;
+        for ( int x = 0; x < remaining_ids; x++ ) {
+                p       = &tok->special_tokens[i];
+                sds_t s = sds_new( "<|reserved_special_token_" );
+                sds_cat_printf( &s, "%d|>", 2 + x );
+                p->mergeable = _MOVED_IN_ s;
+                p->rank      = TOK_MERGEALBE_RANK_COUNT + ( i++ );
+        }
+
+        assert( 0 == strcmp( p->mergeable, "<|reserved_special_token_245|>" ) );
+        assert( p->rank == 128255 );
+        return OK;
+}
+
 static error_t
 tok_compile_word_splitting_re( struct tokenizer *p )
 {
@@ -467,7 +522,9 @@ tok_new( struct ctx *ctx, const char *tok_model_name, struct tokenizer **pp )
         struct tokenizer *p = calloc( 1, sizeof( *p ) );
         assert( p != NULL );
 
-        p->ctx      = ctx;
+        p->ctx = ctx;
+
+        /* === --- Build mergeable_ranks. ------------------------------- === */
         start_ms    = time_ms_since_epoch( );
         error_t err = tok_load_model_file( p, tok_model_name );
         end_ms      = time_ms_since_epoch( );
@@ -478,7 +535,8 @@ tok_new( struct ctx *ctx, const char *tok_model_name, struct tokenizer **pp )
             end_ms - start_ms );
 
         start_ms = time_ms_since_epoch( );
-        hash_init( ctx, p->mergeable_ranks, p->hashes );
+        hash_init( ctx, p->mergeable_ranks, TOK_MERGEALBE_RANK_COUNT, p->hashes,
+                   TOK_MERGEABLE_HASH_TBL_SIZE );
         end_ms = time_ms_since_epoch( );
 
         LOG_DEBUG( ctx,
@@ -486,6 +544,27 @@ tok_new( struct ctx *ctx, const char *tok_model_name, struct tokenizer **pp )
                    "Took %f ms to build mergeable_ranks hash table.",
                    end_ms - start_ms );
 
+        /* === --- Build special tokens.  ------------------------------- === */
+        start_ms = time_ms_since_epoch( );
+        err      = tok_fill_special_tokens( p );
+        end_ms   = time_ms_since_epoch( );
+        if ( err != OK ) return err;
+
+        LOG_DEBUG( ctx, TOK_LOGGING_PREFIX "Took %f ms to fill special tokens.",
+                   end_ms - start_ms );
+
+        start_ms = time_ms_since_epoch( );
+        hash_init( ctx, p->special_tokens, TOK_RESERVED_SPECIAL_TOKENS_COUNT,
+                   p->special_tokens_hashes,
+                   TOK_RESERVED_SPECIAL_TOKENS_HASH_TBL_SIZE );
+        end_ms = time_ms_since_epoch( );
+
+        LOG_DEBUG( ctx,
+                   TOK_LOGGING_PREFIX
+                   "Took %f ms to build special tokens hash table.",
+                   end_ms - start_ms );
+
+        /* === --- Compile word splitting regexp. ----------------------- === */
         start_ms = time_ms_since_epoch( );
         err      = tok_compile_word_splitting_re( p );
         if ( err != OK ) return err;
@@ -506,7 +585,13 @@ tok_free( struct tokenizer *p )
         for ( int i = 0; i < TOK_MERGEALBE_RANK_COUNT; i++ ) {
                 free( p->mergeable_ranks[i].mergeable );
         }
-        hash_deinit( p->hashes );
+        hash_deinit( p->hashes, TOK_MERGEABLE_HASH_TBL_SIZE );
+
+        for ( int i = 0; i < TOK_RESERVED_SPECIAL_TOKENS_COUNT; i++ ) {
+                sds_free( p->special_tokens[i].mergeable );
+        }
+        hash_deinit( p->special_tokens_hashes,
+                     TOK_RESERVED_SPECIAL_TOKENS_HASH_TBL_SIZE );
 
         pcre2_match_data_free( p->match_data );
         pcre2_code_free( p->re );
