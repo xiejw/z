@@ -2,12 +2,6 @@
  *
  * There are few data structures needed
  * - To identify all special tokens, either a trie or regex is used.
- * - To identify word boundary, seems regex is the best tool but c does not
- *   have good support (unless using a heavy external library). Alternatively,
- *   write my own state machine (this is how llama.cpp does which aligns my
- *   guess)
- * - For mergeable ranks, we either need a hash table or trie to speed up the
- *   lookup.  It is used very frequently so performance is important.
  *
  * File to read
  * - Load tok file
@@ -72,6 +66,11 @@ struct tokenizer {
 // === --- Private Helper Methods ------------------------------------------ ===
 
 // === Simple Hash Table -------------------------------------------------------
+//
+// The design of the hash table is fast. The mergeable_ranks are known at ahead
+// of time. And this is an internal application which is not subject to hash
+// flood attaching. So, the hash function should be really fast and simple. We
+// measure the length of the chains which has maximum at 8.
 
 static size_t
 hash_fn( const char *text, size_t len )
@@ -192,11 +191,13 @@ tok_split_text_to_words( struct tokenizer *p, const char *text,
                     pcre2_get_ovector_pointer( p->match_data );
 
                 assert( ovector[0] == i );
-                LOG_DEBUG( p->ctx,
-                           TOK_LOGGING_PREFIX
-                           "Found split word (from %2d to %2d) `%.*s`\n",
-                           (int)i, (int)ovector[1], (int)( ovector[1] - i ),
-                           text + i );
+                if ( DEBUG_PRINT )
+                        LOG_DEBUG(
+                            p->ctx,
+                            TOK_LOGGING_PREFIX
+                            "Found split word (from %2d to %2d) `%.*s`\n",
+                            (int)i, (int)ovector[1], (int)( ovector[1] - i ),
+                            text + i );
                 i = ovector[1];
                 vec_push( pwords_idx, i );
         }
@@ -207,22 +208,83 @@ error_t
 tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
          vec_t( size_t ) * ptokens )
 {
+        const size_t total_len = end - start;
         /* Lookup the mergeable rank for the entire text first. */
         struct mergeable_rank *mergeable_rank =
-            hash_search( p->hashes, text + start, end - start );
+            hash_search( p->hashes, text + start, total_len );
+
+        // Fast path to encode the entire text piece as one mergeable rank.
         if ( mergeable_rank != NULL ) {
-                // LOG_DEBUG( p->ctx,
-                //            TOK_LOGGING_PREFIX
-                //            "found mergeable_ranks for `%.*s`: `%s` %d\n",
-                //            (int)( end - start ), text + start,
-                //            mergeable_rank->mergeable, mergeable_rank->rank );
+                if ( DEBUG_PRINT )
+                        LOG_DEBUG( p->ctx,
+                                   TOK_LOGGING_PREFIX
+                                   "Found mergeable_rank for whole text "
+                                   "`%.*s`: `%s` %d\n",
+                                   (int)( end - start ), text + start,
+                                   mergeable_rank->mergeable,
+                                   mergeable_rank->rank );
                 vec_push( ptokens, (size_t)mergeable_rank->rank );
                 return OK;
         }
 
-        EMIT_ERROR_NOTE( p->ctx, "not implemented bpe for word: `%.*s`",
-                         (int)( end - start ), text + start );
-        return ENOTIMPL;
+        vec_t( size_t ) seg_len_vec = vec_new( );
+        vec_reserve( &seg_len_vec, total_len );
+        vec_set_size( seg_len_vec, total_len );
+
+        for ( size_t i = 0; i < total_len; i++ ) seg_len_vec[i] = 1;
+
+        /* Loop until no opportunities to merge. */
+        const char *piece = text + start;
+        while ( 1 ) {
+                ssize_t candidate_start      = -1;
+                int     candidate_rank       = TOK_MERGEALBE_RANK_COUNT + 1;
+                size_t  candidate_merged_len = 0;
+
+                size_t next_seg = 0;
+                while ( next_seg < total_len ) {
+                        size_t seg_start = next_seg;
+                        next_seg         = seg_start + seg_len_vec[seg_start];
+                        if ( next_seg >= total_len )
+                                break; /* no more seg to try */
+
+                        size_t next_seg_end = next_seg + seg_len_vec[next_seg];
+                        struct mergeable_rank *mergeable_rank =
+                            hash_search( p->hashes, piece + seg_start,
+                                         next_seg_end - seg_start );
+                        if ( mergeable_rank == NULL ) continue;
+
+                        if ( mergeable_rank->rank < candidate_rank ) {
+                                candidate_start      = (ssize_t)seg_start;
+                                candidate_rank       = mergeable_rank->rank;
+                                candidate_merged_len = next_seg_end - seg_start;
+                        }
+                }
+
+                if ( candidate_start < 0 ) break;
+                seg_len_vec[candidate_start] = candidate_merged_len;
+        }
+
+        /* Loop again to emit tokens. */
+        size_t next_seg = 0;
+        while ( next_seg < total_len ) {
+                size_t seg_start = next_seg;
+                size_t seg_end   = seg_start + seg_len_vec[seg_start];
+                struct mergeable_rank *mergeable_rank = hash_search(
+                    p->hashes, piece + seg_start, seg_end - seg_start );
+                assert( mergeable_rank != NULL );
+                vec_push( ptokens, (size_t)mergeable_rank->rank );
+                if ( DEBUG_PRINT )
+                        LOG_DEBUG( p->ctx,
+                                   TOK_LOGGING_PREFIX
+                                   "Emit partial token for seg `%.*s`: %6d",
+                                   (int)( seg_end - seg_start ),
+                                   piece + seg_start, mergeable_rank->rank );
+
+                next_seg = seg_end;
+        }
+
+        vec_free( seg_len_vec );
+        return OK;
 }
 
 // === Tokenizer Model File and Mergable Ranks ---------------------------------
