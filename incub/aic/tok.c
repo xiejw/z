@@ -138,7 +138,17 @@ hash_search( vec_t( struct mergeable_rank * ) * hashes, const char *text,
         for ( size_t i = 0; i < vec_size; i++ ) {
                 struct mergeable_rank *candidate = p[i];
                 const char            *mergeable = candidate->mergeable;
-                if ( 0 == memcmp( mergeable, text, len ) ) return candidate;
+                /* The next few line is same as
+                 * if ( 0 == memcmp( mergeable, text, len ) ) return candidate;
+                 *
+                 * But memcmp reads more data then needed which fails asan.
+                 */
+                for ( size_t x = 0; x < len; x++ ) {
+                        if ( text[x] != mergeable[x] ) goto next_iter;
+                }
+                return candidate;
+        next_iter:
+                (void)0;
         }
         return NULL;
 }

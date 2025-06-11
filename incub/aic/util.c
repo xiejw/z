@@ -1,5 +1,6 @@
 #include "util.h"
 
+#include <stdlib.h>  // NULL
 #include <sys/time.h>
 
 double
