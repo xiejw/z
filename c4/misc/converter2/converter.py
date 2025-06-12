@@ -9,7 +9,7 @@ def display_tensor(t):
   print("  value (front) ", torch.reshape(t, (-1,))[:20])
   print("  value (tail ) ", torch.reshape(t, (-1,))[-20:])
 
-def tensor_bo_bytes(t):
+def tensor_to_bytes(t):
     return t.numpy().tobytes()
 def u32_to_bytes(i):
     # This assume mac m1.
@@ -257,5 +257,5 @@ with open('.build/tensor_data.bin', 'wb') as f:
 
     # Data: Write all values
     for param in params:
-      f.write(tensor_bo_bytes(param))
+      f.write(tensor_to_bytes(param))
 
