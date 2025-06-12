@@ -1,4 +1,5 @@
 #include "ctx.h"
+#include "tensor.h"
 #include "tok.h"
 
 #include <stdio.h>
@@ -42,6 +43,9 @@ main( void )
                 printf( "%zu, ", tokens[i] );
         }
         printf( "\n" );
+
+        err = tsr_load_from_file( ctx, "/tmp/tensor_data.bin", NULL );
+        PANIC_IF_ERR( err, ctx );
 
         vec_free( tokens );
         tok_free( p );
