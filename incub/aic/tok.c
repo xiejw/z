@@ -43,7 +43,7 @@
 #define TOK_LOGGING_PREFIX "[Tok] "
 
 #ifndef NDEBUG
-#define DEBUG_PRINT 1
+#define DEBUG_PRINT 0
 #else
 #define DEBUG_PRINT 0
 #endif

@@ -24,6 +24,6 @@ struct tensor {
 };
 
 error_t tsr_load_from_file( struct ctx *ctx, const char *fname,
-                            _OUT_ vec_t( struct tensor * ) tensors );
+                            _OUT_ vec_t( struct tensor * ) * ptensors );
 
 #endif  // AIC_TENSOR_H_

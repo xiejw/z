@@ -26,28 +26,38 @@
 int
 main( void )
 {
-        struct ctx       *ctx = ctx_new( );
-        struct tokenizer *p;
-        error_t           err = tok_new( ctx, TOK_FILE, &p );
-        PANIC_IF_ERR( err, ctx );
-
+        struct ctx *ctx        = ctx_new( );
         vec_t( size_t ) tokens = vec_new( );
-        // err = tok_encode( p, "What is the answer of 1+1?", &tokens );
-        err = tok_encode_chat(
-            p, "What is the answer of the super unbelievably simple math 1+1?",
-            &tokens );
-        PANIC_IF_ERR( err, ctx );
+        error_t err;
 
-        printf( "tokens " );
-        for ( size_t i = 0; i < vec_size( tokens ); i++ ) {
-                printf( "%zu, ", tokens[i] );
+        {
+                struct tokenizer *p;
+                err = tok_new( ctx, TOK_FILE, &p );
+                PANIC_IF_ERR( err, ctx );
+
+                vec_t( size_t ) tokens = vec_new( );
+                // err = tok_encode( p, "What is the answer of 1+1?", &tokens );
+                err = tok_encode_chat( p,
+                                       "What is the answer of the super "
+                                       "unbelievably simple math 1+1?",
+                                       &tokens );
+                PANIC_IF_ERR( err, ctx );
+
+                printf( "tokens " );
+                for ( size_t i = 0; i < vec_size( tokens ); i++ ) {
+                        printf( "%zu, ", tokens[i] );
+                }
+                printf( "\n" );
+                tok_free( p );
         }
-        printf( "\n" );
 
-        err = tsr_load_from_file( ctx, "/tmp/tensor_data.bin", NULL );
-        PANIC_IF_ERR( err, ctx );
+        {
+                vec_t( struct tensor * ) tensors = vec_new( );
+                err =
+                    tsr_load_from_file( ctx, "/tmp/tensor_data.bin", &tensors );
+                PANIC_IF_ERR( err, ctx );
+        }
 
         vec_free( tokens );
-        tok_free( p );
         ctx_free( ctx );
 }
