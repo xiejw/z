@@ -54,6 +54,34 @@ cleanup:
         return err;
 }
 
+static struct tensor *
+read_tensor_without_data( struct ctx *ctx, char **paddr )
+{
+        struct tensor *tsr = calloc( 1, sizeof( *tsr ) );
+        assert( tsr != NULL );
+
+        u32 rank = *(u32 *)*paddr;
+        *paddr += 4;
+        DEBUG( ctx, "tensor dim %d", (int)rank );
+        assert( rank <= AIC_TENSOR_MAX_RANK );
+        tsr->sp.rank = rank;
+
+        u64 ele_count = 1;
+        for ( u32 dim = 0; dim < rank; dim++ ) {
+                u32 e = *(u32 *)*paddr;
+                *paddr += 4;
+                tsr->sp.dims[dim] = e;
+                ele_count *= (u64)e;
+        }
+        tsr->sp.ele_count = ele_count;
+
+        DEBUG( ctx, "tensor rank %d with ele_count %zu", (int)tsr->sp.rank,
+               (size_t)ele_count );
+
+        tsr->alias = 1;
+        return tsr;
+}
+
 static error_t
 load_tensors( struct ctx *ctx, char *addr,
               _OUT_ vec_t( struct tensor * ) * ptensors )
@@ -61,19 +89,12 @@ load_tensors( struct ctx *ctx, char *addr,
         u32 count = *(u32 *)addr;
         addr += 4;
         DEBUG( ctx, "tensor count %d", (int)count );
-
         assert( count == 1 );
-        u32 dim = *(u32 *)addr;
-        addr += 4;
-        DEBUG( ctx, "tensor dim %d", (int)dim );
 
-        u32 e0 = *(u32 *)addr;
-        addr += 4;
-        u32 e1 = *(u32 *)addr;
-        addr += 4;
-        DEBUG( ctx, "tensor shape [ %d, %d ]", (int)e0, (int)e1 );
+        for ( u32 i = 0; i < count; i++ ) {
+                vec_push( ptensors, read_tensor_without_data( ctx, &addr ) );
+        }
 
-        (void)ptensors;
         return OK;
 }
 
@@ -94,4 +115,17 @@ tsr_load_from_file( struct ctx *ctx, const char *fname,
 
 cleanup:
         return err;
+}
+
+void
+tsr_free_vec( vec_t( struct tensor * ) tensors )
+{
+        size_t count = vec_size( tensors );
+        for ( size_t i = 0; i < count; i++ ) {
+                struct tensor *tsr = tensors[i];
+                assert( tsr->dtype == 0 );
+                if ( !tsr->alias ) free( tsr->f );
+                free( tsr );
+        }
+        vec_free( tensors );
 }

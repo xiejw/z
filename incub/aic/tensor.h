@@ -6,11 +6,12 @@
 
 #include "ctx.h"
 
-#define AIC_MAX_TENSOR_DIMS 4
+#define AIC_TENSOR_MAX_RANK 4
 
 struct shape {
         u32 rank;
-        u32 dims[AIC_MAX_TENSOR_DIMS];
+        u32 dims[AIC_TENSOR_MAX_RANK];
+        u64 ele_count;
 };
 
 struct tensor {
@@ -25,5 +26,7 @@ struct tensor {
 
 error_t tsr_load_from_file( struct ctx *ctx, const char *fname,
                             _OUT_ vec_t( struct tensor * ) * ptensors );
+
+void tsr_free_vec( vec_t( struct tensor * ) ptensors );
 
 #endif  // AIC_TENSOR_H_

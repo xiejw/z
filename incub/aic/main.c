@@ -56,6 +56,7 @@ main( void )
                 err =
                     tsr_load_from_file( ctx, "/tmp/tensor_data.bin", &tensors );
                 PANIC_IF_ERR( err, ctx );
+                tsr_free_vec( tensors );
         }
 
         vec_free( tokens );
