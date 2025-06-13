@@ -1,5 +1,5 @@
 #include "ctx.h"
-#include "tensor.h"
+#include "llama.h"
 #include "tok.h"
 
 #include <stdio.h>
@@ -52,11 +52,10 @@ main( void )
         }
 
         {
-                vec_t( struct tensor * ) tensors = vec_new( );
-                err =
-                    tsr_load_from_file( ctx, "/tmp/tensor_data.bin", &tensors );
+                struct llama_model *m;
+                err = model_new( ctx, "/tmp/tensor_data.bin", &m );
                 PANIC_IF_ERR( err, ctx );
-                tsr_free_vec( tensors );
+                model_free( m );
         }
 
         vec_free( tokens );
