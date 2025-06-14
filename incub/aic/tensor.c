@@ -82,18 +82,38 @@ read_tensor_without_data( struct ctx *ctx, char **paddr )
         return tsr;
 }
 
+static void
+alias_tensor_data( struct ctx *ctx, char *base_addr,
+                   vec_t( struct tensor * ) tensors )
+{
+        (void)ctx;
+        size_t offset    = 0;
+        size_t tsr_count = vec_size( tensors );
+        for ( size_t i = 0; i < tsr_count; i++ ) {
+                struct tensor *tsr = tensors[i];
+                assert( tsr->dtype == 0 );
+                tsr->f = (f32 *)( base_addr + offset );
+                offset += tsr->sp.ele_count * sizeof( f32 );
+        }
+}
+
 static error_t
 load_tensors( struct ctx *ctx, char *addr,
               _OUT_ vec_t( struct tensor * ) * ptensors )
 {
+        /* Pass 1. Read total tensor count. */
         u32 count = *(u32 *)addr;
         addr += 4;
         DEBUG( ctx, "tensor count %d", (int)count );
         assert( count == 1 );
 
+        /* Pass 2. Read all tensor rank and shapes. */
         for ( u32 i = 0; i < count; i++ ) {
                 vec_push( ptensors, read_tensor_without_data( ctx, &addr ) );
         }
+
+        /* Pass 3. Adjust the tensor data pointers. */
+        alias_tensor_data( ctx, addr, *ptensors );
 
         return OK;
 }
