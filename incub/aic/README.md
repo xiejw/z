@@ -8,6 +8,17 @@ This is a very simple pure c code to run llama 3 8B model.
 During the coding, I find it is fascinating to learn so many new algorithm at
 the coding level, which I only briefly read the papers.
 
+### Information Arch
+
+```mermaid
+flowchart LR
+    VM --> Tensor
+    Llama_Model -> Tensor
+    Main -> Tokenizer
+    Main -> Llama_Model
+    Main -> VM
+```
+
 ### Algorithms
 
 #### Tokenizer
