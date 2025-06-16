@@ -78,7 +78,8 @@ read_tensor_without_data( struct ctx *ctx, char **paddr )
         DEBUG( ctx, "tensor rank %d with ele_count %zu", (int)tsr->sp.rank,
                (size_t)ele_count );
 
-        tsr->alias = 1;
+        tsr->ref_cnt = 1;
+        tsr->alias   = 1;
         return tsr;
 }
 
@@ -118,6 +119,8 @@ load_tensors( struct ctx *ctx, char *addr,
         return OK;
 }
 
+/* === --- Implementation of APIs --------------------------------------- === */
+
 error_t
 tsr_load_from_file( struct ctx *ctx, const char *fname,
                     _OUT_ vec_t( struct tensor * ) * ptensors )
@@ -134,7 +137,28 @@ tsr_load_from_file( struct ctx *ctx, const char *fname,
         }
 
 cleanup:
+        // TODO if error, we probably should clear the ptensors to original
+        // state, clear the tensor allocations, and munmap the file.
         return err;
+}
+
+void
+tsr_inc_ref( struct tensor *p )
+{
+        assert( p != NULL );
+        assert( p->ref_cnt >= 1 );
+        p->ref_cnt++;
+}
+
+void
+tsr_dec_ref( struct tensor *tsr )
+{
+        if ( tsr == NULL ) return;
+        assert( tsr->ref_cnt > 0 );
+        if ( tsr->ref_cnt-- != 1 ) return;
+        assert( tsr->dtype == 0 );
+        if ( !tsr->alias ) free( tsr->f );
+        free( tsr );
 }
 
 void
@@ -143,9 +167,7 @@ tsr_free_vec( vec_t( struct tensor * ) tensors )
         size_t count = vec_size( tensors );
         for ( size_t i = 0; i < count; i++ ) {
                 struct tensor *tsr = tensors[i];
-                assert( tsr->dtype == 0 );
-                if ( !tsr->alias ) free( tsr->f );
-                free( tsr );
+                tsr_dec_ref( tsr );
         }
         vec_free( tensors );
 }

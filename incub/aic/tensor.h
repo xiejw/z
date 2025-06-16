@@ -16,8 +16,9 @@ struct shape {
 
 struct tensor {
         struct shape sp;
-        char         dtype; /* 0 f32 1 i64 */
-        char         alias; /* 0 owned 1 alias */
+        char         dtype;   /* 0 f32 1 i64 */
+        char         alias;   /* 0 owned 1 alias */
+        size_t       ref_cnt; /* reference count. */
         union {
                 f32 *f;
                 i64 *i;
@@ -27,6 +28,8 @@ struct tensor {
 error_t tsr_load_from_file( struct ctx *ctx, const char *fname,
                             _OUT_ vec_t( struct tensor * ) * ptensors );
 
+void tsr_inc_ref( struct tensor *p );
+void tsr_dec_ref( struct tensor *p );
 void tsr_free_vec( vec_t( struct tensor * ) ptensors );
 
 #endif  // AIC_TENSOR_H_
