@@ -12,11 +12,11 @@ the coding level, which I only briefly read the papers.
 
 ```mermaid
 flowchart LR
-    VM --> Tensor;
-    Llama_Model --> Tensor;
     Main --> Tokenizer;
     Main --> Llama_Model;
-    Main --> VM;
+    Llama_Model --> VM;
+    Llama_Model --> Tensor;
+    VM --> Tensor;
 ```
 
 ### Algorithms

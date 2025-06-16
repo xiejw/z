@@ -1,5 +1,7 @@
 #include "llama.h"
 
+#include "vm.h"
+
 error_t
 model_new( struct ctx *ctx, const char *fname,
            _OUT_ struct llama_model **model )
@@ -20,6 +22,9 @@ model_new( struct ctx *ctx, const char *fname,
         tensors    = NULL;
 
         *model = p;
+
+        struct vm *vm = vm_new( ctx );
+        p->vm         = vm;
 cleanup:
         if ( err != OK ) {
                 if ( p != NULL ) model_free( p );

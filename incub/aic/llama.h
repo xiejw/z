@@ -5,11 +5,13 @@
 #include <adt/vec.h>
 
 #include "tensor.h"
+#include "vm.h"
 
 struct llama_model {
         struct tensor *embedding;
 
         vec_t( struct tensor * ) tensors;
+        struct vm *vm;
 };
 
 error_t model_new( struct ctx *ctx, const char *fname,
