@@ -55,6 +55,10 @@ main( void )
                 struct llama_model *m;
                 err = model_new( ctx, "/tmp/tensor_data.bin", &m );
                 PANIC_IF_ERR( err, ctx );
+
+                err = model_run( m );
+                PANIC_IF_ERR( err, ctx );
+
                 model_free( m );
         }
 

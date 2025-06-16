@@ -2,6 +2,10 @@
 
 #include "vm.h"
 
+#define DEBUG_PRINT 1
+
+/* === --- Implementation of APIs --------------------------------------- === */
+
 error_t
 model_new( struct ctx *ctx, const char *fname,
            _OUT_ struct llama_model **model )
@@ -38,5 +42,34 @@ model_free( struct llama_model *p )
 {
         if ( p == NULL ) return;
         tsr_free_vec( p->tensors );
+        vm_free( p->vm );
         free( p );
+}
+
+error_t
+model_run( struct llama_model *model )
+{
+        error_t err = OK;
+        // TODO the program should be program'ed once.
+        struct vm_program *program = vm_program_new( model->vm );
+
+#define CHECK_AND_JUMP( err )                                          \
+        if ( ( err ) != OK ) {                                         \
+                EMIT_ERROR_NOTE( model->ctx, "failed to program op" ); \
+                goto cleanup;                                          \
+        }
+
+        CHECK_AND_JUMP( vm_program_push_op( program, OP_GATTER ) );
+
+#undef CHECK_AND_JUMP
+
+        if ( DEBUG_PRINT ) {
+                sds_t s = vm_program_dump( program );
+                LOG_DEBUG( model->ctx, "Program:\n%s", s );
+                sds_free( s );
+        }
+
+cleanup:
+        vm_program_free( program );
+        return err;
 }
