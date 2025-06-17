@@ -57,10 +57,11 @@ model_run( struct llama_model *model, vec_t( i64 ) tokens )
         error_t            err        = OK;
         struct vm_program *program    = NULL;
         struct tensor     *tsr_tokens = NULL;
+        struct vm         *vm         = model->vm;
 
         /* Prepare the program. */
         // TODO the program should be program'ed once.
-        program = vm_program_new( model->vm );
+        program = vm_program_new( vm );
 
 #define CHECK_AND_JUMP( err )                                          \
         if ( ( err ) != OK ) {                                         \
@@ -85,18 +86,21 @@ model_run( struct llama_model *model, vec_t( i64 ) tokens )
         tsr_tokens->alias = 1;
         tsr_tokens->i     = tokens;
 
-        struct vm *vm = model->vm;
         vm_push_tsr( vm, model->embedding );
         vm_push_tsr( vm, tsr_tokens );
 
-        // TODO run and pop
-        struct tensor *tsr;
-        vm_pop_tsr( vm, &tsr );
-        tsr_dec_ref( tsr );
-        vm_pop_tsr( vm, &tsr );
-        tsr_dec_ref( tsr );
+        err = vm_run( vm, program );
+        if ( err != OK ) {
+                EMIT_ERROR_NOTE( model->ctx, "fail to run the model" );
+                goto cleanup;
+        }
 
 cleanup:
+        while ( vm_stack_size( vm ) > 0 ) {
+                struct tensor *tsr;
+                vm_pop_tsr( vm, &tsr );
+                tsr_dec_ref( tsr );
+        }
         tsr_dec_ref( tsr_tokens );
         vm_program_free( program );
         return err;

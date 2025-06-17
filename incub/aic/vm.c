@@ -115,3 +115,17 @@ vm_pop_tsr( struct vm *vm, _OUT_ struct tensor **ptsr )
         *ptsr = vm->stack[--vm->sp].tsr;
         return OK;
 }
+
+size_t
+vm_stack_size( struct vm *vm )
+{
+        return vm->sp;
+}
+
+error_t
+vm_run( struct vm *vm, struct vm_program *p )
+{
+        (void)vm;
+        (void)p;
+        return OK;
+}
