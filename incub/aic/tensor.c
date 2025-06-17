@@ -7,6 +7,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <adt/sds.h>
+
 #ifndef NDEBUG
 #define DEBUG_PRINT 1
 #else
@@ -39,7 +41,7 @@ mmap_file( struct ctx *ctx, const char *fname, _OUT_ void **paddr )
         }
 
         size_t fsize = (size_t)s.st_size;
-        DEBUG( ctx, "mmap size for file %s is %zu", fname, fsize );
+        DEBUG( ctx, "Mmap size for file %s with file size: %zu", fname, fsize );
 
         void *addr = mmap( NULL, fsize, PROT_READ, MAP_PRIVATE, fd, 0 );
         if ( addr == MAP_FAILED ) {
@@ -61,10 +63,18 @@ read_tensor_without_data( struct ctx *ctx, char **paddr )
 {
         struct tensor *tsr = calloc( 1, sizeof( *tsr ) );
         assert( tsr != NULL );
+        (void)ctx;  // Suppress warning in RELEASE mode.
+
+#ifndef NDEBUG
+        sds_t s = sds_empty( );
+#endif
 
         u32 rank = *(u32 *)*paddr;
         *paddr += 4;
-        DEBUG( ctx, "tensor dim %d", (int)rank );
+
+#ifndef NDEBUG
+        sds_cat_printf( &s, "Load tensor rank %d ", (int)rank );
+#endif
         assert( rank <= AIC_TENSOR_MAX_RANK );
         tsr->sp.rank = rank;
 
@@ -73,15 +83,25 @@ read_tensor_without_data( struct ctx *ctx, char **paddr )
                 u32 e = *(u32 *)*paddr;
                 *paddr += 4;
                 tsr->sp.dims[dim] = e;
+#ifndef NDEBUG
+                if ( dim == 0 )
+                        sds_cat_printf( &s, "[%d, ", (int)e );
+                else
+                        sds_cat_printf( &s, "%d, ", (int)e );
+#endif
                 ele_count *= (u64)e;
         }
         tsr->sp.ele_count = ele_count;
 
-        DEBUG( ctx, "tensor rank %d with ele_count %zu", (int)tsr->sp.rank,
-               (size_t)ele_count );
+#ifndef NDEBUG
+        sds_cat_printf( &s, "] with ele_count %zu", (size_t)ele_count );
+        DEBUG( ctx, "%s", s );
+        sds_free( s );
+#endif
 
         tsr->ref_cnt = 1;
         tsr->alias   = 1;
+
         return tsr;
 }
 
@@ -107,7 +127,7 @@ load_tensors( struct ctx *ctx, char *addr,
         /* Pass 1. Read total tensor count. */
         u32 count = *(u32 *)addr;
         addr += 4;
-        DEBUG( ctx, "tensor count %d", (int)count );
+        DEBUG( ctx, "Total tensors to load %d", (int)count );
         assert( count == 1 );
 
         /* Pass 2. Read all tensor rank and shapes. */
