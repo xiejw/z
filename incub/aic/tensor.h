@@ -28,8 +28,10 @@ struct tensor {
 error_t tsr_load_from_file( struct ctx *ctx, const char *fname,
                             _OUT_ vec_t( struct tensor * ) * ptensors );
 
-void tsr_inc_ref( struct tensor *p );
-void tsr_dec_ref( struct tensor *p );
-void tsr_free_vec( vec_t( struct tensor * ) ptensors );
+/* Create a barebone tensor. dtype, alias and data points should be set. */
+struct tensor *tsr_new_without_data( u32 rank, u32 *dims );
+void           tsr_inc_ref( struct tensor *p );
+void           tsr_dec_ref( struct tensor *p );
+void           tsr_free_vec( vec_t( struct tensor * ) ptensors );
 
 #endif  // AIC_TENSOR_H_

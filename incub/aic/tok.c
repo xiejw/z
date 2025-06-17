@@ -239,7 +239,7 @@ tok_split_text_to_words( struct tokenizer *p, const char *text,
 
 error_t
 tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
-         vec_t( size_t ) * ptokens )
+         vec_t( i64 ) * ptokens )
 {
         const size_t total_len = end - start;
         /* Lookup the mergeable rank for the entire text first. */
@@ -256,7 +256,7 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
                                    (int)( end - start ), text + start,
                                    mergeable_rank->mergeable,
                                    mergeable_rank->rank );
-                vec_push( ptokens, (size_t)mergeable_rank->rank );
+                vec_push( ptokens, (i64)mergeable_rank->rank );
                 return OK;
         }
 
@@ -354,7 +354,7 @@ tok_bpe( struct tokenizer *p, const char *text, size_t start, size_t end,
                     hash_search( p->hashes, TOK_MERGEABLE_HASH_TBL_SIZE,
                                  piece + seg_start, seg_end - seg_start );
                 assert( mergeable_rank != NULL );
-                vec_push( ptokens, (size_t)mergeable_rank->rank );
+                vec_push( ptokens, (i64)mergeable_rank->rank );
                 if ( DEBUG_PRINT )
                         LOG_DEBUG( p->ctx,
                                    TOK_LOGGING_PREFIX
@@ -666,7 +666,7 @@ tok_free( struct tokenizer *p )
 }
 
 error_t
-tok_encode( struct tokenizer *p, const char *text, vec_t( size_t ) * ptokens )
+tok_encode( struct tokenizer *p, const char *text, vec_t( i64 ) * ptokens )
 {
         error_t err = OK;
 
@@ -701,27 +701,26 @@ cleanup:
 }
 
 error_t
-tok_encode_chat( struct tokenizer *p, const char *text,
-                 vec_t( size_t ) * ptokens )
+tok_encode_chat( struct tokenizer *p, const char *text, vec_t( i64 ) * ptokens )
 {
-        vec_push( ptokens, (size_t)p->id_begin_of_text );
+        vec_push( ptokens, (i64)p->id_begin_of_text );
 
         /* Header for user. */
-        vec_push( ptokens, (size_t)p->id_start_of_header );
+        vec_push( ptokens, (i64)p->id_start_of_header );
         tok_encode( p, "user", ptokens );
-        vec_push( ptokens, (size_t)p->id_end_of_header );
+        vec_push( ptokens, (i64)p->id_end_of_header );
         tok_encode( p, "\n\n", ptokens );
 
         /* The real text. */
         tok_encode( p, text, ptokens );
 
         /* End this turn. */
-        vec_push( ptokens, (size_t)p->id_end_of_turn );
+        vec_push( ptokens, (i64)p->id_end_of_turn );
 
         /* Header for assistant. */
-        vec_push( ptokens, (size_t)p->id_start_of_header );
+        vec_push( ptokens, (i64)p->id_start_of_header );
         tok_encode( p, "assistant", ptokens );
-        vec_push( ptokens, (size_t)p->id_end_of_header );
+        vec_push( ptokens, (i64)p->id_end_of_header );
         tok_encode( p, "\n\n", ptokens );
         return OK;
 }

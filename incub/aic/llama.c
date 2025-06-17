@@ -52,11 +52,15 @@ model_free( struct llama_model *p )
 }
 
 error_t
-model_run( struct llama_model *model )
+model_run( struct llama_model *model, vec_t( i64 ) tokens )
 {
-        error_t err = OK;
+        error_t            err        = OK;
+        struct vm_program *program    = NULL;
+        struct tensor     *tsr_tokens = NULL;
+
+        /* Prepare the program. */
         // TODO the program should be program'ed once.
-        struct vm_program *program = vm_program_new( model->vm );
+        program = vm_program_new( model->vm );
 
 #define CHECK_AND_JUMP( err )                                          \
         if ( ( err ) != OK ) {                                         \
@@ -66,15 +70,34 @@ model_run( struct llama_model *model )
 
         CHECK_AND_JUMP( vm_program_push_op( program, OP_GATTER ) );
 
-#undef CHECK_AND_JUMP
-
         if ( DEBUG_PRINT ) {
                 sds_t s = vm_program_dump( program );
                 DEBUG( model->ctx, "Program:\n%s", s );
                 sds_free( s );
         }
 
+#undef CHECK_AND_JUMP
+
+        /* Prepare the token as tensor. */
+        u32 seq_len = (u32)vec_size( tokens );
+        tsr_tokens  = tsr_new_without_data( 2, (u32 *)(u32[]){ 1, seq_len } );
+        tsr_tokens->dtype = 1;
+        tsr_tokens->alias = 1;
+        tsr_tokens->i     = tokens;
+
+        struct vm *vm = model->vm;
+        vm_push_tsr( vm, model->embedding );
+        vm_push_tsr( vm, tsr_tokens );
+
+        // TODO run and pop
+        struct tensor *tsr;
+        vm_pop_tsr( vm, &tsr );
+        tsr_dec_ref( tsr );
+        vm_pop_tsr( vm, &tsr );
+        tsr_dec_ref( tsr );
+
 cleanup:
+        tsr_dec_ref( tsr_tokens );
         vm_program_free( program );
         return err;
 }

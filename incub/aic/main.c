@@ -26,8 +26,8 @@
 int
 main( void )
 {
-        struct ctx *ctx        = ctx_new( );
-        vec_t( size_t ) tokens = vec_new( );
+        struct ctx *ctx     = ctx_new( );
+        vec_t( i64 ) tokens = vec_new( );
         error_t err;
 
         {
@@ -35,7 +35,6 @@ main( void )
                 err = tok_new( ctx, TOK_FILE, &p );
                 PANIC_IF_ERR( err, ctx );
 
-                vec_t( size_t ) tokens = vec_new( );
                 // err = tok_encode( p, "What is the answer of 1+1?", &tokens );
                 err = tok_encode_chat( p,
                                        "What is the answer of the super "
@@ -45,7 +44,7 @@ main( void )
 
                 printf( "tokens " );
                 for ( size_t i = 0; i < vec_size( tokens ); i++ ) {
-                        printf( "%zu, ", tokens[i] );
+                        printf( "%zu, ", (size_t)tokens[i] );
                 }
                 printf( "\n" );
                 tok_free( p );
@@ -56,7 +55,7 @@ main( void )
                 err = model_new( ctx, "/tmp/tensor_data.bin", &m );
                 PANIC_IF_ERR( err, ctx );
 
-                err = model_run( m );
+                err = model_run( m, tokens );
                 PANIC_IF_ERR( err, ctx );
 
                 model_free( m );

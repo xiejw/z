@@ -144,6 +144,25 @@ cleanup:
         return err;
 }
 
+struct tensor *
+tsr_new_without_data( u32 rank, u32 *dims )
+{
+        struct tensor *tsr = calloc( 1, sizeof( *tsr ) );
+        assert( tsr != NULL );
+
+        tsr->ref_cnt = 1;
+
+        u64 ele_count = 1;
+        for ( u32 dim = 0; dim < rank; dim++ ) {
+                u32 e             = dims[dim];
+                tsr->sp.dims[dim] = e;
+                ele_count *= (u64)e;
+        }
+        tsr->sp.ele_count = ele_count;
+
+        return tsr;
+}
+
 void
 tsr_inc_ref( struct tensor *p )
 {
@@ -158,8 +177,10 @@ tsr_dec_ref( struct tensor *tsr )
         if ( tsr == NULL ) return;
         assert( tsr->ref_cnt > 0 );
         if ( tsr->ref_cnt-- != 1 ) return;
-        assert( tsr->dtype == 0 );
-        if ( !tsr->alias ) free( tsr->f );
+
+        if ( !tsr->alias ) {
+                tsr->dtype == 0 ? free( tsr->f ) : free( tsr->i );
+        }
         free( tsr );
 }
 

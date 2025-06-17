@@ -90,3 +90,28 @@ vm_free( struct vm *p )
         // }
         free( p );
 }
+
+error_t
+vm_push_tsr( struct vm *vm, struct tensor *tsr )
+{
+        if ( vm->sp >= VM_STACK_MAX_SIZE ) {
+                EMIT_ERROR_NOTE( vm->ctx, "vm stack overflow" );
+                return ERROR;
+        }
+
+        tsr_inc_ref( tsr );
+        vm->stack[vm->sp++].tsr = tsr;
+
+        return OK;
+}
+
+error_t
+vm_pop_tsr( struct vm *vm, _OUT_ struct tensor **ptsr )
+{
+        if ( vm->sp == 0 ) {
+                EMIT_ERROR_NOTE( vm->ctx, "vm stack underflow" );
+                return ERROR;
+        }
+        *ptsr = vm->stack[--vm->sp].tsr;
+        return OK;
+}
