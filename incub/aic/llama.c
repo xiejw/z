@@ -34,7 +34,7 @@ cleanup:
                 if ( p != NULL ) model_free( p );
                 if ( tensors != NULL ) tsr_free_vec( tensors );
         }
-        return OK;
+        return err;
 }
 
 void
