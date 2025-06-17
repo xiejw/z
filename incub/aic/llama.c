@@ -4,6 +4,11 @@
 
 #define DEBUG_PRINT 1
 
+#define MODEL_LOGGING_PREFIX "[Llama] "
+
+#define DEBUG( ctx, ... ) \
+        if ( DEBUG_PRINT ) LOG_DEBUG( ctx, MODEL_LOGGING_PREFIX __VA_ARGS__ )
+
 /* === --- Implementation of APIs --------------------------------------- === */
 
 error_t
@@ -65,7 +70,7 @@ model_run( struct llama_model *model )
 
         if ( DEBUG_PRINT ) {
                 sds_t s = vm_program_dump( program );
-                LOG_DEBUG( model->ctx, "Program:\n%s", s );
+                DEBUG( model->ctx, "Program:\n%s", s );
                 sds_free( s );
         }
 

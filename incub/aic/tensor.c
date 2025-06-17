@@ -13,8 +13,10 @@
 #define DEBUG_PRINT 0
 #endif
 
+#define TSR_LOGGING_PREFIX "[Tsr] "
+
 #define DEBUG( ctx, ... ) \
-        if ( DEBUG_PRINT ) LOG_DEBUG( ctx, __VA_ARGS__ )
+        if ( DEBUG_PRINT ) LOG_DEBUG( ctx, TSR_LOGGING_PREFIX __VA_ARGS__ )
 
 static error_t
 mmap_file( struct ctx *ctx, const char *fname, _OUT_ void **paddr )
