@@ -1,5 +1,7 @@
 #include "vm.h"
 
+#include "op.h"
+
 #include <adt/vec.h>
 
 #define VM_STACK_MAX_SIZE 256
@@ -122,10 +124,31 @@ vm_stack_size( struct vm *vm )
         return vm->sp;
 }
 
+typedef error_t ( *vm_op_fn_t )( struct ctx *ctx, struct vm *vm,
+                                 struct vm_program *p, size_t pc );
+
+static vm_op_fn_t op_fn_tbl[] = {
+    [OP_GATTER] = op_gatter,
+};
+
 error_t
 vm_run( struct vm *vm, struct vm_program *p )
 {
-        (void)vm;
-        (void)p;
-        return OK;
+        error_t err = OK;
+
+        assert( vm == p->vm );
+
+        size_t op_count = vec_size( p->ops );
+        for ( size_t i = 0; i < op_count; i++ ) {
+                enum vm_op op = p->ops[i];
+                err           = op_fn_tbl[op]( vm->ctx, vm, p, i );
+                if ( err != OK ) {
+                        EMIT_ERROR_NOTE( vm->ctx, "unexpected error at op %d",
+                                         (int)op );
+                        goto cleanup;
+                }
+        }
+
+cleanup:
+        return err;
 }

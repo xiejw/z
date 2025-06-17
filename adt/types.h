@@ -23,6 +23,7 @@ typedef int error_t;
 #define ENOTIMPL  -4
 #define EIO       -5
 #define EEOF      -6
+#define EINVALID  -7
 
 // Function Parameter Annotations
 #define _MUT_       // The field might be mutated if new address is allocated
@@ -32,6 +33,7 @@ typedef int error_t;
 #define _NULLABLE_  // The field is Nullable
 
 // Function Annotations
-#define ADT_UNUSED_FN __attribute__( ( unused ) )
+#define ADT_UNUSED_FN         __attribute__( ( unused ) )
+#define ADT_MAYBE_UNUSED( x ) (void)( x )
 
 #endif /* ADT_TYPES_H_ */
