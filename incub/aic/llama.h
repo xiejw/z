@@ -7,12 +7,17 @@
 #include "tensor.h"
 #include "vm.h"
 
-struct llama_model {
-        struct ctx    *ctx;       /* Now owned. */
-        struct tensor *embedding; /* Alias */
+struct weight_info {
+        const char    *name;   /* Alias */
+        struct tensor *weight; /* Alias */
+};
 
-        vec_t( struct tensor * ) tensors;
-        struct vm *vm;
+struct llama_model {
+        struct ctx *ctx;                  /* Now owned. */
+        struct vm  *vm;                   /* Owned. */
+        vec_t( struct tensor * ) tensors; /* Owned */
+
+        struct weight_info embedding;
 };
 
 error_t model_new( struct ctx *ctx, const char *fname,

@@ -16,9 +16,10 @@ load_u64( byte *ptr )
 error_t
 op_load_weight( struct vm_frame *frame )
 {
-        error_t    err    = OK;
-        struct vm *vm     = frame->vm;
-        vec_t( byte ) ops = frame->program->ops + *( frame->ppc ) + 9;
+        error_t    err = OK;
+        struct vm *vm  = frame->vm;
+        vec_t( byte ) ops =
+            vm_program_get_bytecode( frame->program ) + *( frame->ppc ) + 9;
 
         struct tensor *embedding = (struct tensor *)load_u64( ops );
         vm_push_tsr( vm, embedding );

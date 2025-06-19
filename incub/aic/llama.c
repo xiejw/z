@@ -18,6 +18,7 @@ model_new( struct ctx *ctx, const char *fname,
         error_t             err          = OK;
         struct llama_model *p            = calloc( 1, sizeof( *p ) );
         vec_t( struct tensor * ) tensors = vec_new( );
+        struct vm *vm                    = vm_new( ctx );
 
         err = tsr_load_from_file( ctx, fname, &tensors );
         if ( err != OK ) {
@@ -25,20 +26,22 @@ model_new( struct ctx *ctx, const char *fname,
                 goto cleanup;
         }
 
-        p->ctx       = ctx;
-        p->embedding = tensors[0];
-
+        p->ctx     = ctx;
+        p->vm      = vm;
         p->tensors = _MOVED_IN_ tensors;
-        tensors    = NULL;
+
+        /* Fill model weights */
+        size_t tensor_idx = 0;
+        p->embedding      = (struct weight_info){ .name   = "embedding",
+                                                  .weight = tensors[tensor_idx++] };
 
         *model = p;
 
-        struct vm *vm = vm_new( ctx );
-        p->vm         = vm;
 cleanup:
         if ( err != OK ) {
-                if ( p != NULL ) model_free( p );
+                if ( vm != NULL ) vm_free( vm );
                 if ( tensors != NULL ) tsr_free_vec( tensors );
+                if ( p != NULL ) model_free( p );
         }
         return err;
 }
@@ -71,7 +74,8 @@ model_run( struct llama_model *model, vec_t( i64 ) tokens )
         }
 
         CHECK_AND_JUMP( vm_program_push_op( program, OP_LOAD_WEIGHT,
-                                            "embedding", model->embedding ) );
+                                            model->embedding.name,
+                                            model->embedding.weight ) );
         CHECK_AND_JUMP( vm_program_push_op( program, OP_GATTER ) );
 
         if ( DEBUG_PRINT ) {

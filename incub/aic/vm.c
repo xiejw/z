@@ -20,6 +20,11 @@ struct vm {
         size_t          sp; /* Point to next position. */
 };
 
+struct vm_program {
+        struct vm *vm; /* Not owned */
+        vec_t( byte ) ops;
+};
+
 /* === --- Help Methods ------------------------------------------------- === */
 
 static void
@@ -49,6 +54,8 @@ load_u64( byte *ptr )
 }
 
 /* === --- Implementation of APIs --------------------------------------- === */
+
+/* ------- Program ---------------------------------------------------------- */
 struct vm_program *
 vm_program_new( struct vm *vm )
 {
@@ -87,12 +94,19 @@ vm_program_push_op( struct vm_program *p, enum vm_op op, ... )
         return OK;
 }
 
+vec_t( byte ) vm_program_get_bytecode( const struct vm_program *p )
+{
+        return p->ops;
+}
+
 sds_t
 vm_program_dump( const struct vm_program *p )
 {
-        sds_t       s        = sds_empty( );
-        size_t      op_count = vec_size( p->ops );
-        const char *weight_name;
+        sds_t          s        = sds_empty( );
+        size_t         op_count = vec_size( p->ops );
+        const char    *weight_name;
+        struct tensor *tsr;
+
         if ( op_count == 0 ) {
                 sds_cat_printf( &s, "(empty program)" );
                 return s;
@@ -103,8 +117,9 @@ vm_program_dump( const struct vm_program *p )
                 switch ( op ) {
                 case OP_LOAD_WEIGHT:
                         weight_name = (const char *)load_u64( p->ops + i + 1 );
-                        sds_cat_printf( &s, "%4zu: OP_LOAD_WEIGHT `%s`\n", i,
-                                        weight_name );
+                        tsr = (struct tensor *)load_u64( p->ops + i + 9 );
+                        sds_cat_printf( &s, "%4zu: OP_LOAD_WEIGHT \"%s\": %p\n",
+                                        i, weight_name, tsr );
                         i += 16; /* skip the weight_name and tensor ptr. */
                         break;
                 case OP_GATTER:
@@ -118,6 +133,8 @@ vm_program_dump( const struct vm_program *p )
         }
         return s;
 }
+
+/* ------- VM --------------------------------------------------------------- */
 
 struct vm *
 vm_new( struct ctx *ctx )
@@ -181,6 +198,8 @@ vm_run( struct vm *vm, const struct vm_program *p )
         error_t err = OK;
         size_t  pc  = 0;
 
+        assert( vm == p->vm );
+
         struct vm_frame frame = {
             .ctx     = vm->ctx,
             .vm      = vm,
@@ -188,12 +207,11 @@ vm_run( struct vm *vm, const struct vm_program *p )
             .ppc     = &pc,
         };
 
-        assert( vm == p->vm );
-
         const size_t op_count = vec_size( p->ops );
         for ( ; pc < op_count; pc++ ) {
                 enum vm_op op = p->ops[pc];
                 assert( op_fn_tbl[op] != NULL );
+
                 err = op_fn_tbl[op]( &frame );
                 if ( err != OK ) {
                         EMIT_ERROR_NOTE( vm->ctx, "unexpected error at op %d",

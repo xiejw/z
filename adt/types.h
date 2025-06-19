@@ -36,5 +36,6 @@ typedef int error_t;
 // Function Annotations
 #define ADT_UNUSED_FN         __attribute__( ( unused ) )
 #define ADT_MAYBE_UNUSED( x ) (void)( x )
+#define ADT_NO_DISCARD __attribute__((warn_unused_result))
 
 #endif /* ADT_TYPES_H_ */
