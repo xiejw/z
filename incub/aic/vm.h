@@ -39,7 +39,9 @@ typedef error_t ( *vm_op_fn_t )( struct vm_frame *frame );
 error_t vm_run( struct vm *, const struct vm_program *p );
 
 enum vm_op {
-        /* Loads the weight whose address is in the next 4 bytes in the program.
+        /* Load the weight whose name address is next 8 bytes and tensor
+         * address is 8 bytes after in the program.
+         *
          * Push it to stack.
          */
         OP_LOAD_WEIGHT,
