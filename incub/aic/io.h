@@ -11,9 +11,9 @@
 // Forward declaration.
 struct io_reader;
 
-error_t io_reader_open( struct ctx *, const char *name,
-                        _OUT_ struct io_reader **out );
-void    io_reader_close( struct io_reader * );
+ADT_NO_DISCARD error_t io_reader_open( struct ctx *, const char *name,
+                                       _OUT_ struct io_reader **out );
+void                   io_reader_close( struct io_reader * );
 
 /* Read one line from the underlying file and point to the buffer via buf along
  * with the size in the buf.
@@ -31,6 +31,7 @@ void    io_reader_close( struct io_reader * );
  * If partial is not NULL, 1 means the line is partial line, 0 means it is a
  * full line.
  */
-error_t io_reader_nextline( struct io_reader *, _OUT_ char **buf,
-                            _OUT_ size_t *size, _OUT_ _NULLABLE_ int *partial );
+ADT_NO_DISCARD error_t io_reader_nextline( struct io_reader *, _OUT_ char **buf,
+                                           _OUT_ size_t         *size,
+                                           _OUT_ _NULLABLE_ int *partial );
 #endif /* AIC_IO_H_ */

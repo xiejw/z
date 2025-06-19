@@ -3,6 +3,7 @@
 #include <stdarg.h>
 
 #include "op.h"
+#include "util.h"
 
 #include <adt/vec.h>
 
@@ -24,34 +25,6 @@ struct vm_program {
         struct vm *vm; /* Not owned */
         vec_t( byte ) ops;
 };
-
-/* === --- Help Methods ------------------------------------------------- === */
-
-static void
-push_u64( vec_t( byte ) * pops, u64 v )
-{
-        size_t size = vec_size( *pops );
-        vec_reserve( pops, size + 8 );
-        byte *ptr = ( *pops ) + size;
-        ptr[0]    = (byte)( v );
-        ptr[1]    = (byte)( v >> 8 );
-        ptr[2]    = (byte)( v >> 16 );
-        ptr[3]    = (byte)( v >> 24 );
-        ptr[4]    = (byte)( v >> 32 );
-        ptr[5]    = (byte)( v >> 40 );
-        ptr[6]    = (byte)( v >> 48 );
-        ptr[7]    = (byte)( v >> 56 );
-        vec_set_size( *pops, size + 8 );
-}
-
-static u64
-load_u64( byte *ptr )
-{
-        return (u64)( ptr[0] ) | ( (u64)( ptr[1] ) << 8 ) |
-               ( (u64)( ptr[2] ) << 16 ) | ( (u64)( ptr[3] ) << 24 ) |
-               ( (u64)( ptr[4] ) << 32 ) | ( (u64)( ptr[5] ) << 40 ) |
-               ( (u64)( ptr[6] ) << 48 ) | ( (u64)( ptr[7] ) << 56 );
-}
 
 /* === --- Implementation of APIs --------------------------------------- === */
 
@@ -84,9 +57,9 @@ vm_program_push_op( struct vm_program *p, enum vm_op op, ... )
         case OP_LOAD_WEIGHT:
                 va_start( args, op );
                 const char *name = va_arg( args, const char * );
-                push_u64( &p->ops, (u64)name );
+                bytecode_store_u64( &p->ops, (u64)name );
                 struct tensor *w = va_arg( args, struct tensor * );
-                push_u64( &p->ops, (u64)w );
+                bytecode_store_u64( &p->ops, (u64)w );
                 va_end( args );
         default:
                 break;
@@ -116,8 +89,10 @@ vm_program_dump( const struct vm_program *p )
                 enum vm_op op = (byte)p->ops[i];
                 switch ( op ) {
                 case OP_LOAD_WEIGHT:
-                        weight_name = (const char *)load_u64( p->ops + i + 1 );
-                        tsr = (struct tensor *)load_u64( p->ops + i + 9 );
+                        weight_name =
+                            (const char *)bytecode_load_u64( p->ops + i + 1 );
+                        tsr = (struct tensor *)bytecode_load_u64( p->ops + i +
+                                                                  9 );
                         sds_cat_printf( &s, "%4zu: OP_LOAD_WEIGHT \"%s\": %p\n",
                                         i, weight_name, tsr );
                         i += 16; /* skip the weight_name and tensor ptr. */

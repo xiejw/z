@@ -703,24 +703,31 @@ cleanup:
 error_t
 tok_encode_chat( struct tokenizer *p, const char *text, vec_t( i64 ) * ptokens )
 {
+        error_t err = OK;
         vec_push( ptokens, (i64)p->id_begin_of_text );
 
         /* Header for user. */
         vec_push( ptokens, (i64)p->id_start_of_header );
-        tok_encode( p, "user", ptokens );
+        err = tok_encode( p, "user", ptokens );
+        if ( err != OK ) goto exit;
         vec_push( ptokens, (i64)p->id_end_of_header );
-        tok_encode( p, "\n\n", ptokens );
+        err = tok_encode( p, "\n\n", ptokens );
+        if ( err != OK ) goto exit;
 
         /* The real text. */
-        tok_encode( p, text, ptokens );
+        err = tok_encode( p, text, ptokens );
+        if ( err != OK ) goto exit;
 
         /* End this turn. */
         vec_push( ptokens, (i64)p->id_end_of_turn );
 
         /* Header for assistant. */
         vec_push( ptokens, (i64)p->id_start_of_header );
-        tok_encode( p, "assistant", ptokens );
+        err = tok_encode( p, "assistant", ptokens );
+        if ( err != OK ) goto exit;
         vec_push( ptokens, (i64)p->id_end_of_header );
-        tok_encode( p, "\n\n", ptokens );
-        return OK;
+        err = tok_encode( p, "\n\n", ptokens );
+        if ( err != OK ) goto exit;
+exit:
+        return err;
 }

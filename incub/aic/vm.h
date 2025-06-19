@@ -21,8 +21,8 @@ void       vm_free( struct vm *p );
 
 /* Once push, vm owns the tensor by increasing the ref count. Once pop, vm will
  * release (by moving) the tensor to caller.*/
-error_t                vm_push_tsr( struct vm *, struct tensor * );
-error_t                vm_pop_tsr( struct vm *, _OUT_ struct tensor ** );
+error_t vm_push_tsr( struct vm *, struct tensor * );
+error_t vm_pop_tsr( struct vm *, _OUT_ struct tensor ** );
 
 size_t                 vm_stack_size( struct vm * );
 ADT_NO_DISCARD error_t vm_run( struct vm *, const struct vm_program *p );
@@ -65,6 +65,5 @@ struct vm_frame {
 };
 
 typedef ADT_NO_DISCARD error_t ( *vm_op_fn_t )( struct vm_frame *frame );
-
 
 #endif  // AIC_VM_H_

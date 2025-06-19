@@ -9,6 +9,21 @@
 #define DEBUG( ctx, ... ) \
         if ( DEBUG_PRINT ) LOG_DEBUG( ctx, MODEL_LOGGING_PREFIX __VA_ARGS__ )
 
+/* === --- Data Structures ---------------------------------------------- === */
+
+struct weight_info {
+        const char    *name;   /* Alias */
+        struct tensor *weight; /* Alias */
+};
+
+struct llama_model {
+        struct ctx *ctx;                  /* Now owned. */
+        struct vm  *vm;                   /* Owned. */
+        vec_t( struct tensor * ) tensors; /* Owned */
+
+        struct weight_info embedding;
+};
+
 /* === --- Implementation of APIs --------------------------------------- === */
 
 error_t
