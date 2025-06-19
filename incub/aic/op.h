@@ -5,5 +5,5 @@
 
 #include <adt/types.h>
 
-error_t op_gatter( struct ctx *ctx, struct vm *vm, struct vm_program *p,
-                   size_t pc );
+error_t op_load_weight( struct vm_frame *frame );
+error_t op_gatter( struct vm_frame *frame );

@@ -25,6 +25,7 @@ model_new( struct ctx *ctx, const char *fname,
                 goto cleanup;
         }
 
+        p->ctx       = ctx;
         p->embedding = tensors[0];
 
         p->tensors = _MOVED_IN_ tensors;
@@ -69,6 +70,8 @@ model_run( struct llama_model *model, vec_t( i64 ) tokens )
                 goto cleanup;                                          \
         }
 
+        CHECK_AND_JUMP( vm_program_push_op( program, OP_LOAD_WEIGHT,
+                                            "embedding", model->embedding ) );
         CHECK_AND_JUMP( vm_program_push_op( program, OP_GATTER ) );
 
         if ( DEBUG_PRINT ) {
@@ -86,7 +89,6 @@ model_run( struct llama_model *model, vec_t( i64 ) tokens )
         tsr_tokens->alias = 1;
         tsr_tokens->i     = tokens;
 
-        vm_push_tsr( vm, model->embedding );
         vm_push_tsr( vm, tsr_tokens );
 
         err = vm_run( vm, program );

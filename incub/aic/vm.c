@@ -1,5 +1,7 @@
 #include "vm.h"
 
+#include <stdarg.h>
+
 #include "op.h"
 
 #include <adt/vec.h>
@@ -18,10 +20,33 @@ struct vm {
         size_t          sp; /* Point to next position. */
 };
 
-struct vm_program {
-        struct vm *vm; /* Not owned */
-        vec_t( enum vm_op ) ops;
-};
+/* === --- Help Methods ------------------------------------------------- === */
+
+static void
+push_u64( vec_t( byte ) * pops, u64 v )
+{
+        size_t size = vec_size( *pops );
+        vec_reserve( pops, size + 8 );
+        byte *ptr = ( *pops ) + size;
+        ptr[0]    = (byte)( v );
+        ptr[1]    = (byte)( v >> 8 );
+        ptr[2]    = (byte)( v >> 16 );
+        ptr[3]    = (byte)( v >> 24 );
+        ptr[4]    = (byte)( v >> 32 );
+        ptr[5]    = (byte)( v >> 40 );
+        ptr[6]    = (byte)( v >> 48 );
+        ptr[7]    = (byte)( v >> 56 );
+        vec_set_size( *pops, size + 8 );
+}
+
+static u64
+load_u64( byte *ptr )
+{
+        return (u64)( ptr[0] ) | ( (u64)( ptr[1] ) << 8 ) |
+               ( (u64)( ptr[2] ) << 16 ) | ( (u64)( ptr[3] ) << 24 ) |
+               ( (u64)( ptr[4] ) << 32 ) | ( (u64)( ptr[5] ) << 40 ) |
+               ( (u64)( ptr[6] ) << 48 ) | ( (u64)( ptr[7] ) << 56 );
+}
 
 /* === --- Implementation of APIs --------------------------------------- === */
 struct vm_program *
@@ -42,25 +67,46 @@ vm_program_free( struct vm_program *p )
 }
 
 error_t
-vm_program_push_op( struct vm_program *p, enum vm_op op )
+vm_program_push_op( struct vm_program *p, enum vm_op op, ... )
 {
-        vec_push( &p->ops, op );
+        assert( (int)( op ) <= 256 );
+        vec_push( &p->ops, (byte)op );
+
+        va_list args;
+        switch ( op ) {
+        case OP_LOAD_WEIGHT:
+                va_start( args, op );
+                const char *name = va_arg( args, const char * );
+                push_u64( &p->ops, (u64)name );
+                struct tensor *w = va_arg( args, struct tensor * );
+                push_u64( &p->ops, (u64)w );
+                va_end( args );
+        default:
+                break;
+        }
         return OK;
 }
 
 sds_t
-vm_program_dump( struct vm_program *p )
+vm_program_dump( const struct vm_program *p )
 {
-        sds_t  s        = sds_empty( );
-        size_t op_count = vec_size( p->ops );
+        sds_t       s        = sds_empty( );
+        size_t      op_count = vec_size( p->ops );
+        const char *weight_name;
         if ( op_count == 0 ) {
                 sds_cat_printf( &s, "(empty program)" );
                 return s;
         }
 
         for ( size_t i = 0; i < op_count; i++ ) {
-                enum vm_op op = p->ops[i];
+                enum vm_op op = (byte)p->ops[i];
                 switch ( op ) {
+                case OP_LOAD_WEIGHT:
+                        weight_name = (const char *)load_u64( p->ops + i + 1 );
+                        sds_cat_printf( &s, "%4zu: OP_LOAD_WEIGHT `%s`\n", i,
+                                        weight_name );
+                        i += 16; /* skip the weight_name and tensor ptr. */
+                        break;
                 case OP_GATTER:
                         sds_cat_printf( &s, "%4zu: OP_GATTER\n", i );
                         break;
@@ -124,24 +170,31 @@ vm_stack_size( struct vm *vm )
         return vm->sp;
 }
 
-typedef error_t ( *vm_op_fn_t )( struct ctx *ctx, struct vm *vm,
-                                 struct vm_program *p, size_t pc );
-
 static vm_op_fn_t op_fn_tbl[] = {
-    [OP_GATTER] = op_gatter,
+    [OP_LOAD_WEIGHT] = op_load_weight,
+    [OP_GATTER]      = op_gatter,
 };
 
 error_t
-vm_run( struct vm *vm, struct vm_program *p )
+vm_run( struct vm *vm, const struct vm_program *p )
 {
         error_t err = OK;
+        size_t  pc  = 0;
+
+        struct vm_frame frame = {
+            .ctx     = vm->ctx,
+            .vm      = vm,
+            .program = p,
+            .ppc     = &pc,
+        };
 
         assert( vm == p->vm );
 
-        size_t op_count = vec_size( p->ops );
-        for ( size_t i = 0; i < op_count; i++ ) {
-                enum vm_op op = p->ops[i];
-                err           = op_fn_tbl[op]( vm->ctx, vm, p, i );
+        const size_t op_count = vec_size( p->ops );
+        for ( ; pc < op_count; pc++ ) {
+                enum vm_op op = p->ops[pc];
+                assert( op_fn_tbl[op] != NULL );
+                err = op_fn_tbl[op]( &frame );
                 if ( err != OK ) {
                         EMIT_ERROR_NOTE( vm->ctx, "unexpected error at op %d",
                                          (int)op );
