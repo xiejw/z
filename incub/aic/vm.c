@@ -10,6 +10,7 @@
 #define VM_STACK_MAX_SIZE 256
 
 /* === --- Data Structures ---------------------------------------------- === */
+
 struct vm_value {
         // TODO add value tag.
         struct tensor *tsr;

@@ -20,6 +20,27 @@
 #define DEBUG( ctx, ... ) \
         if ( DEBUG_PRINT ) LOG_DEBUG( ctx, TSR_LOGGING_PREFIX __VA_ARGS__ )
 
+/* === --- Data Structures ---------------------------------------------- === */
+
+struct shape {
+        u32 rank;
+        u32 dims[AIC_TENSOR_MAX_RANK];
+        u64 ele_count;
+};
+
+struct tensor {
+        struct shape sp;
+        char         dtype;   /* 0 f32 1 i64 */
+        char         alias;   /* 0 owned 1 alias */
+        size_t       ref_cnt; /* reference count. */
+        union {
+                f32 *f;
+                i64 *i;
+        };
+};
+
+/* === --- Helper Methods ----------------------------------------------- === */
+
 static error_t
 mmap_file( struct ctx *ctx, const char *fname, _OUT_ void **paddr )
 {
@@ -213,4 +234,22 @@ tsr_free_vec( vec_t( struct tensor * ) tensors )
                 tsr_dec_ref( tsr );
         }
         vec_free( tensors );
+}
+
+void
+tsr_set_dtype( struct tensor *tsr, char dtype )
+{
+        assert( dtype == 0 || dtype == 1 );
+        tsr->dtype = dtype;
+}
+
+void
+tsr_alias_data( struct tensor *tsr, void *data )
+{
+        assert( tsr->f == NULL );
+        tsr->alias = 1;
+        if ( tsr->dtype == 0 )
+                tsr->f = data;
+        else
+                tsr->i = data;
 }
