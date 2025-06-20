@@ -43,6 +43,10 @@ enum vm_op {
          * address is 8 bytes after in the program.
          *
          * Push it to stack.
+         *
+         * To push op, use
+         *
+         *   vm_program_push_op(OP_LOAD_WEIGHT, "embedding", tsr_embedding_ptr)
          */
         OP_LOAD_WEIGHT,
 

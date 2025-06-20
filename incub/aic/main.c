@@ -10,6 +10,10 @@
 #error TOK_FILE should be passed via "-DTOK_FILE"
 #endif
 
+#ifndef LLAMA_FILE
+#error LLAMA_FILE should be passed via "-DLLAMA_FILE"
+#endif
+
 #define PANIC_IF_ERR( err, ctx ) _PANIC_IF_ERR( err, ctx, __FILE__, __LINE__ )
 
 #define _PANIC_IF_ERR( err, ctx, file, line )      \
@@ -52,13 +56,13 @@ main( void )
 
         {
                 struct llama_model *m;
-                err = model_new( ctx, "/tmp/tensor_data.bin", &m );
+                err = llama_model_new( ctx, LLAMA_FILE, &m );
                 PANIC_IF_ERR( err, ctx );
 
-                err = model_run( m, tokens );
+                err = llama_model_run( m, tokens );
                 PANIC_IF_ERR( err, ctx );
 
-                model_free( m );
+                llama_model_free( m );
         }
 
         vec_free( tokens );
