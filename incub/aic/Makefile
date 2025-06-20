@@ -54,7 +54,7 @@ CFLAGS   += -DTOK_FILE="\"${TOK_FILE}\""
 # === Rules --------------------------------------------------------------------
 #
 main:  | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} ctx.c base64.c io.c tok.c util.c tensor.c llama.c vm.c op.c main.c ${LDFLAGS} && ./${BUILD}/a.out
+	clang -o ${BUILD}/a.out ${CFLAGS} ctx.c  io.c tok.c util.c tensor.c llama.c vm.c op.c main.c ${LDFLAGS} && ./${BUILD}/a.out
 
 ${BUILD}:
 	mkdir -p ${BUILD}
@@ -63,7 +63,7 @@ test: CFLAGS += -DAIC_TEST_H_
 test:  | ${BUILD}
 	@set -e
 	@clang -o ${BUILD}/a.out ${CFLAGS} ctx.c io.c ${LDFLAGS} && echo -n "io     -- " && ./${BUILD}/a.out
-	@clang -o ${BUILD}/a.out ${CFLAGS} base64.c ${LDFLAGS}   && echo -n "base64 -- " && ./${BUILD}/a.out
+	@clang -o ${BUILD}/a.out ${CFLAGS} util.c ${LDFLAGS}     && echo -n "util   -- " && ./${BUILD}/a.out
 	@echo "All done."
 
 fmt:

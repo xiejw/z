@@ -25,7 +25,6 @@
 #include <adt/sds.h>
 #include <adt/vec.h>
 
-#include "base64.h"
 #include "io.h"
 #include "util.h"
 
