@@ -102,9 +102,9 @@ llama_model_run( struct llama_model *model, const vec_t( i64 ) tokens )
 
         /* --- Prepare the token as tensor ---------------------------------- */
         u32 seq_len = (u32)vec_size( tokens );
-        tsr_tokens  = tsr_new_without_data( 2, (u32 *)(u32[]){ 1, seq_len } );
+        tsr_tokens  = tsr_new_without_data( TSR_DTYPE_I64, 2,
+                                            (u32 *)(u32[]){ 1, seq_len } );
 
-        tsr_set_dtype( tsr_tokens, TSR_DTYPE_I64 );
         tsr_alias_data( tsr_tokens, (void *)tokens );
 
         vm_push_tsr( vm, tsr_tokens );
@@ -115,6 +115,7 @@ llama_model_run( struct llama_model *model, const vec_t( i64 ) tokens )
                 EMIT_ERROR_NOTE( model->ctx, "fail to run the model" );
                 goto cleanup;
         }
+        assert( vm_stack_size( vm ) == 1 );
 
 cleanup:
         while ( vm_stack_size( vm ) > 0 ) {

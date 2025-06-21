@@ -8,21 +8,34 @@
 
 #define AIC_TENSOR_MAX_RANK 4
 
+struct shape {
+        u32 rank;
+        u32 dims[AIC_TENSOR_MAX_RANK];
+        u64 ele_count;
+};
+
 struct tensor;
 
-/* Create a barebone tensor. dtype, alias and data points should be set. */
-struct tensor *tsr_new_without_data( u32 rank, u32 *dims );
+enum tensor_dtype {
+        TSR_DTYPE_F32,
+        TSR_DTYPE_I64,
+};
+
+/* Create a barebone tensor. Data buffer should be set later before use. */
+struct tensor *tsr_new_without_data( enum tensor_dtype dtype, u32 rank,
+                                     u32 *dims );
 void           tsr_inc_ref( struct tensor *p );
 void           tsr_dec_ref( struct tensor *p );
 void           tsr_free_vec( vec_t( struct tensor * ) ptensors );
 
-/* Change dtype of tensor. Must do before setting data */
-#define TSR_DTYPE_F32 0
-#define TSR_DTYPE_I64 1
-void tsr_set_dtype( struct tensor *tsr, char dtype );
+const struct shape *tsr_get_shape( struct tensor * );
+f32                *tsr_get_f32_data( struct tensor * );
+i64                *tsr_get_i64_data( struct tensor * );
 
-/* Point the data to an unowned buffer. Must set dtype first.  */
+/* Point the data to an unowned buffer.  */
 void tsr_alias_data( struct tensor *tsr, void *data );
+/* Allocates the data buffer and stores the pointer into pdata. */
+void tsr_alloc_data( struct tensor *tsr, void **pdata );
 
 /* Do a mmap from a file (fname) and map tensors to ptensors vector. */
 ADT_NO_DISCARD error_t tsr_load_from_file( struct ctx *ctx, const char *fname,

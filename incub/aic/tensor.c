@@ -22,21 +22,12 @@
 
 /* === --- Data Structures ---------------------------------------------- === */
 
-struct shape {
-        u32 rank;
-        u32 dims[AIC_TENSOR_MAX_RANK];
-        u64 ele_count;
-};
-
 struct tensor {
-        struct shape sp;
-        char         dtype;   /* 0 f32 1 i64 */
-        char         alias;   /* 0 owned 1 alias */
-        size_t       ref_cnt; /* reference count. */
-        union {
-                f32 *f;
-                i64 *i;
-        };
+        struct shape      sp;
+        enum tensor_dtype dtype;
+        char              alias;   /* 0 owned 1 alias */
+        size_t            ref_cnt; /* reference count. */
+        void             *data;
 };
 
 /* === --- Helper Methods ----------------------------------------------- === */
@@ -136,7 +127,7 @@ alias_tensor_data( struct ctx *ctx, char *base_addr,
         for ( size_t i = 0; i < tsr_count; i++ ) {
                 struct tensor *tsr = tensors[i];
                 assert( tsr->dtype == 0 );
-                tsr->f = (f32 *)( base_addr + offset );
+                tsr->data = (f32 *)( base_addr + offset );
                 offset += tsr->sp.ele_count * sizeof( f32 );
         }
 }
@@ -186,13 +177,15 @@ cleanup:
 }
 
 struct tensor *
-tsr_new_without_data( u32 rank, u32 *dims )
+tsr_new_without_data( enum tensor_dtype dtype, u32 rank, u32 *dims )
 {
         struct tensor *tsr = calloc( 1, sizeof( *tsr ) );
         assert( tsr != NULL );
 
+        tsr->dtype   = dtype;
         tsr->ref_cnt = 1;
 
+        tsr->sp.rank  = rank;
         u64 ele_count = 1;
         for ( u32 dim = 0; dim < rank; dim++ ) {
                 u32 e             = dims[dim];
@@ -218,10 +211,7 @@ tsr_dec_ref( struct tensor *tsr )
         if ( tsr == NULL ) return;
         assert( tsr->ref_cnt > 0 );
         if ( tsr->ref_cnt-- != 1 ) return;
-
-        if ( !tsr->alias ) {
-                tsr->dtype == 0 ? free( tsr->f ) : free( tsr->i );
-        }
+        if ( !tsr->alias ) free( tsr->data );
         free( tsr );
 }
 
@@ -237,19 +227,45 @@ tsr_free_vec( vec_t( struct tensor * ) tensors )
 }
 
 void
-tsr_set_dtype( struct tensor *tsr, char dtype )
+tsr_alias_data( struct tensor *tsr, void *data )
 {
-        assert( dtype == 0 || dtype == 1 );
-        tsr->dtype = dtype;
+        assert( tsr->data == NULL );
+        tsr->alias = 1;
+        tsr->data  = data;
 }
 
 void
-tsr_alias_data( struct tensor *tsr, void *data )
+tsr_alloc_data( struct tensor *tsr, void **pdata )
 {
-        assert( tsr->f == NULL );
-        tsr->alias = 1;
-        if ( tsr->dtype == 0 )
-                tsr->f = data;
-        else
-                tsr->i = data;
+        assert( tsr->data == NULL );
+        tsr->alias      = 0;
+        u64   ele_count = tsr->sp.ele_count;
+        void *ptr;
+        if ( tsr->dtype == 0 ) {
+                ptr = malloc( sizeof( f32 ) * ele_count );
+        } else {
+                ptr = malloc( sizeof( i64 ) * ele_count );
+        }
+        tsr->data = ptr;
+        *pdata    = ptr;
+}
+
+const struct shape *
+tsr_get_shape( struct tensor *tsr )
+{
+        return &tsr->sp;
+}
+
+f32 *
+tsr_get_f32_data( struct tensor *tsr )
+{
+        assert( tsr->dtype == TSR_DTYPE_F32 );
+        return (f32 *)tsr->data;
+}
+
+i64 *
+tsr_get_i64_data( struct tensor *tsr )
+{
+        assert( tsr->dtype == TSR_DTYPE_I64 );
+        return (i64 *)tsr->data;
 }
