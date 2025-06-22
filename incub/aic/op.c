@@ -96,7 +96,7 @@ op_gatter( struct vm_frame *frame )
                         sizeof( f32 ) * emb_dim );
         }
 
-        tsr_dump_f32_data_for_debugging(ctx, seq_len * emb_dim, ptr);
+        tsr_dump_f32_data_for_debugging( ctx, seq_len * emb_dim, ptr );
 
         vm_push_tsr( vm, output );
 

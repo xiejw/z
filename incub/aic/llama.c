@@ -30,19 +30,21 @@ error_t
 llama_model_new( struct ctx *ctx, const char *fname,
                  _OUT_ struct llama_model **model )
 {
-        error_t             err          = OK;
-        struct llama_model *p            = calloc( 1, sizeof( *p ) );
+        error_t err                      = OK;
         vec_t( struct tensor * ) tensors = vec_new( );
-        struct vm *vm                    = vm_new( ctx );
 
         err = tsr_load_from_file( ctx, fname, &tensors );
         if ( err != OK ) {
+                vec_free( tensors );
                 EMIT_ERROR_NOTE( ctx, "failed to load tensors" );
-                goto cleanup;
+                goto exit;
         }
 
+        struct llama_model *p  = calloc( 1, sizeof( *p ) );
+        struct vm          *vm = vm_new( ctx );
+
         p->ctx     = ctx;
-        p->vm      = vm;
+        p->vm      = _MOVED_IN_      vm;
         p->tensors = _MOVED_IN_ tensors;
 
         /* Fill model weights */
@@ -52,12 +54,7 @@ llama_model_new( struct ctx *ctx, const char *fname,
 
         *model = p;
 
-cleanup:
-        if ( err != OK ) {
-                if ( vm != NULL ) vm_free( vm );
-                if ( tensors != NULL ) tsr_free_vec( tensors );
-                if ( p != NULL ) free( p );
-        }
+exit:
         return err;
 }
 
