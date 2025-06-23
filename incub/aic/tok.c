@@ -25,8 +25,17 @@
 #include <adt/sds.h>
 #include <adt/vec.h>
 
-#include "io.h"
 #include "util.h"
+
+#define TOK_LOGGING_PREFIX "[Tok] "
+
+#ifndef NDEBUG
+#define DEBUG_PRINT 0
+#else
+#define DEBUG_PRINT 0
+#endif
+
+// === Llama 3 tokenizer configurations ------------------------------------ ===
 
 #define TOK_MAX_ID_LEN              10
 #define TOK_MERGEALBE_RANK_COUNT    128000
@@ -39,15 +48,8 @@
         "(?i:'s|'t|'re|'ve|'m|'ll|'d)|[^\\r\\n\\p{L}\\p{N}]?\\p{L}+|\\p{N}{1," \
         "3}| ?[^\\s\\p{L}\\p{N}]+[\\r\\n]*|\\s*[\\r\\n]+|\\s+(?!\\S)|\\s+"
 
-#define TOK_LOGGING_PREFIX "[Tok] "
-
-#ifndef NDEBUG
-#define DEBUG_PRINT 0
-#else
-#define DEBUG_PRINT 0
-#endif
-
 // === Data Structure ------------------------------------------------------ ===
+
 struct mergeable_rank {
         char *mergeable; /* Owned. */
         int   rank;
