@@ -1,5 +1,8 @@
 #include "op.h"
 
+#include <math.h>
+#include <stdio.h>
+
 #include "util.h"
 
 #ifndef NDEBUG
@@ -12,6 +15,15 @@
 
 #define DEBUG( ctx, ... ) \
         if ( DEBUG_PRINT ) LOG_DEBUG( ctx, OP_LOGGING_PREFIX __VA_ARGS__ )
+
+#define PANIC( msg )                 \
+        do {                         \
+                printf( "panic\n" ); \
+                printf( msg );       \
+                exit( 1 );           \
+        } while ( 0 )
+
+#define REL_ERROR 1e-2f /* Max relative error allowed during assertion. */
 
 static void
 tsr_dump_f32_data_for_debugging( struct ctx *ctx, size_t count, void *data )
@@ -102,5 +114,60 @@ op_gatter( struct vm_frame *frame )
 
         tsr_dec_ref( tokens );
         tsr_dec_ref( embedding );
+        return err;
+}
+
+error_t
+op_assert_eq( struct vm_frame *frame )
+{
+        error_t     err = OK;
+        struct ctx *ctx = frame->ctx;
+        struct vm  *vm  = frame->vm;
+        if ( vm_stack_size( vm ) <= 1 ) {
+                EMIT_ERROR_NOTE(
+                    ctx, "op_assert_eq expects two operands on stack." );
+                return EINVALID;
+        }
+
+        struct tensor *op1 = NULL;
+        struct tensor *op2 = NULL;
+        vm_pop_tsr( vm, &op1 );
+        vm_pop_tsr( vm, &op2 );
+
+        /* Check dtype. */
+        if ( tsr_get_dtype( op1 ) != TSR_DTYPE_F32 ||
+             tsr_get_dtype( op1 ) != tsr_get_dtype( op2 ) ) {
+                EMIT_ERROR_NOTE( ctx,
+                                 "op_assert_eq expects f32 operands only." );
+                return EINVALID;
+        }
+
+        /* Check shape and ele_count. */
+        const struct shape *sp_op1 = tsr_get_shape( op1 );
+        const struct shape *sp_op2 = tsr_get_shape( op2 );
+
+        if ( sp_op1->ele_count != sp_op2->ele_count ) {
+                EMIT_ERROR_NOTE(
+                    ctx,
+                    "op_assert_eq expects equal-ele_count operands only." );
+                return EINVALID;
+        }
+
+        f32   *data_op1  = tsr_get_f32_data( op1 );
+        f32   *data_op2  = tsr_get_f32_data( op2 );
+        size_t ele_count = (size_t)sp_op1->ele_count;
+
+        for ( u32 i = 0; i < ele_count; i++ ) {
+                f32 ferr = data_op1[i] - data_op2[i];
+                if ( fabsf( ferr / data_op1[i] ) >= REL_ERROR ) {
+                        printf( "the %u-th ele is not same. %g vs %g\n", i,
+                                data_op1[i], data_op2[i] );
+                        fflush( stdout );
+                        PANIC( "op_assert_eq" );
+                }
+        }
+
+        tsr_dec_ref( op1 );
+        tsr_dec_ref( op2 );
         return err;
 }

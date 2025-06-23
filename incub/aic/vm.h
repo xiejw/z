@@ -54,6 +54,12 @@ enum vm_op {
          * Push the result tensor
          */
         OP_GATTER,
+
+        /* This is for debugging only.
+         * - Pop up two tensors and check the values are identical.
+         * - Push nothing
+         */
+        OP_ASSERT_EQ,
 };
 
 ADT_NO_DISCARD error_t vm_program_push_op( struct vm_program *p, enum vm_op op,

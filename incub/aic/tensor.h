@@ -28,6 +28,7 @@ void           tsr_inc_ref( struct tensor *p );
 void           tsr_dec_ref( struct tensor *p );
 void           tsr_free_vec( vec_t( struct tensor * ) ptensors );
 
+enum tensor_dtype   tsr_get_dtype( struct tensor * );
 const struct shape *tsr_get_shape( struct tensor * );
 f32                *tsr_get_f32_data( struct tensor * );
 i64                *tsr_get_i64_data( struct tensor * );

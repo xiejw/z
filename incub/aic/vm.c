@@ -166,6 +166,7 @@ vm_stack_size( struct vm *vm )
 static vm_op_fn_t op_fn_tbl[] = {
     [OP_LOAD_WEIGHT] = op_load_weight,
     [OP_GATTER]      = op_gatter,
+    [OP_ASSERT_EQ]   = op_assert_eq,
 };
 
 error_t

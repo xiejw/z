@@ -256,6 +256,12 @@ tsr_get_shape( struct tensor *tsr )
         return &tsr->sp;
 }
 
+enum tensor_dtype
+tsr_get_dtype( struct tensor *tsr )
+{
+        return tsr->dtype;
+}
+
 f32 *
 tsr_get_f32_data( struct tensor *tsr )
 {
