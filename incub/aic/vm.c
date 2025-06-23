@@ -126,9 +126,6 @@ vm_free( struct vm *p )
 {
         if ( p == NULL ) return;
         assert( p->sp == 0 );
-        // for ( size_t i = 0; i < vm->sp; i++ ) {
-        //         tsr_dec_ref( vm->stack[i] );
-        // }
         free( p );
 }
 

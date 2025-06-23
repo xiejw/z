@@ -21,6 +21,9 @@ struct llama_model {
         struct vm  *vm;                   /* Owned. */
         vec_t( struct tensor * ) tensors; /* Owned */
 
+        // DEBUG only
+        vec_t( struct tensor * ) outputs; /* Owned */
+
         struct weight_info embedding;
 };
 
@@ -32,10 +35,21 @@ llama_model_new( struct ctx *ctx, const char *fname,
 {
         error_t err                      = OK;
         vec_t( struct tensor * ) tensors = vec_new( );
+        vec_t( struct tensor * ) outputs = vec_new( );
+
+        // DEBUG only
+        err = tsr_load_from_file( ctx, "/tmp/output_data.bin", &outputs );
+        if ( err != OK ) {
+                vec_free( tensors );
+                vec_free( outputs );
+                EMIT_ERROR_NOTE( ctx, "failed to load outputs" );
+                goto exit;
+        }
 
         err = tsr_load_from_file( ctx, fname, &tensors );
         if ( err != OK ) {
                 vec_free( tensors );
+                vec_free( outputs );
                 EMIT_ERROR_NOTE( ctx, "failed to load tensors" );
                 goto exit;
         }
@@ -46,6 +60,9 @@ llama_model_new( struct ctx *ctx, const char *fname,
         p->ctx     = ctx;
         p->vm      = _MOVED_IN_      vm;
         p->tensors = _MOVED_IN_ tensors;
+
+        assert( vec_size( outputs ) == 1 );
+        p->outputs = _MOVED_IN_ outputs;
 
         /* Fill model weights */
         size_t tensor_idx = 0;
@@ -63,6 +80,7 @@ llama_model_free( struct llama_model *p )
 {
         if ( p == NULL ) return;
         tsr_free_vec( p->tensors );
+        tsr_free_vec( p->outputs );
         vm_free( p->vm );
         free( p );
 }
@@ -90,6 +108,7 @@ llama_model_run( struct llama_model *model, const vec_t( i64 ) tokens )
                                             model->embedding.name,
                                             model->embedding.weight ) );
         CHECK_AND_JUMP( vm_program_push_op( program, OP_GATTER ) );
+        CHECK_AND_JUMP( vm_program_push_op( program, OP_ASSERT_EQ ) );
 
         if ( DEBUG_PRINT ) {
                 sds_t s = vm_program_dump( program );
@@ -104,6 +123,7 @@ llama_model_run( struct llama_model *model, const vec_t( i64 ) tokens )
 
         tsr_alias_data( tsr_tokens, (void *)tokens );
 
+        vm_push_tsr( vm, model->outputs[0] );
         vm_push_tsr( vm, tsr_tokens );
 
         /* --- Run ---------------------------------------------------------- */
@@ -112,7 +132,8 @@ llama_model_run( struct llama_model *model, const vec_t( i64 ) tokens )
                 EMIT_ERROR_NOTE( model->ctx, "fail to run the model" );
                 goto cleanup;
         }
-        assert( vm_stack_size( vm ) == 1 );
+        // TODO this is 1 but during debug it is 0 due to OP_ASSERT_EQ
+        assert( vm_stack_size( vm ) == 0 );
 
 cleanup:
         while ( vm_stack_size( vm ) > 0 ) {

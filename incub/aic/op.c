@@ -26,14 +26,22 @@
 #define REL_ERROR 1e-2f /* Max relative error allowed during assertion. */
 
 static void
-tsr_dump_f32_data_for_debugging( struct ctx *ctx, size_t count, void *data )
+tsr_dump_f32_data_for_debugging( struct ctx *ctx, struct tensor *output,
+                                 void *data )
 {
-        size_t dump_count = count;
+        const struct shape *sp         = tsr_get_shape( output );
+        size_t              dump_count = sp->ele_count;
         if ( dump_count >= 20 ) dump_count = 20;
 
         f32 *ptr = (f32 *)data;
 
-        sds_t sds = sds_new( "debug f32 tensor: [" );
+        sds_t sds = sds_new( "debug f32 tensor: shape/" );
+
+        for ( u32 dim = 0; dim < sp->rank; dim++ ) {
+                u32 e = sp->dims[dim];
+                sds_cat_printf( &sds, "%d, ", (int)e );
+        }
+        sds_cat_printf( &sds, "/ [" );
 
         for ( size_t i = 0; i < dump_count; i++ ) {
                 sds_cat_printf( &sds, "%.4e, ", ptr[i] );
@@ -108,7 +116,7 @@ op_gatter( struct vm_frame *frame )
                         sizeof( f32 ) * emb_dim );
         }
 
-        tsr_dump_f32_data_for_debugging( ctx, seq_len * emb_dim, ptr );
+        tsr_dump_f32_data_for_debugging( ctx, output, ptr );
 
         vm_push_tsr( vm, output );
 
