@@ -14,9 +14,9 @@ the coding level, which I only briefly read the papers.
 flowchart LR
     Main --> Tokenizer;
     Main --> Llama_Model;
-    Llama_Model --> VM;
+    Llama_Model --> VM+Op;
     Llama_Model --> Tensor;
-    VM --> Tensor;
+    VM+Op --> Tensor;
 ```
 
 ### Algorithms
