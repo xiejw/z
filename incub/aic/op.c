@@ -65,6 +65,8 @@ op_load_weight( struct vm_frame *frame )
         struct tensor *embedding = (struct tensor *)bytecode_load_u64( ops );
         vm_push_tsr( vm, embedding );
         *( frame->ppc ) += 16; /* skip the weight_name and tensor ptr. */
+
+        /* embedding is static and should not be free'ed here. */
         return err;
 }
 
@@ -122,6 +124,7 @@ op_gatter( struct vm_frame *frame )
 
         tsr_dec_ref( tokens );
         tsr_dec_ref( embedding );
+        tsr_dec_ref( output );
         return err;
 }
 
