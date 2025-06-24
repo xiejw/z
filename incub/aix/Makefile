@@ -25,7 +25,7 @@ endif
 # === Rules --------------------------------------------------------------------
 #
 main:  | ${BUILD}
-	clang++ -o ${BUILD}/a.out ${CXXFLAGS} main.cc ${LDFLAGS} && ./${BUILD}/a.out
+	${CXX} -o ${BUILD}/a.out ${CXXFLAGS} main.cc ${LDFLAGS} && ./${BUILD}/a.out
 
 ${BUILD}:
 	mkdir -p ${BUILD}

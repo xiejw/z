@@ -1,11 +1,12 @@
 #include <print>
 #include <string>
+#include <string_view>
 
 class Value {};
 
 class Dense : public Value {
       public:
-        Dense( Value *in, std::string w ) : v_in( in ), w( std::move( w ) ) {};
+        Dense( Value *in, std::string_view w ) : v_in( in ), w( w ) {};
         Value &getInput( ) { return *v_in; }
 
       private:
@@ -13,14 +14,12 @@ class Dense : public Value {
         std::string w;
 };
 
-class DenseBuilder;
-
 class DenseBuilder {
       public:
-        DenseBuilder( std::string w ) : w( std::move( w ) ) {};
+        DenseBuilder( std::string_view w ) : w( w ) {};
 
       private:
-        std::string w;
+        std::string_view w;
 
         template <typename T>
         friend constexpr Value *operator|( const T            &value,
@@ -33,9 +32,10 @@ class DenseBuilder {
 
 class DenseAdaptor {
       public:
-        constexpr DenseBuilder operator( )( std::string weight_name ) const
+        constexpr static DenseBuilder operator( )(
+            std::string_view weight_name )
         {
-                return DenseBuilder{ std::move( weight_name ) };
+                return DenseBuilder{ weight_name };
         }
 };
 
