@@ -21,6 +21,7 @@ with open('/tmp/tensor_data.bin', 'wb') as f:
     # Header 2: Write all shapes
     for param in params:
         # Write dim count
+        print("writing tensor with shape ", param.shape)
         f.write(u32_to_bytes(len(param.shape)))
         # Write shape
         [f.write(u32_to_bytes(x)) for x in param.shape]

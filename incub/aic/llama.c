@@ -25,6 +25,9 @@ struct llama_model {
         vec_t( struct tensor * ) outputs; /* Owned */
 
         struct weight_info embedding;
+        struct weight_info wq;
+        struct weight_info wk;
+        struct weight_info wv;
 };
 
 /* === --- Implementation of APIs --------------------------------------- === */
@@ -61,12 +64,17 @@ llama_model_new( struct ctx *ctx, const char *fname,
         p->vm      = _MOVED_IN_      vm;
         p->tensors = _MOVED_IN_ tensors;
 
-        assert( vec_size( outputs ) == 1 );
         p->outputs = _MOVED_IN_ outputs;
 
         /* Fill model weights */
         size_t tensor_idx = 0;
         p->embedding      = (struct weight_info){ .name   = "embedding",
+                                                  .weight = tensors[tensor_idx++] };
+        p->wq             = (struct weight_info){ .name   = "wq",
+                                                  .weight = tensors[tensor_idx++] };
+        p->wk             = (struct weight_info){ .name   = "wk",
+                                                  .weight = tensors[tensor_idx++] };
+        p->wv             = (struct weight_info){ .name   = "wv",
                                                   .weight = tensors[tensor_idx++] };
 
         *model = p;
@@ -104,10 +112,18 @@ llama_model_run( struct llama_model *model, const vec_t( i64 ) tokens )
         // TODO the program should be program'ed once.
         program = vm_program_new( vm );
 
+        // Embedding
         CHECK_AND_JUMP( vm_program_push_op( program, OP_LOAD_WEIGHT,
                                             model->embedding.name,
                                             model->embedding.weight ) );
         CHECK_AND_JUMP( vm_program_push_op( program, OP_GATTER ) );
+
+        // Projection of q, k, v
+        CHECK_AND_JUMP( vm_program_push_op(
+            program, OP_LOAD_WEIGHT, model->wq.name, model->wq.weight ) );
+        CHECK_AND_JUMP( vm_program_push_op( program, OP_MATMUL ) );
+
+        // Check output
         CHECK_AND_JUMP( vm_program_push_op( program, OP_ASSERT_EQ ) );
 
         if ( DEBUG_PRINT ) {

@@ -140,7 +140,6 @@ load_tensors( struct ctx *ctx, char *addr,
         u32 count = *(u32 *)addr;
         addr += 4;
         DEBUG( ctx, "Total tensors to load %d", (int)count );
-        assert( count == 1 );
 
         /* Pass 2. Read all tensor rank and shapes. */
         for ( u32 i = 0; i < count; i++ ) {
