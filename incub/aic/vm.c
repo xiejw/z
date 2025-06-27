@@ -101,6 +101,12 @@ vm_program_dump( const struct vm_program *p )
                 case OP_GATTER:
                         sds_cat_printf( &s, "%4zu: OP_GATTER\n", i );
                         break;
+                case OP_MATMUL:
+                        sds_cat_printf( &s, "%4zu: OP_MATMUL\n", i );
+                        break;
+                case OP_ASSERT_EQ:
+                        sds_cat_printf( &s, "%4zu: OP_ASSERT_EQ\n", i );
+                        break;
                 default:
                         sds_cat_printf( &s, "%4zu: (unknown op: %d)\n", i,
                                         (int)op );
@@ -163,6 +169,7 @@ vm_stack_size( struct vm *vm )
 static vm_op_fn_t op_fn_tbl[] = {
     [OP_LOAD_WEIGHT] = op_load_weight,
     [OP_GATTER]      = op_gatter,
+    [OP_MATMUL]      = op_matmul,
     [OP_ASSERT_EQ]   = op_assert_eq,
 };
 

@@ -55,6 +55,11 @@ enum vm_op {
          */
         OP_GATTER,
 
+        /* Pop up the column major weight first and then the input tensor.
+         * Push the result tensor
+         */
+        OP_MATMUL,
+
         /* This is for debugging only.
          * - Pop up two tensors and check the values are identical.
          * - Push nothing

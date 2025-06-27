@@ -47,3 +47,11 @@ handling, which is trivial to add.
   further optimize the performance if needed.
 
 [1]: https://eli.thegreenplace.net/2024/tokens-for-llms-byte-pair-encoding-in-go/
+
+#### Tensor
+
+Tensor is a reference counting data structure. Most properties are embedded
+locally, such as tensor shape (`shape`), reference count (`ref_cnt`) and data
+type (`dtype`). The only indirection is data pointer. In case the tensor borrows
+the data, `alias` field is set as `1`.
+
