@@ -18,23 +18,40 @@
 namespace aix {
 
 struct Value {
-        virtual auto name( ) -> std::string = 0;
-        virtual ~Value( )                   = default;
+        virtual ~Value( ) = default;
+
+        /* Returns the debug JSON string. */
+        virtual auto getDebugJson( ) -> std::string = 0;
 };
 
+/* A named param represents a placeholder for one-off input, temporary param. */
 struct NamedParam : public Value {
       public:
         NamedParam( std::string_view name ) : name_( name ) {}
 
-        auto name( ) -> std::string override { return name_; };
+        auto getDebugJson( ) -> std::string override
+        {
+                return std::format( R"({{ "type": "param", "name": "{}" }})",
+                                    name_ );
+        };
+
+      protected:
+        auto getParamName( ) const -> const std::string & { return name_; }
 
       private:
         std::string name_;
 };
 
+/* A weight represents a long live model weight. */
 struct Weight : public NamedParam {
       public:
         Weight( std::string_view name ) : NamedParam( name ) {}
+
+        auto getDebugJson( ) -> std::string override
+        {
+                return std::format( R"({{ "type": "weight", "name": "{}" }})",
+                                    getParamName( ) );
+        };
 };
 
 enum class OpKind {
@@ -51,13 +68,14 @@ struct Op : public Value {
                 operands_.insert( operands_.end( ), operands );
         }
 
-        auto name( ) -> std::string override
+        auto getDebugJson( ) -> std::string override
         {
                 switch ( kind_ ) {
                 case OpKind::Gatter:
                         return std::format(
-                            "Op Gatter {{embedding: {}, input: {}}}",
-                            operands_[0]->name( ), operands_[1]->name( ) );
+                            R"({{ "type": "op", "kind": "gatter", "embedding": {}, "input": {} }})",
+                            operands_[0]->getDebugJson( ),
+                            operands_[1]->getDebugJson( ) );
                 default:
                         return "(unknown op)";
                 }
@@ -89,7 +107,7 @@ class Program {
                 return ptr;
         }
 
-        /* Registers a new named parame. */
+        /* Registers a new model weight. */
         auto registerWeight( std::string_view name ) -> Value *
         {
                 auto key = std::string{ name };
@@ -103,6 +121,7 @@ class Program {
                 return ptr;
         }
 
+        /* Apply embedding transformation on input. */
         auto applyEmbedding( Value *weight, Value *input ) -> Value *
         {
                 auto op = std::make_unique<Op<2>>(
@@ -125,7 +144,5 @@ main( )
         auto embedding = p.registerWeight( "embedding" );
         auto output    = p.applyEmbedding( embedding, x );
 
-        std::print( "Hello {}\n", static_cast<NamedParam *>( x )->name( ) );
-        std::print( "Hello {}\n", static_cast<Weight *>( embedding )->name( ) );
-        std::print( "Hello {}\n", output->name( ) );
+        std::print( "{}\n", output->getDebugJson( ) );
 }
