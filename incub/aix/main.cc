@@ -1,65 +1,131 @@
+#include <cstdlib>
 #include <format>
+#include <initializer_list>
+#include <list>
 #include <memory>
 #include <print>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <vector>
 
-class Value {
+#define PANIC( fmt, ... )                       \
+        do {                                    \
+                std::print( fmt, __VA_ARGS__ ); \
+                std::abort( );                  \
+        } while ( 0 )
+
+namespace aix {
+
+struct Value {
+        virtual auto name( ) -> std::string = 0;
+        virtual ~Value( )                   = default;
+};
+
+struct NamedParam : public Value {
       public:
-        virtual std::string echo( ) = 0;
-        virtual ~Value( )           = default;
+        NamedParam( std::string_view name ) : name_( name ) {}
+
+        auto name( ) -> std::string override { return name_; };
+
+      private:
+        std::string name_;
 };
 
-struct StaticValue : public Value {
-        StaticValue( std::string name ) : name( std::move( name ) ) {}
-        std::string name;
-
-        std::string echo( ) override { return name; }
-};
-
-struct DenseConfig {
-        std::string_view w;
-};
-
-class Dense : public Value {
+struct Weight : public NamedParam {
       public:
-        Dense( const std::shared_ptr<Value> &in, DenseConfig &&cfg )
-            : v_in( in ), w( cfg.w ) {};
-        Value &getInput( ) { return *v_in; }
+        Weight( std::string_view name ) : NamedParam( name ) {}
+};
 
-        std::string echo( ) override
+enum class OpKind {
+        Gatter,
+};
+
+template <int N>
+struct Op : public Value {
+      public:
+        Op( OpKind kind, std::initializer_list<Value *> operands )
+            : kind_( kind )
         {
-                return std::format( "dense with value `{}` with weight `{}`",
-                                    v_in->echo( ), w );
+                operands_.reserve( N );
+                operands_.insert( operands_.end( ), operands );
+        }
+
+        auto name( ) -> std::string override
+        {
+                switch ( kind_ ) {
+                case OpKind::Gatter:
+                        return std::format(
+                            "Op Gatter {{embedding: {}, input: {}}}",
+                            operands_[0]->name( ), operands_[1]->name( ) );
+                default:
+                        return "(unknown op)";
+                }
         }
 
       private:
-        std::shared_ptr<Value> v_in;
-        std::string            w;
+        OpKind               kind_;
+        std::vector<Value *> operands_;
 };
 
-template <typename T>
-constexpr std::shared_ptr<Value>
-operator|( const std::shared_ptr<T> &value, DenseConfig &&cfg )
-{
-        return std::make_shared<Dense>( value, std::move( cfg ) );
-}
+class Program {
+      private:
+        std::list<std::unique_ptr<Value>>                       ops_;
+        std::unordered_map<std::string, std::unique_ptr<Value>> params_;
+        std::unordered_map<std::string, std::unique_ptr<Value>> weights_;
 
-class DenseAdaptor {
       public:
-        constexpr static DenseConfig operator( )( std::string_view weight_name )
+        /* Creates a new named parameter. */
+        auto createParam( std::string_view name ) -> Value *
         {
-                return DenseConfig{ weight_name };
+                auto key = std::string{ name };
+                if ( params_.contains( key ) ) {
+                        PANIC( "param key {} already registed.", key );
+                }
+                auto v   = std::make_unique<NamedParam>( key );
+                auto ptr = v.get( );
+
+                params_.emplace( std::move( key ), std::move( v ) );
+                return ptr;
+        }
+
+        /* Registers a new named parame. */
+        auto registerWeight( std::string_view name ) -> Value *
+        {
+                auto key = std::string{ name };
+                if ( weights_.contains( key ) ) {
+                        PANIC( "param key {} already registed.", key );
+                }
+                auto v   = std::make_unique<Weight>( key );
+                auto ptr = v.get( );
+
+                weights_.emplace( std::move( key ), std::move( v ) );
+                return ptr;
+        }
+
+        auto applyEmbedding( Value *weight, Value *input ) -> Value *
+        {
+                auto op = std::make_unique<Op<2>>(
+                    OpKind::Gatter, std::initializer_list{ weight, input } );
+                auto ptr = op.get( );
+                ops_.push_back( std::move( op ) );
+                return ptr;
         }
 };
 
-inline constexpr auto dense = DenseAdaptor{ };
+}  // namespace aix
+
+using namespace aix;
 
 int
 main( )
 {
-        auto v = std::make_shared<StaticValue>( "static_v" );
-        auto u = v | dense( "weight" ) | dense( "weight2" );
-        std::print( "{}", u->echo( ) );
-        std::print( "Hello world\n" );
+        auto p         = Program{ };
+        auto x         = p.createParam( "x" );
+        auto embedding = p.registerWeight( "embedding" );
+        auto output    = p.applyEmbedding( embedding, x );
+
+        std::print( "Hello {}\n", static_cast<NamedParam *>( x )->name( ) );
+        std::print( "Hello {}\n", static_cast<Weight *>( embedding )->name( ) );
+        std::print( "Hello {}\n", output->name( ) );
 }
