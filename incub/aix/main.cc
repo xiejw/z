@@ -4,6 +4,7 @@
 #include <list>
 #include <memory>
 #include <print>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -15,6 +16,10 @@
                 std::abort( );                  \
         } while ( 0 )
 
+#define VM_BYTE_CODE_PREFIX \
+        "        CHECK_AND_JUMP( vm_program_push_op( program, "
+#define VM_BYTE_CODE_SUFFIX " ) );\n"
+
 namespace aix {
 
 struct Value {
@@ -22,6 +27,9 @@ struct Value {
 
         /* Returns the debug JSON string. */
         virtual auto getDebugJson( ) -> std::string = 0;
+
+        /* Emit the VM bytecode assembly. */
+        virtual auto emit( ) -> void = 0;
 };
 
 /* A named param represents a placeholder for one-off input, temporary param. */
@@ -35,8 +43,20 @@ struct NamedParam : public Value {
                                     name_ );
         };
 
+        auto emit( ) -> void override
+        {
+                std::print( VM_BYTE_CODE_PREFIX
+                            "OP_LOAD_PARAM, {}" VM_BYTE_CODE_SUFFIX,
+                            emitParamToLoad( ) );
+        }
+
       protected:
         auto getParamName( ) const -> const std::string & { return name_; }
+        auto emitParamToLoad( ) const -> const std::string
+        {
+                return std::format( "model->{0}.name, model->{0}.weight",
+                                    name_ );
+        }
 
       private:
         std::string name_;
@@ -52,6 +72,13 @@ struct Weight : public NamedParam {
                 return std::format( R"({{ "type": "weight", "name": "{}" }})",
                                     getParamName( ) );
         };
+
+        auto emit( ) -> void override
+        {
+                std::print( VM_BYTE_CODE_PREFIX
+                            "OP_LOAD_WEIGHT, {}" VM_BYTE_CODE_SUFFIX,
+                            emitParamToLoad( ) );
+        }
 };
 
 enum class OpKind {
@@ -78,6 +105,22 @@ struct Op : public Value {
                             operands_[1]->getDebugJson( ) );
                 default:
                         return "(unknown op)";
+                }
+        }
+
+        auto emit( ) -> void override
+        {
+                for ( auto &operand :
+                      std::ranges::views::reverse( operands_ ) ) {
+                        operand->emit( );
+                }
+                switch ( kind_ ) {
+                case OpKind::Gatter:
+                        std::print( VM_BYTE_CODE_PREFIX
+                                    "OP_GATTER" VM_BYTE_CODE_SUFFIX );
+                        break;
+                default:
+                        PANIC( "unsupported op: {}", int( kind_ ) );
                 }
         }
 
@@ -144,5 +187,7 @@ main( )
         auto embedding = p.registerWeight( "embedding" );
         auto output    = p.applyEmbedding( embedding, x );
 
-        std::print( "{}\n", output->getDebugJson( ) );
+        std::print( "Program:\n        {}\n", output->getDebugJson( ) );
+        std::print( "Emitted Bytecode:\n" );
+        output->emit( );
 }
