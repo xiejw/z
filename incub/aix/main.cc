@@ -10,18 +10,25 @@
 #include <unordered_map>
 #include <vector>
 
-#define PANIC( fmt, ... )                       \
-        do {                                    \
-                std::print( fmt, __VA_ARGS__ ); \
-                std::abort( );                  \
-        } while ( 0 )
+// === --- Macros and Configurations --------------------------------------- ===
 
+// The prefix and suffix to emit for vm bytecode.
 #define VM_BYTE_CODE_PREFIX \
         "        CHECK_AND_JUMP( vm_program_push_op( program, "
 #define VM_BYTE_CODE_SUFFIX " ) );\n"
 
+// Panic in case things go wrong.
+#define PANIC( fmt, ... )                            \
+        do {                                         \
+                std::print( fmt "\n", __VA_ARGS__ ); \
+                std::abort( );                       \
+        } while ( 0 )
+
+// === --- The Value and Ops ----------------------------------------------- ===
+
 namespace aix {
 
+/* Value is the base class for all inputs and outputs. */
 struct Value {
         virtual ~Value( ) = default;
 
@@ -32,27 +39,30 @@ struct Value {
         virtual auto emit( ) -> void = 0;
 };
 
-/* A named param represents a placeholder for one-off input, temporary param. */
-struct NamedParam : public Value {
+/* A Named Input represents a placeholder external input. */
+struct NamedInput : public Value {
       public:
-        NamedParam( std::string_view name ) : name_( name ) {}
+        NamedInput( std::string_view name ) : name_( name ) {}
 
         auto getDebugJson( ) -> std::string override
         {
-                return std::format( R"({{ "type": "param", "name": "{}" }})",
-                                    name_ );
+                return std::format( R"({{ "type": "{}", "name": "{}" }})",
+                                    getInputJsonType( ), name_ );
         };
 
         auto emit( ) -> void override
         {
                 std::print( VM_BYTE_CODE_PREFIX
-                            "OP_LOAD_PARAM, {}" VM_BYTE_CODE_SUFFIX,
-                            emitParamToLoad( ) );
+                            "OP_LOAD_{}, {}" VM_BYTE_CODE_SUFFIX,
+                            getInputOpType( ), getInputStringToEmitVMCode( ) );
         }
 
       protected:
+        virtual auto getInputJsonType( ) const -> std::string_view = 0;
+        virtual auto getInputOpType( ) const -> std::string_view   = 0;
+
         auto getParamName( ) const -> const std::string & { return name_; }
-        auto emitParamToLoad( ) const -> const std::string
+        auto getInputStringToEmitVMCode( ) const -> const std::string
         {
                 return std::format( "model->{0}.name, model->{0}.weight",
                                     name_ );
@@ -62,22 +72,35 @@ struct NamedParam : public Value {
         std::string name_;
 };
 
-/* A weight represents a long live model weight. */
-struct Weight : public NamedParam {
+/* A Param represents a short live input or parameter. */
+struct Param : public NamedInput {
       public:
-        Weight( std::string_view name ) : NamedParam( name ) {}
+        Param( std::string_view name ) : NamedInput( name ) {}
 
-        auto getDebugJson( ) -> std::string override
+      protected:
+        auto getInputJsonType( ) const -> std::string_view override
         {
-                return std::format( R"({{ "type": "weight", "name": "{}" }})",
-                                    getParamName( ) );
-        };
+                return "param";
+        }
+        auto getInputOpType( ) const -> std::string_view override
+        {
+                return "PARAM";
+        }
+};
 
-        auto emit( ) -> void override
+/* A Weight represents a long live model weight. */
+struct Weight : public NamedInput {
+      public:
+        Weight( std::string_view name ) : NamedInput( name ) {}
+
+      protected:
+        auto getInputJsonType( ) const -> std::string_view override
         {
-                std::print( VM_BYTE_CODE_PREFIX
-                            "OP_LOAD_WEIGHT, {}" VM_BYTE_CODE_SUFFIX,
-                            emitParamToLoad( ) );
+                return "weight";
+        }
+        auto getInputOpType( ) const -> std::string_view override
+        {
+                return "WEIGHT";
         }
 };
 
@@ -156,14 +179,14 @@ class Program {
         std::unordered_map<std::string, std::unique_ptr<Value>> weights_;
 
       public:
-        /* Creates a new named parameter. */
-        auto createParam( std::string_view name ) -> Value *
+        /* Registers a new parameter. */
+        auto registerParam( std::string_view name ) -> Value *
         {
                 auto key = std::string{ name };
                 if ( params_.contains( key ) ) {
                         PANIC( "param key {} already registed.", key );
                 }
-                auto v   = std::make_unique<NamedParam>( key );
+                auto v   = std::make_unique<Param>( key );
                 auto ptr = v.get( );
 
                 params_.emplace( std::move( key ), std::move( v ) );
@@ -184,8 +207,8 @@ class Program {
                 return ptr;
         }
 
-        /* Apply embedding transformation on input. */
-        auto applyEmbedding( Value *input, Value *embedding ) -> Value *
+        /* Apply embedding (lookup) layer transformation on input. */
+        auto applyEmbeddingLayer( Value *input, Value *embedding ) -> Value *
         {
                 auto op = std::make_unique<Op<2>>(
                     OpKind::Gatter, std::initializer_list{ input, embedding } );
@@ -194,8 +217,8 @@ class Program {
                 return ptr;
         }
 
-        /* Apply dense transformation on input. */
-        auto applyDense( Value *input, Value *weight ) -> Value *
+        /* Apply dense layer transformation on input. */
+        auto applyDenseLayer( Value *input, Value *weight ) -> Value *
         {
                 auto op = std::make_unique<Op<2>>(
                     OpKind::Dense, std::initializer_list{ input, weight } );
@@ -219,24 +242,52 @@ class Program {
 
 using namespace aix;
 
-int
-main( )
+namespace {
+struct AppCfg {
+        bool quiet;
+};
+
+AppCfg
+parseFlags( int argc, const char **argv )
 {
-        auto p         = Program{ };
-        auto x         = p.createParam( "x" );
+        AppCfg cfg{ };
+        if ( argc == 1 ) return cfg;
+
+        if ( argc == 2 && 0 == std::strcmp( "--quiet", argv[1] ) ) {
+                cfg.quiet = true;
+        } else {
+                PANIC( "unsupported flag: {}", argv[1] );
+        }
+        return cfg;
+}
+}  // namespace
+
+int
+main( int argc, const char **argv )
+{
+        auto cfg = parseFlags( argc, argv );
+        auto p   = Program{ };
+
+        auto x        = p.registerParam( "x" );
+        auto expected = p.registerParam( "expected" );
+
         auto embedding = p.registerWeight( "embedding" );
         auto wq        = p.registerWeight( "wq" );
-        auto out1      = p.applyEmbedding( x, embedding );
-        auto out2      = p.applyDense( out1, wq );
+        auto out1      = p.applyEmbeddingLayer( x, embedding );
+        auto out2      = p.applyDenseLayer( out1, wq );
 
-        auto expected = p.createParam( "expected" );
-        auto output   = p.assertEqual( expected, out2 );
+        auto output = p.assertEqual( expected, out2 );
 
-        // std::print( "Program:\n        {}\n", output->getDebugJson( ) );
+        if ( cfg.quiet ) {
+                output->emit( );
+                return 0;
+        }
+
         std::print( "Program:\n" );
         std::system(
             std::format( "echo '{}' | jq --indent 7", output->getDebugJson( ) )
                 .c_str( ) );
         std::print( "Emitted Bytecode:\n" );
         output->emit( );
+        return 0;
 }
