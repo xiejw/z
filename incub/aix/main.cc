@@ -83,6 +83,8 @@ struct Weight : public NamedParam {
 
 enum class OpKind {
         Gatter,
+        Dense,
+        AssertEq,
 };
 
 template <int N>
@@ -100,7 +102,17 @@ struct Op : public Value {
                 switch ( kind_ ) {
                 case OpKind::Gatter:
                         return std::format(
-                            R"({{ "type": "op", "kind": "gatter", "embedding": {}, "input": {} }})",
+                            R"({{ "type": "op", "kind": "gatter", "input": {}, "embedding": {} }})",
+                            operands_[0]->getDebugJson( ),
+                            operands_[1]->getDebugJson( ) );
+                case OpKind::Dense:
+                        return std::format(
+                            R"({{ "type": "op", "kind": "dense", "input": {}, "weight": {} }})",
+                            operands_[0]->getDebugJson( ),
+                            operands_[1]->getDebugJson( ) );
+                case OpKind::AssertEq:
+                        return std::format(
+                            R"({{ "type": "op", "kind": "assert_eq", "expected": {}, "got": {} }})",
                             operands_[0]->getDebugJson( ),
                             operands_[1]->getDebugJson( ) );
                 default:
@@ -118,6 +130,14 @@ struct Op : public Value {
                 case OpKind::Gatter:
                         std::print( VM_BYTE_CODE_PREFIX
                                     "OP_GATTER" VM_BYTE_CODE_SUFFIX );
+                        break;
+                case OpKind::Dense:
+                        std::print( VM_BYTE_CODE_PREFIX
+                                    "OP_MATMUL" VM_BYTE_CODE_SUFFIX );
+                        break;
+                case OpKind::AssertEq:
+                        std::print( VM_BYTE_CODE_PREFIX
+                                    "OP_ASSERT_EQ" VM_BYTE_CODE_SUFFIX );
                         break;
                 default:
                         PANIC( "unsupported op: {}", int( kind_ ) );
@@ -165,10 +185,30 @@ class Program {
         }
 
         /* Apply embedding transformation on input. */
-        auto applyEmbedding( Value *weight, Value *input ) -> Value *
+        auto applyEmbedding( Value *input, Value *embedding ) -> Value *
         {
                 auto op = std::make_unique<Op<2>>(
-                    OpKind::Gatter, std::initializer_list{ weight, input } );
+                    OpKind::Gatter, std::initializer_list{ input, embedding } );
+                auto ptr = op.get( );
+                ops_.push_back( std::move( op ) );
+                return ptr;
+        }
+
+        /* Apply dense transformation on input. */
+        auto applyDense( Value *input, Value *weight ) -> Value *
+        {
+                auto op = std::make_unique<Op<2>>(
+                    OpKind::Dense, std::initializer_list{ input, weight } );
+                auto ptr = op.get( );
+                ops_.push_back( std::move( op ) );
+                return ptr;
+        }
+
+        /* Assert equal. */
+        auto assertEqual( Value *expected, Value *got ) -> Value *
+        {
+                auto op = std::make_unique<Op<2>>(
+                    OpKind::AssertEq, std::initializer_list{ expected, got } );
                 auto ptr = op.get( );
                 ops_.push_back( std::move( op ) );
                 return ptr;
@@ -185,9 +225,18 @@ main( )
         auto p         = Program{ };
         auto x         = p.createParam( "x" );
         auto embedding = p.registerWeight( "embedding" );
-        auto output    = p.applyEmbedding( embedding, x );
+        auto wq        = p.registerWeight( "wq" );
+        auto out1      = p.applyEmbedding( x, embedding );
+        auto out2      = p.applyDense( out1, wq );
 
-        std::print( "Program:\n        {}\n", output->getDebugJson( ) );
+        auto expected = p.createParam( "expected" );
+        auto output   = p.assertEqual( expected, out2 );
+
+        // std::print( "Program:\n        {}\n", output->getDebugJson( ) );
+        std::print( "Program:\n" );
+        std::system(
+            std::format( "echo '{}' | jq --indent 7", output->getDebugJson( ) )
+                .c_str( ) );
         std::print( "Emitted Bytecode:\n" );
         output->emit( );
 }
