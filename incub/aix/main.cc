@@ -40,11 +40,9 @@ struct Value {
         virtual auto emit( ) -> void = 0;
 };
 
-/* A Named Input represents a placeholder external input. */
+/* A Named Input represents a placeholder for any external input. */
 struct NamedInput : public Value {
       public:
-        NamedInput( std::string_view name ) : name_( name ) {}
-
         auto getDebugJson( ) -> std::string override
         {
                 return std::format( R"({{ "type": "{}", "name": "{}" }})",
@@ -59,6 +57,8 @@ struct NamedInput : public Value {
         }
 
       protected:
+        NamedInput( std::string_view name ) : name_( name ) {}
+
         virtual auto getInputJsonType( ) const -> std::string_view = 0;
         virtual auto getInputOpType( ) const -> std::string_view   = 0;
 
@@ -75,10 +75,11 @@ struct NamedInput : public Value {
 
 /* A Param represents a short live input or parameter. */
 struct Param : public NamedInput {
-      public:
+      protected:
+        friend class Program;
+
         Param( std::string_view name ) : NamedInput( name ) {}
 
-      protected:
         auto getInputJsonType( ) const -> std::string_view override
         {
                 return "param";
@@ -91,10 +92,11 @@ struct Param : public NamedInput {
 
 /* A Weight represents a long live model weight. */
 struct Weight : public NamedInput {
-      public:
+      protected:
+        friend class Program;
+
         Weight( std::string_view name ) : NamedInput( name ) {}
 
-      protected:
         auto getInputJsonType( ) const -> std::string_view override
         {
                 return "weight";
@@ -107,33 +109,13 @@ struct Weight : public NamedInput {
 
 enum class OpKind {
         Gatter,
-        Dense,
+        Matmul,
         AssertEq,  // A special Op to assert two value's equalness.
 };
 
 template <int N>
 struct Op : public Value {
       public:
-        Op( OpKind kind, std::initializer_list<Value *> operands )
-            : kind_( kind )
-        {
-                operands_.reserve( N );
-                operands_.insert( operands_.end( ), operands );
-
-#ifndef NDEBUG
-                /* Sanity check no operand's input is assert_eq. */
-                for ( auto &base_op : operands ) {
-                        auto *op = dynamic_cast<Op<2> *>( base_op );
-                        if ( op != nullptr && op->kind_ == OpKind::AssertEq ) {
-                                PANIC(
-                                    "assert_eq cannot be used as Op input. op: "
-                                    "{}",
-                                    op->getDebugJson( ) );
-                        }
-                }
-#endif
-        }
-
         auto getDebugJson( ) -> std::string override
         {
                 switch ( kind_ ) {
@@ -142,9 +124,9 @@ struct Op : public Value {
                             R"({{ "type": "op", "kind": "gatter", "input": {}, "table": {} }})",
                             operands_[0]->getDebugJson( ),
                             operands_[1]->getDebugJson( ) );
-                case OpKind::Dense:
+                case OpKind::Matmul:
                         return std::format(
-                            R"({{ "type": "op", "kind": "dense", "input": {}, "weight": {} }})",
+                            R"({{ "type": "op", "kind": "matmul", "input": {}, "weight": {} }})",
                             operands_[0]->getDebugJson( ),
                             operands_[1]->getDebugJson( ) );
                 case OpKind::AssertEq:
@@ -168,7 +150,7 @@ struct Op : public Value {
                         std::print( VM_BYTE_CODE_PREFIX
                                     "OP_GATTER" VM_BYTE_CODE_SUFFIX );
                         break;
-                case OpKind::Dense:
+                case OpKind::Matmul:
                         std::print( VM_BYTE_CODE_PREFIX
                                     "OP_MATMUL" VM_BYTE_CODE_SUFFIX );
                         break;
@@ -179,6 +161,29 @@ struct Op : public Value {
                 default:
                         PANIC( "unsupported op: {}", int( kind_ ) );
                 }
+        }
+
+      protected:
+        friend class Program;
+
+        Op( OpKind kind, std::initializer_list<Value *> operands )
+            : kind_( kind )
+        {
+                operands_.reserve( N );
+                operands_.insert( operands_.end( ), operands );
+
+#ifndef NDEBUG
+                /* Sanity check no operand's input is assert_eq. */
+                for ( auto &base_op : operands ) {
+                        auto *op = dynamic_cast<Op<2> *>( base_op );
+                        if ( op != nullptr && op->kind_ == OpKind::AssertEq ) {
+                                PANIC(
+                                    "assert_eq cannot be used as Op input. op: "
+                                    "{}",
+                                    op->getDebugJson( ) );
+                        }
+                }
+#endif
         }
 
       private:
@@ -200,7 +205,7 @@ class Program {
                 if ( params_.contains( key ) ) {
                         PANIC( "param key {} already registed.", key );
                 }
-                auto v   = std::make_unique<Param>( key );
+                auto v   = std::unique_ptr<Param>( new Param{ key } );
                 auto ptr = v.get( );
 
                 params_.emplace( std::move( key ), std::move( v ) );
@@ -214,7 +219,7 @@ class Program {
                 if ( weights_.contains( key ) ) {
                         PANIC( "param key {} already registed.", key );
                 }
-                auto v   = std::make_unique<Weight>( key );
+                auto v   = std::unique_ptr<Weight>( new Weight{ key } );
                 auto ptr = v.get( );
 
                 weights_.emplace( std::move( key ), std::move( v ) );
@@ -224,8 +229,10 @@ class Program {
         /* Apply embedding (lookup) layer transformation on input. */
         auto applyEmbeddingLayer( Value *input, Value *table ) -> Value *
         {
-                auto op = std::make_unique<Op<2>>(
-                    OpKind::Gatter, std::initializer_list{ input, table } );
+                auto op = std::unique_ptr<Op<2>>{
+                    new Op<2>{ OpKind::Gatter,
+                              std::initializer_list{ input, table } }
+                };
                 auto ptr = op.get( );
                 ops_.push_back( std::move( op ) );
                 return ptr;
@@ -234,8 +241,10 @@ class Program {
         /* Apply dense layer transformation on input. */
         auto applyDenseLayer( Value *input, Value *weight ) -> Value *
         {
-                auto op = std::make_unique<Op<2>>(
-                    OpKind::Dense, std::initializer_list{ input, weight } );
+                auto op = std::unique_ptr<Op<2>>{
+                    new Op<2>{ OpKind::Matmul,
+                              std::initializer_list{ input, weight } }
+                };
                 auto ptr = op.get( );
                 ops_.push_back( std::move( op ) );
                 return ptr;
@@ -244,8 +253,10 @@ class Program {
         /* Assert equal. */
         auto assertEqual( Value *expected, Value *got ) -> Value *
         {
-                auto op = std::make_unique<Op<2>>(
-                    OpKind::AssertEq, std::initializer_list{ expected, got } );
+                auto op = std::unique_ptr<Op<2>>{
+                    new Op<2>{ OpKind::AssertEq,
+                              std::initializer_list{ expected, got } }
+                };
                 auto ptr = op.get( );
                 ops_.push_back( std::move( op ) );
                 return ptr;
@@ -282,14 +293,17 @@ main( int argc, const char **argv )
         auto cfg = parseFlags( argc, argv );
         auto p   = Program{ };
 
+        /* Register for inputs. */
         auto x        = p.registerParam( "x" );
         auto expected = p.registerParam( "expected" );
 
+        /* Register for model weights. */
         auto embedding = p.registerWeight( "embedding" );
         auto wq        = p.registerWeight( "wq" );
-        auto out1      = p.applyEmbeddingLayer( x, embedding );
-        auto out2      = p.applyDenseLayer( out1, wq );
 
+        /* Program the computation */
+        auto out1   = p.applyEmbeddingLayer( x, embedding );
+        auto out2   = p.applyDenseLayer( out1, wq );
         auto output = p.assertEqual( expected, out2 );
 
         if ( cfg.quiet ) {
@@ -297,6 +311,7 @@ main( int argc, const char **argv )
                 return 0;
         }
 
+        /* Now the verbose mode. */
         std::print( "Program:\n" );
         std::system(
             std::format( "echo '{}' | jq --indent 7", output->getDebugJson( ) )

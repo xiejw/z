@@ -28,10 +28,10 @@ main:  | ${BUILD}
 	@${CXX} -o ${BUILD}/a.out ${CXXFLAGS} main.cc ${LDFLAGS} && ./${BUILD}/a.out
 
 ${BUILD}:
-	mkdir -p ${BUILD}
+	@mkdir -p ${BUILD}
 
 fmt:
-	~/Workspace/y/tools/clang_format_all.sh .
+	@~/Workspace/y/tools/clang_format_all.sh .
 
 clean:
 	rm -rf ${BUILD}
