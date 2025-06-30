@@ -6,19 +6,19 @@ SHELL     = bash
 
 # === CXXFLAGS and LDFLAGS -----------------------------------------------------
 #
-CXXFLAGS   += -std=c++23 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
+CXXFLAGS += -std=c++23 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
 
 ifdef RELEASE
-CXXFLAGS   += -DNDEBUG -O3 -march=native
+CXXFLAGS += -DNDEBUG -O3 -march=native
 LDFLAGS  += -ffast-math
 else
-CXXFLAGS   += -g
+CXXFLAGS += -g
 endif
 
 ifdef ASAN
-CXXFLAGS   += -fsanitize=address
+CXXFLAGS += -fsanitize=address
 endif
 
 
