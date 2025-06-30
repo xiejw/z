@@ -6,6 +6,7 @@
 #include <memory>
 #include <print>
 #include <ranges>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -170,11 +171,11 @@ struct Op : public Value {
       protected:
         friend class Program;
 
-        Op( OpKind kind, std::initializer_list<Value *> operands )
-            : kind_( kind )
+        Op( OpKind kind, std::span<Value *> operands ) : kind_( kind )
         {
                 operands_.reserve( N );
-                operands_.insert( operands_.end( ), operands );
+                operands_.insert( operands_.end( ), operands.begin( ),
+                                  operands.end( ) );
 
 #ifndef NDEBUG
                 /* Sanity check no operand's input is assert_eq. */
@@ -233,9 +234,9 @@ class Program {
         /* Apply embedding (lookup) layer transformation on input. */
         auto applyEmbeddingLayer( Value *input, Value *table ) -> Value *
         {
-                auto op = std::unique_ptr<Op<2>>{
-                    new Op<2>{ OpKind::Gatter,
-                              std::initializer_list{ input, table } }
+                Value *operands[] = { input, table };
+                auto   op         = std::unique_ptr<Op<2>>{
+                    new Op<2>{ OpKind::Gatter, operands }
                 };
                 auto ptr = op.get( );
                 ops_.push_back( std::move( op ) );
@@ -245,9 +246,9 @@ class Program {
         /* Apply dense layer transformation on input. */
         auto applyDenseLayer( Value *input, Value *weight ) -> Value *
         {
-                auto op = std::unique_ptr<Op<2>>{
-                    new Op<2>{ OpKind::Matmul,
-                              std::initializer_list{ input, weight } }
+                Value *operands[] = { input, weight };
+                auto   op         = std::unique_ptr<Op<2>>{
+                    new Op<2>{ OpKind::Matmul, operands }
                 };
                 auto ptr = op.get( );
                 ops_.push_back( std::move( op ) );
@@ -257,13 +258,20 @@ class Program {
         /* Assert equal. */
         auto assertEqual( Value *expected, Value *got ) -> Value *
         {
-                auto op = std::unique_ptr<Op<2>>{
-                    new Op<2>{ OpKind::AssertEq,
-                              std::initializer_list{ expected, got } }
+                Value *operands[] = { expected, got };
+                auto   op         = std::unique_ptr<Op<2>>{
+                    new Op<2>{ OpKind::AssertEq, operands }
                 };
                 auto ptr = op.get( );
                 ops_.push_back( std::move( op ) );
                 return ptr;
+        }
+
+      public:
+        /* Emit VM Bytecode assembly. */
+        auto emitByteCodeAsembly( Value *output ) const -> void
+        {
+                output->emitByteCodeAsembly( );
         }
 };
 
@@ -311,7 +319,7 @@ main( int argc, const char **argv )
         auto output = p.assertEqual( expected, out2 );
 
         if ( cfg.quiet ) {
-                output->emitByteCodeAsembly( );
+                p.emitByteCodeAsembly( output );
                 return 0;
         }
 
@@ -321,6 +329,6 @@ main( int argc, const char **argv )
             std::format( "echo '{}' | jq --indent 7", output->getDebugJson( ) )
                 .c_str( ) );
         std::print( "Emitted Bytecode:\n" );
-        output->emitByteCodeAsembly( );
+        p.emitByteCodeAsembly( output );
         return 0;
 }
