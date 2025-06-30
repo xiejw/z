@@ -107,7 +107,7 @@ struct Weight : public NamedInput {
 enum class OpKind {
         Gatter,
         Dense,
-        AssertEq,
+        AssertEq,  // A special Op to assert two value's equalness.
 };
 
 template <int N>
@@ -118,6 +118,19 @@ struct Op : public Value {
         {
                 operands_.reserve( N );
                 operands_.insert( operands_.end( ), operands );
+
+#ifndef NDEBUG
+                /* Sanity check no operand's input is assert_eq. */
+                for ( auto &base_op : operands ) {
+                        auto *op = dynamic_cast<Op<2> *>( base_op );
+                        if ( op != nullptr && op->kind_ == OpKind::AssertEq ) {
+                                PANIC(
+                                    "assert_eq cannot be used as Op input. op: "
+                                    "{}",
+                                    op->getDebugJson( ) );
+                        }
+                }
+#endif
         }
 
         auto getDebugJson( ) -> std::string override
@@ -125,7 +138,7 @@ struct Op : public Value {
                 switch ( kind_ ) {
                 case OpKind::Gatter:
                         return std::format(
-                            R"({{ "type": "op", "kind": "gatter", "input": {}, "embedding": {} }})",
+                            R"({{ "type": "op", "kind": "gatter", "input": {}, "table": {} }})",
                             operands_[0]->getDebugJson( ),
                             operands_[1]->getDebugJson( ) );
                 case OpKind::Dense:
@@ -208,10 +221,10 @@ class Program {
         }
 
         /* Apply embedding (lookup) layer transformation on input. */
-        auto applyEmbeddingLayer( Value *input, Value *embedding ) -> Value *
+        auto applyEmbeddingLayer( Value *input, Value *table ) -> Value *
         {
                 auto op = std::make_unique<Op<2>>(
-                    OpKind::Gatter, std::initializer_list{ input, embedding } );
+                    OpKind::Gatter, std::initializer_list{ input, table } );
                 auto ptr = op.get( );
                 ops_.push_back( std::move( op ) );
                 return ptr;
