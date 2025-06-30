@@ -29,15 +29,19 @@
 
 namespace aix {
 
-/* Value is the base class for all inputs and outputs. */
+/* Value is the base class for all inputs and outputs.
+ *
+ * All values have private constructors. They are expected to be created by
+ * Program only, which manages their lifetime.
+ */
 struct Value {
         virtual ~Value( ) = default;
 
-        /* Returns the debug JSON string. */
+        /* Return the debug JSON string. */
         virtual auto getDebugJson( ) -> std::string = 0;
 
         /* Emit the VM bytecode assembly. */
-        virtual auto emit( ) -> void = 0;
+        virtual auto emitByteCodeAsembly( ) -> void = 0;
 };
 
 /* A Named Input represents a placeholder for any external input. */
@@ -49,7 +53,7 @@ struct NamedInput : public Value {
                                     getInputJsonType( ), name_ );
         };
 
-        auto emit( ) -> void override
+        auto emitByteCodeAsembly( ) -> void override
         {
                 std::print( VM_BYTE_CODE_PREFIX
                             "OP_LOAD_{}, {}" VM_BYTE_CODE_SUFFIX,
@@ -139,11 +143,11 @@ struct Op : public Value {
                 }
         }
 
-        auto emit( ) -> void override
+        auto emitByteCodeAsembly( ) -> void override
         {
                 for ( auto &operand :
                       std::ranges::views::reverse( operands_ ) ) {
-                        operand->emit( );
+                        operand->emitByteCodeAsembly( );
                 }
                 switch ( kind_ ) {
                 case OpKind::Gatter:
@@ -307,7 +311,7 @@ main( int argc, const char **argv )
         auto output = p.assertEqual( expected, out2 );
 
         if ( cfg.quiet ) {
-                output->emit( );
+                output->emitByteCodeAsembly( );
                 return 0;
         }
 
@@ -317,6 +321,6 @@ main( int argc, const char **argv )
             std::format( "echo '{}' | jq --indent 7", output->getDebugJson( ) )
                 .c_str( ) );
         std::print( "Emitted Bytecode:\n" );
-        output->emit( );
+        output->emitByteCodeAsembly( );
         return 0;
 }
