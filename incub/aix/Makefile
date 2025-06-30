@@ -12,6 +12,8 @@ LDFLAGS  += -lm
 
 ifdef RELEASE
 CXXFLAGS += -DNDEBUG -O3 -march=native
+CXXFLAGS += -fno-exceptions
+# -fno-rtti
 LDFLAGS  += -ffast-math
 else
 CXXFLAGS += -g
