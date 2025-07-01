@@ -1,6 +1,8 @@
+### What This Is
+
 This is the code snippet to dump torch tensor from a model
 
-```
+```python
 torch.set_grad_enabled(False)
 
 params = []
@@ -30,3 +32,7 @@ with open('/tmp/tensor_data.bin', 'wb') as f:
     for param in params:
       f.write(tensor_to_bytes(param))
 ```
+
+NOTE:
+- For any 64 bits data, it would be better to add padding and then make the
+  alignement fitting the CPU requirements. This makes mmap easier.
