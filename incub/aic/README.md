@@ -46,6 +46,12 @@ handling, which is trivial to add.
   rates. It serves the purpose very well. In future, SIMD could be used to
   further optimize the performance if needed.
 
+**References** Recommended readings:
+- Eli's [blog post][1].
+- Meta's [llama model tokenizer](https://github.com/meta-llama/llama-models/blob/5fdf83110cc9daa7435dfba6eb304892cc0041b8/models/llama3/tokenizer.py).
+- OpenAI's [tiktoken library](https://github.com/openai/tiktoken).
+- Llama.cpp's [vocab code](https://github.com/ggml-org/llama.cpp/blob/de569441470332ff922c23fb0413cc957be75b25/src/llama-vocab.cpp).
+
 [1]: https://eli.thegreenplace.net/2024/tokens-for-llms-byte-pair-encoding-in-go/
 
 #### Tensor
