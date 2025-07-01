@@ -22,8 +22,6 @@ flowchart LR
 
 <details>
 
-<summary>Algorithms and References Documentations of Tokenizer</summary>
-
 ---
 
 ***Algorithm*** This [blog post][1] provides a good introduction to the BPE
@@ -64,7 +62,12 @@ handling, which is trivial to add.
 #### Tensor
 
 <details>
+
 ---
+
+__TL;DR__ Underlying it is more like a pointer to some raw buffer. Use with
+care.
+
 Tensor is a reference counting data structure. Most properties are embedded
 locally, such as tensor shape (`shape`), reference count (`ref_cnt`) and data
 type (`dtype`). The only indirection is data pointer. In case the tensor borrows
