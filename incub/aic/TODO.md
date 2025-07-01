@@ -1,0 +1,4 @@
+- Rre-compute and apply position embedding.
+- Have the dense layer support for wq, wk, wv.
+- [DONE] A simple compiler (`aix`) to generate VM bytecode.
+- [DONE] Tokenizer.
