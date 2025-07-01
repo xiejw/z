@@ -291,7 +291,7 @@ test_io( void )
         /* Get the content from io_reader. */
         struct ctx       *ctx = ctx_new( );
         struct io_reader *r;
-        error_t           err = io_reader_open( ctx, "util.c", &r );
+        error_t           err = io_reader_open( ctx, "src/util.c", &r );
         assert( err == OK );
         sds_t got = sds_empty( );
 
@@ -305,7 +305,7 @@ test_io( void )
 
         /* Get the content from posix read. */
         sds_t expected = sds_empty( );
-        int   fd       = open( "util.c", O_RDONLY );
+        int   fd       = open( "src/util.c", O_RDONLY );
         assert( fd >= 0 );
         ssize_t c;
         char    iobuf[4096];

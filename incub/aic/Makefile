@@ -55,7 +55,7 @@ CFLAGS   += -DLLAMA_FILE="\"/tmp/tensor_data.bin\""
 # === Rules --------------------------------------------------------------------
 #
 main:  | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} ctx.c tok.c util.c tensor.c llama.c vm.c op.c main.c ${LDFLAGS} && ./${BUILD}/a.out
+	${CC} -o ${BUILD}/a.out ${CFLAGS} src/ctx.c src/tok.c src/util.c src/tensor.c src/llama.c src/vm.c src/op.c src/main.c ${LDFLAGS} && ./${BUILD}/a.out
 
 ${BUILD}:
 	mkdir -p ${BUILD}
@@ -63,7 +63,7 @@ ${BUILD}:
 test: CFLAGS += -DAIC_TEST_H_
 test:  | ${BUILD}
 	@set -e
-	@clang -o ${BUILD}/a.out ${CFLAGS} ctx.c util.c ${LDFLAGS}     && echo -n "util   -- " && ./${BUILD}/a.out
+	@${CC} -o ${BUILD}/a.out ${CFLAGS} src/ctx.c src/util.c ${LDFLAGS}     && echo -n "util   -- " && ./${BUILD}/a.out
 	@echo "All done."
 
 fmt:
