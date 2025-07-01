@@ -5,9 +5,6 @@ Artificial Intelligence Compute or AI Infrastrutre Compute.
 ### Staring Project
 This is a very simple pure c code to run llama 3 8B model.
 
-During the coding, I find it is fascinating to learn so many new algorithm at
-the coding level, which I only briefly read the papers.
-
 ### System
 
 ```mermaid
@@ -19,13 +16,15 @@ flowchart LR
     VM+Op --> Tensor;
 ```
 
-### Algorithms
+### Components
 
 #### Tokenizer
 
 <details>
 
 <summary>Algorithms and References Documentations of Tokenizer</summary>
+
+---
 
 ***Algorithm*** This [blog post][1] provides a good introduction to the BPE
 Algorithm with testing code. The only missing piece is the special tokens
@@ -58,12 +57,19 @@ handling, which is trivial to add.
 
 [1]: https://eli.thegreenplace.net/2024/tokens-for-llms-byte-pair-encoding-in-go/
 
+---
+
 </details>
 
 #### Tensor
 
+<details>
+---
 Tensor is a reference counting data structure. Most properties are embedded
 locally, such as tensor shape (`shape`), reference count (`ref_cnt`) and data
 type (`dtype`). The only indirection is data pointer. In case the tensor borrows
 the data, `alias` field is set as `1`.
 
+---
+
+</details>
