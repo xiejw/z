@@ -23,11 +23,15 @@ flowchart LR
 
 #### Tokenizer
 
-**Algorithm** This [blog post][1] provides a good introduction to the BPE
+<details>
+
+<summary>Algorithms and References Documentations of Tokenizer</summary>
+
+***Algorithm*** This [blog post][1] provides a good introduction to the BPE
 Algorithm with testing code. The only missing piece is the special tokens
 handling, which is trivial to add.
 
-**Implementation** For the C implementation, there are few challenges
+***Implementation*** For the C implementation, there are few challenges
 - _How to support word splitting regexp?_ I debate between manual state machine
   implementation and `PCRE2` library. The `llama.cpp` project uses former with
   quite a ton code to handle unicode. In the first implementation, I leverage
@@ -46,13 +50,15 @@ handling, which is trivial to add.
   rates. It serves the purpose very well. In future, SIMD could be used to
   further optimize the performance if needed.
 
-**References** Recommended readings:
+***References*** Recommended readings:
 - Eli's [blog post][1].
 - Meta's [llama model tokenizer](https://github.com/meta-llama/llama-models/blob/5fdf83110cc9daa7435dfba6eb304892cc0041b8/models/llama3/tokenizer.py).
 - OpenAI's [tiktoken library](https://github.com/openai/tiktoken).
 - Llama.cpp's [vocab code](https://github.com/ggml-org/llama.cpp/blob/de569441470332ff922c23fb0413cc957be75b25/src/llama-vocab.cpp).
 
 [1]: https://eli.thegreenplace.net/2024/tokens-for-llms-byte-pair-encoding-in-go/
+
+</details>
 
 #### Tensor
 
