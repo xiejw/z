@@ -1,52 +1,64 @@
 #include <cstring>
-#include <print>
 
 #include <algos/sat_watch.h>
-#include <eve/base/error.h>
-#include <eve/base/log.h>
+
+#include <zion/zion.h>
 
 using eve::algos::sat::C;
+using eve::algos::sat::literal_t;
 using eve::algos::sat::PrintLiterals;
 using eve::algos::sat::WatchSolver;
 
-static auto RunProgramByWatchSolver( ) -> void;
+namespace {
+auto
+print_and_emit_clause( WatchSolver *sov, std::span<const literal_t> lits )
+    -> void
+{
+        PrintLiterals( lits );
+        sov->EmitClause( lits );
+}
+
+auto
+run_watch_solver( ) -> void
+{
+        INFO( "==== --- Demo Problem for Algorithm B --- ===" );
+        INFO( "==== --- Satisfiability by Watching   --- ===" );
+        WatchSolver sov{ /*num_literals=*/3, /*num_causes=*/4 };
+
+        INFO( "Emit Clauses:" );
+        print_and_emit_clause( &sov, { { ( 1 ) } } );
+        print_and_emit_clause( &sov, {
+                                         { 1, C( 2 ) }
+        } );
+        print_and_emit_clause( &sov, {
+                                         { 2, C( 3 ) }
+        } );
+        print_and_emit_clause( &sov, {
+                                         { 2, 3 }
+        } );
+
+        INFO( "Debug Print:" );
+        sov.DebugPrint( );
+
+        if ( auto res = sov.Search( ); res ) {
+                INFO( "Satisfiable!!!" );
+                INFO( "Result:" );
+                PrintLiterals( res.value( ) );
+        } else {
+                WARN( "Unsatisfiable" );
+        }
+}
+}  // namespace
 
 int
 main( int argc, char **argv )
 {
-        if ( argc > 2 ) panic( "expect 0 or 1 argument. got %d", argc - 1 );
+        if ( argc > 2 ) PANIC( "Expect 0 or 1 argument. got {}", argc - 1 );
 
         if ( argc == 1 || 0 == strcmp( argv[1], "watch" ) ) {
-                RunProgramByWatchSolver( );
+                run_watch_solver( );
                 return 0;
         }
 
-        panic( "expert one argument as {watch}. got %s", argv[1] );
-}
-
-auto
-RunProgramByWatchSolver( ) -> void
-{
-        std::print( "==== --- Demo Problem for Algorithm B --- ===\n" );
-        std::print( "==== --- Satisfiability by Watching   --- ===\n" );
-        WatchSolver sov{ /*num_literals=*/3, /*num_causes=*/4 };
-
-        sov.EmitClause( { { ( 1 ) } } );
-        sov.EmitClause( {
-            { 1, C( 2 ) }
-        } );
-        sov.EmitClause( {
-            { 2, C( 3 ) }
-        } );
-        sov.EmitClause( {
-            { 2, 3 }
-        } );
-        sov.DebugPrint( );
-
-        if ( auto res = sov.Search( ); res ) {
-                std::print( "good\n" );
-                PrintLiterals( res.value( ) );
-        } else {
-                std::print( "bad\n" );
-        }
+        PANIC( "Expert one argument as 'watch'. got {}", argv[1] );
 }

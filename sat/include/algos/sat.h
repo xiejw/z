@@ -1,4 +1,5 @@
 // vim: ft=cpp
+//
 #pragma once
 
 #include <optional>

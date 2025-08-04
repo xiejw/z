@@ -6,6 +6,9 @@ EVE_FMT_FOLDERS  = ${CMD} ${SRC} ${INC}
 EVE_PATH         = ../../y/ann/eve
 include ${EVE_PATH}/eve.mk
 
+ZION_PATH        = ../../y/ann/zion/cc
+CXXFLAGS        += -I${ZION_PATH}/include
+
 CXXFLAGS        += -Iinclude
 LDFLAGS         += ${EVE_LIB}
 
@@ -24,7 +27,7 @@ TEST_MODS       += ${BUILD_OBJ}/algos_sat_watch_dep_test.o
 # Actions
 #
 
-.DEFAULT_GOAL   = compile
+.DEFAULT_GOAL   = run
 
 # incrementally compile all libraries.
 compile: ${MODULES} ${DEPS}
