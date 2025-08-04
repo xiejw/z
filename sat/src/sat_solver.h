@@ -6,7 +6,7 @@
 #include <span>
 #include <vector>
 
-namespace eve::algos::sat {
+namespace eos::sat {
 
 /* === --- Defined type for literals --------------------------------------- ===
  *
@@ -19,15 +19,15 @@ namespace eve::algos::sat {
  * - Both cases are 1-based literals.
  *
  * Few free functions are provided to decode:
- * - LiteralRawValue returns the absolute value of the x.
- * - LiteralIsC returns true if the encoded value is a complement.
- * - PrintLiterals prints the clause with literals nicely.
+ * - decode_literal_raw_value returns the absolute value of the x.
+ * - is_literal_C returns true if the encoded value is a complement.
+ * - print_clause_literals prints the clause with literals nicely.
  */
 using literal_t = size_t;
 auto C( literal_t c ) -> literal_t;
-auto LiteralRawValue( literal_t c ) -> literal_t;
-auto LiteralIsC( literal_t c ) -> bool;
-auto PrintLiterals( std::span<const literal_t> ) -> void;
+auto decode_literal_raw_value( literal_t c ) -> literal_t;
+auto is_literal_C( literal_t c ) -> bool;
+auto print_clause_literals( std::span<const literal_t> ) -> void;
 
 /* === --- SAT Solver Interface  ------------------------------------------- ===
  */
@@ -37,4 +37,4 @@ class Solver {
         virtual auto Search( ) -> std::optional<std::vector<literal_t>> = 0;
 };
 
-}  // namespace eve::algos::sat
+}  // namespace eos::sat

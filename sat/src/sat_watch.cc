@@ -1,4 +1,4 @@
-#include <algos/sat_watch.h>
+#include "sat.h"
 
 #include <eve/base/error.h>
 #include <eve/base/log.h>
@@ -7,7 +7,7 @@
 
 #define DEBUG 0
 
-namespace eve::algos::sat {
+namespace eos::sat {
 
 WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses,
                           size_t num_reserved_cells )
@@ -51,8 +51,8 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
         for ( auto lit : lits ) {
                 /* For literal 'l', the value put into the cell is 2*l+C(l).
                  */
-                auto raw_v     = LiteralRawValue( lit );
-                auto is_c      = LiteralIsC( lit );
+                auto raw_v     = decode_literal_raw_value( lit );
+                auto is_c      = is_literal_C( lit );
                 auto literal_v = raw_v * 2 + ( is_c ? 1 : 0 );
                 m_cells.push_back( literal_v );
 
@@ -283,7 +283,7 @@ auto
 WatchSolver::DebugCheck( std::span<const literal_t> lits ) const -> void
 {
         for ( auto lit : lits ) {
-                auto raw_v = LiteralRawValue( lit );
+                auto raw_v = decode_literal_raw_value( lit );
                 if ( raw_v > m_num_literals ) {
                         panic( "lit" );
                 }
@@ -293,4 +293,4 @@ WatchSolver::DebugCheck( std::span<const literal_t> lits ) const -> void
         }
 }
 
-}  // namespace eve::algos::sat
+}  // namespace eos::sat

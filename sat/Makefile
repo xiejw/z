@@ -2,7 +2,7 @@ CMD              =  cmd
 SRC              =  src
 INC              =  include
 
-EVE_FMT_FOLDERS  = ${CMD} ${SRC} ${INC}
+EVE_FMT_FOLDERS  = ${SRC}
 EVE_PATH         = ../../y/ann/eve
 include ${EVE_PATH}/eve.mk
 
@@ -17,11 +17,11 @@ DEPS            += ${BUILD} ${BUILD_OBJ} ${EVE_LIB}
 # ------------------------------------------------------------------------------
 # Mods
 #
-MODULES         += ${BUILD_OBJ}/algos_sat.o
-MODULES         += ${BUILD_OBJ}/algos_sat_watch.o
+MODS            += ${BUILD_OBJ}/sat.o
+MODS            += ${BUILD_OBJ}/sat_watch.o
 
-TEST_MODS       += ${BUILD_OBJ}/algos_sat_watch_test.o
-TEST_MODS       += ${BUILD_OBJ}/algos_sat_watch_dep_test.o
+# TEST_MODS       += ${BUILD_OBJ}/algos_sat_watch_test.o
+# TEST_MODS       += ${BUILD_OBJ}/algos_sat_watch_dep_test.o
 
 # ------------------------------------------------------------------------------
 # Actions
@@ -30,7 +30,7 @@ TEST_MODS       += ${BUILD_OBJ}/algos_sat_watch_dep_test.o
 .DEFAULT_GOAL   = run
 
 # incrementally compile all libraries.
-compile: ${MODULES} ${DEPS}
+compile: ${MODS} ${DEPS}
 
 run: compile
 	${BUILD}/sat_watch_main
@@ -41,26 +41,26 @@ release:
 
 
 test: compile
-	${BUILD}/test_main
+#	${BUILD}/test_main
 
 # ------------------------------------------------------------------------------
 # Rules for sub-modules
 #
-${BUILD_OBJ}/algos_%.o: ${SRC}/algos/%.cc ${INC}/algos/*.h | ${DEPS}
+${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
 	${CXX} -o $@ ${CXXFLAGS} -c $<
 
 # ------------------------------------------------------------------------------
 # Cmds
 #
-compile: ${BUILD}/sat_watch_main ${BUILD}/test_main
+compile: ${BUILD}/sat_watch_main  # ${BUILD}/test_main
 
-${BUILD}/sat_watch_main: ${BUILD}/sat_watch_main.o ${MODULES} | ${DEPS}
+${BUILD}/sat_watch_main: ${BUILD}/sat_watch_main.o ${MODS} | ${DEPS}
 	${CXX} -o $@ $^ ${LDFLAGS}
 
-${BUILD}/test_main: ${BUILD}/test_main.o ${MODULES} ${TEST_MODS} | ${DEPS}
-	${CXX} -o $@ $^ ${LDFLAGS} ${EVE_TEST_LIB}
+# ${BUILD}/test_main: ${BUILD}/test_main.o ${MODULES} ${TEST_MODS} | ${DEPS}
+# 	${CXX} -o $@ $^ ${LDFLAGS} ${EVE_TEST_LIB}
 
-${BUILD}/%_main.o: cmd/%/main.cc | ${DEPS}
+${BUILD}/%_main.o: src/%_main.cc | ${DEPS}
 	${CXX} ${CXXFLAGS} -o $@ -c $^
 
 

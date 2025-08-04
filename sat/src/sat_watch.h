@@ -4,9 +4,9 @@
 #include <span>
 #include <vector>
 
-#include <algos/sat.h>
+#include "sat_solver.h"
 
-namespace eve::algos::sat {
+namespace eos::sat {
 
 class WatchSolver : Solver {
       private:
@@ -46,4 +46,4 @@ class WatchSolver : Solver {
       private:
         auto DebugCheck( std::span<const literal_t> ) const -> void;
 };
-}  // namespace eve::algos::sat
+}  // namespace eos::sat

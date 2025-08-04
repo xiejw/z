@@ -1,20 +1,20 @@
 #include <cstring>
 
-#include <algos/sat_watch.h>
+#include "sat.h"
 
 #include <zion/zion.h>
 
-using eve::algos::sat::C;
-using eve::algos::sat::literal_t;
-using eve::algos::sat::PrintLiterals;
-using eve::algos::sat::WatchSolver;
+using eos::sat::C;
+using eos::sat::literal_t;
+using eos::sat::print_clause_literals;
+using eos::sat::WatchSolver;
 
 namespace {
 auto
 print_and_emit_clause( WatchSolver *sov, std::span<const literal_t> lits )
     -> void
 {
-        PrintLiterals( lits );
+        print_clause_literals( lits );
         sov->EmitClause( lits );
 }
 
@@ -43,7 +43,7 @@ run_watch_solver( ) -> void
         if ( auto res = sov.Search( ); res ) {
                 INFO( "Satisfiable!!!" );
                 INFO( "Result:" );
-                PrintLiterals( res.value( ) );
+                print_clause_literals( res.value( ) );
         } else {
                 WARN( "Unsatisfiable" );
         }

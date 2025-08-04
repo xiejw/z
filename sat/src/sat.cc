@@ -1,21 +1,21 @@
-#include <algos/sat.h>
+#include "sat.h"
 
 #include <print>
 
-namespace eve::algos::sat {
+namespace eos::sat {
 
 namespace {
 constexpr size_t mask = 1 << ( sizeof( size_t ) - 1 );
 }
 
 auto
-LiteralRawValue( literal_t c ) -> literal_t
+decode_literal_raw_value( literal_t c ) -> literal_t
 {
         return c & ( ~mask );
 }
 
 auto
-LiteralIsC( literal_t c ) -> bool
+is_literal_C( literal_t c ) -> bool
 {
         return c & mask;
 }
@@ -27,7 +27,7 @@ C( literal_t c ) -> literal_t
 }
 
 auto
-PrintLiterals( std::span<const literal_t> lits ) -> void
+print_clause_literals( std::span<const literal_t> lits ) -> void
 {
         if ( lits.empty( ) ) {
                 std::print( "(empty literals)\n" );
@@ -36,11 +36,12 @@ PrintLiterals( std::span<const literal_t> lits ) -> void
 
         std::print( "< " );
         for ( auto i : lits ) {
-                if ( LiteralIsC( i ) )
-                        std::print( "C({:3}), ", LiteralRawValue( i ) );
+                if ( is_literal_C( i ) )
+                        std::print( "C({:3}), ",
+                                    decode_literal_raw_value( i ) );
                 else
                         std::print( "{:3}, ", i );
         }
         std::print( " >\n" );
 }
-}  // namespace eve::algos::sat
+}  // namespace eos::sat
