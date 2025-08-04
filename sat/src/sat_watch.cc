@@ -34,7 +34,7 @@ WatchSolver::ReserveCells( size_t num_cells ) -> void
 }
 
 auto
-WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
+WatchSolver::emit_clause( std::span<const literal_t> lits ) -> void
 {
         /* === --- Few quick sanity checks. ----------------------------- === */
         if ( lits.empty( ) ) panic( "emitted clause cannot be empty." );
@@ -88,7 +88,7 @@ WatchSolver::EmitClause( std::span<const literal_t> lits ) -> void
 }
 
 auto
-WatchSolver::Search( ) -> std::optional<std::vector<literal_t>>
+WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
 {
         if ( m_num_emitted_clauses != m_num_clauses ) {
                 panic( "emitted clauses are not enough. expected %zu, got %zu",

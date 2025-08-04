@@ -15,7 +15,7 @@ print_and_emit_clause( WatchSolver *sov, std::span<const literal_t> lits )
     -> void
 {
         print_clause_literals( lits );
-        sov->EmitClause( lits );
+        sov->emit_clause( lits );
 }
 
 auto
@@ -40,7 +40,7 @@ run_watch_solver( ) -> void
         INFO( "Debug Print:" );
         sov.DebugPrint( );
 
-        if ( auto res = sov.Search( ); res ) {
+        if ( auto res = sov.search( ); res ) {
                 INFO( "Satisfiable!!!" );
                 INFO( "Result:" );
                 print_clause_literals( res.value( ) );

@@ -33,8 +33,8 @@ auto print_clause_literals( std::span<const literal_t> ) -> void;
  */
 class Solver {
       public:
-        virtual auto EmitClause( std::span<const literal_t> ) -> void   = 0;
-        virtual auto Search( ) -> std::optional<std::vector<literal_t>> = 0;
+        virtual auto emit_clause( std::span<const literal_t> ) -> void  = 0;
+        virtual auto search( ) -> std::optional<std::vector<literal_t>> = 0;
 };
 
 }  // namespace eos::sat
