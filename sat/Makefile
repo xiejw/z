@@ -29,7 +29,7 @@ endif
 
 # Asan
 ifdef ASAN
-CXXFLAGS += -fsanitize=address
+LDFLAGS  += -fsanitize=address
 endif
 
 # === Mods ---------------------------------------------------------------------
