@@ -17,7 +17,7 @@ CFLAGS   += -g
 endif
 
 ifdef ASAN
-CFLAGS   += -fsanitize=address
+LDFLAGS  += -fsanitize=address
 endif
 
 # Enable BLAS for macOs, which uses Accelerate framework.
@@ -47,8 +47,11 @@ endif
 
 # === Rules --------------------------------------------------------------------
 #
-compile: ${BUILD}/tensor_data.bin | ${BUILD}
-	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} main.c && ./${BUILD}/a.out
+run: compile ${BUILD}/tensor_data.bin | ${BUILD}
+	./${BUILD}/a.out
+
+compile: | ${BUILD}
+	clang -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} main.c
 
 ${BUILD}/tensor_data.bin: | ${BUILD}
 	wget -q --show-progress -O $@ ${DATA_FILE} && \
@@ -56,6 +59,8 @@ ${BUILD}/tensor_data.bin: | ${BUILD}
 
 ${BUILD}:
 	mkdir -p ${BUILD}
+
+test: compile
 
 fmt:
 	~/Workspace/y/tools/clang_format_all.sh .

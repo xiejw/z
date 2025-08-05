@@ -1,3 +1,8 @@
+test:
+	make -C sat          test && \
+	make -C c4c          test && \
+	make -C dlink        test && \
+	echo "We are good"
 clean:
 	fd -I configure.mk -X rm
 	go run ~/Workspace/y/tools/delete_unused_dirs.go
