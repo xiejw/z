@@ -15,7 +15,7 @@ using eos::sat::WatchSolver;
         } while ( 0 )
 
 void
-test_example( )
+test_dpe_resolution( )
 {
         /* See source
          * https://borretti.me/article/dependency-resolution-made-simple
@@ -122,10 +122,112 @@ test_example( )
         }
 }
 
+void
+test_simple( )
+{
+        /* clauses
+         * 1
+         * 1 c2
+         * 2 c3
+         * 2 3
+         *
+         * answer is 1 2 any 3
+         */
+        WatchSolver sov{ /*num_literals=*/3, /*num_causes=*/4 };
+
+        sov.emit_clause( { { ( 1 ) } } );
+        sov.emit_clause( {
+            { 1, C( 2 ) }
+        } );
+        sov.emit_clause( {
+            { 2, C( 3 ) }
+        } );
+        sov.emit_clause( {
+            { 2, 3 }
+        } );
+
+        auto res = sov.search( );
+
+        EXPECT_TRUE( bool( res ) == true, "has answer" );
+        EXPECT_TRUE( res.value( ).size( ) == 3, "3 eles" );
+        EXPECT_TRUE( res.value( )[0] == 1, "[0] == 1" );
+        EXPECT_TRUE( res.value( )[1] == 2, "[1] == 2" );
+        EXPECT_TRUE( res.value( )[2] == C( 3 ), "[2] == c3" );
+}
+
+void
+test_reverse( )
+{
+        /* clauses
+         * 3
+         * c2 1
+         * 3 2
+         * c3 c1
+         * 3 c1
+         *
+         * answer is c1 c2 3
+         */
+        WatchSolver sov{ /*num_literals=*/3, /*num_causes=*/5 };
+
+        sov.emit_clause( { { 3 } } );
+        sov.emit_clause( {
+            { C( 2 ), 1 }
+        } );
+        sov.emit_clause( {
+            { 3, 2 }
+        } );
+        sov.emit_clause( {
+            { C( 3 ), C( 1 ) }
+        } );
+        sov.emit_clause( {
+            { 3, C( 1 ) }
+        } );
+
+        auto res = sov.search( );
+
+        EXPECT_TRUE( bool( res ) == true, "has answer" );
+        EXPECT_TRUE( res.value( ).size( ) == 3, "3 eles" );
+        EXPECT_TRUE( res.value( )[0] == C( 1 ), "[0] == c1" );
+        EXPECT_TRUE( res.value( )[1] == C( 2 ), "[1] == c2" );
+        EXPECT_TRUE( res.value( )[2] == 3, "[2] == 3" );
+}
+
+void
+test_no_result( )
+{
+        /* clauses
+         * c1
+         * 1 c2
+         * 2 c3
+         * 2 3
+         *
+         * answer is: no solution.
+         */
+        WatchSolver sov{ /*num_literals=*/3, /*num_causes=*/4 };
+
+        sov.emit_clause( { { C( 1 ) } } );
+        sov.emit_clause( {
+            { 1, C( 2 ) }
+        } );
+        sov.emit_clause( {
+            { 2, C( 3 ) }
+        } );
+        sov.emit_clause( {
+            { 2, 3 }
+        } );
+
+        auto res = sov.search( );
+
+        EXPECT_TRUE( bool( res ) == false, "no answer" );
+}
+
 int
 main( )
 {
-        test_example( );
+        test_dpe_resolution( );
+        test_simple( );
+        test_reverse( );
+        test_no_result( );
         std::print( "Test passed.\n" );
         return 0;
 }
