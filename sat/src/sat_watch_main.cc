@@ -38,7 +38,7 @@ run_watch_solver( ) -> void
         } );
 
         INFO( "Debug Print:" );
-        sov.DebugPrint( );
+        sov.dump_debug_info( );
 
         if ( auto res = sov.search( ); res ) {
                 INFO( "Satisfiable!!!" );

@@ -30,7 +30,7 @@ class WatchSolver : Solver {
                      size_t num_reserved_cells );
         WatchSolver( size_t num_literals, size_t num_clauses );
 
-        auto ReserveCells( size_t num_cells ) -> void;
+        auto reserve_cells( size_t num_cells ) -> void;
 
       public:
         /* === --- Conform Base Class ----------------------------------- === */
@@ -41,9 +41,9 @@ class WatchSolver : Solver {
         /* === --- A set of debug tooling. ----------------------------- === */
 
         /* Print the internal states of the solver. Orthogonal to debug mode. */
-        auto DebugPrint( ) -> void;
+        auto dump_debug_info( ) -> void;
 
       private:
-        auto DebugCheck( std::span<const literal_t> ) const -> void;
+        auto debug_check( std::span<const literal_t> ) const -> void;
 };
 }  // namespace eos::sat

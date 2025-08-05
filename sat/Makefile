@@ -1,66 +1,83 @@
-CMD              =  cmd
-SRC              =  src
-INC              =  include
+# === Configurations -----------------------------------------------------------
+#
+UNAME     = $(shell uname)
+BUILD     = .build
+BUILD_OBJ = ${BUILD}/objs
+SHELL     = bash
+SRC       = src
 
-EVE_FMT_FOLDERS  = ${SRC}
-EVE_PATH         = ../../y/ann/eve
-include ${EVE_PATH}/eve.mk
+ZION_PATH = ../../y/ann/zion/cc
 
-ZION_PATH        = ../../y/ann/zion/cc
+# === CXXFLAGS and LDFLAGS -----------------------------------------------------
+#
+CXXFLAGS        += -std=c++23 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
+LDFLAGS         += -lm
+
 CXXFLAGS        += -I${ZION_PATH}/include
 
-CXXFLAGS        += -Iinclude
-LDFLAGS         += ${EVE_LIB}
+DEPS            += ${BUILD} ${BUILD_OBJ}
 
-DEPS            += ${BUILD} ${BUILD_OBJ} ${EVE_LIB}
+# Release
+ifdef RELEASE
+CXXFLAGS += -DNDEBUG -O3 -march=native
+CXXFLAGS += -fno-exceptions
+# -fno-rtti
+LDFLAGS  += -ffast-math
+else
+CXXFLAGS += -g
+endif
 
-# ------------------------------------------------------------------------------
-# Mods
+# Asan
+ifdef ASAN
+CXXFLAGS += -fsanitize=address
+endif
+
+# === Mods ---------------------------------------------------------------------
 #
 MODS            += ${BUILD_OBJ}/sat_solver.o
 MODS            += ${BUILD_OBJ}/sat_watch.o
 
-# TEST_MODS       += ${BUILD_OBJ}/algos_sat_watch_test.o
-# TEST_MODS       += ${BUILD_OBJ}/algos_sat_watch_dep_test.o
-
-# ------------------------------------------------------------------------------
-# Actions
+# === Rules --------------------------------------------------------------------
 #
 
 .DEFAULT_GOAL   = run
 
-# incrementally compile all libraries.
-compile: ${MODS} ${DEPS}
+compile: ${MODS} | ${DEPS}
 
 run: compile
 	${BUILD}/sat_watch_main
 
-release:
-	@echo compile with RELEASE mode
-	${MK} RELEASE=1 compile run || exit 1
-
+release: clean
+	make RELEASE=1 compile
 
 test: compile
-#	${BUILD}/test_main
 
 # ------------------------------------------------------------------------------
 # Rules for sub-modules
 #
-${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
-	${CXX} -o $@ ${CXXFLAGS} -c $<
-
 # ------------------------------------------------------------------------------
 # Cmds
 #
-compile: ${BUILD}/sat_watch_main  # ${BUILD}/test_main
+compile: ${BUILD}/sat_watch_main
 
 ${BUILD}/sat_watch_main: ${BUILD}/sat_watch_main.o ${MODS} | ${DEPS}
 	${CXX} -o $@ $^ ${LDFLAGS}
 
-# ${BUILD}/test_main: ${BUILD}/test_main.o ${MODULES} ${TEST_MODS} | ${DEPS}
-# 	${CXX} -o $@ $^ ${LDFLAGS} ${EVE_TEST_LIB}
+${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
+	${CXX} -o $@ ${CXXFLAGS} -c $<
 
 ${BUILD}/%_main.o: src/%_main.cc | ${DEPS}
-	${CXX} ${CXXFLAGS} -o $@ -c $^
+	${CXX} -o $@ ${CXXFLAGS} -c $^
 
+clean:
+	rm -rf ${BUILD}
+
+${BUILD}:
+	@mkdir -p ${BUILD}
+
+${BUILD_OBJ}:
+	@mkdir -p ${BUILD_OBJ}
+
+fmt:
+	@~/Workspace/y/tools/clang_format_all.sh .
 

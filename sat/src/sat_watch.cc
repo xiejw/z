@@ -1,11 +1,10 @@
 #include "sat.h"
 
-#include <eve/base/error.h>
-#include <eve/base/log.h>
-
 #include <print>
 
-#define DEBUG 0
+#include <zion/zion.h>
+
+#define DEBUG_MODE 0
 
 namespace eos::sat {
 
@@ -28,7 +27,7 @@ WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses )
 }
 
 auto
-WatchSolver::ReserveCells( size_t num_cells ) -> void
+WatchSolver::reserve_cells( size_t num_cells ) -> void
 {
         m_cells.reserve( 1 + num_cells );
 }
@@ -37,11 +36,11 @@ auto
 WatchSolver::emit_clause( std::span<const literal_t> lits ) -> void
 {
         /* === --- Few quick sanity checks. ----------------------------- === */
-        if ( lits.empty( ) ) panic( "emitted clause cannot be empty." );
+        if ( lits.empty( ) ) PANIC( "emitted clause cannot be empty." );
         if ( m_num_emitted_clauses >= m_num_clauses )
-                panic( "emitted clause is full. Cannot submit one more." );
+                PANIC( "emitted clause is full. Cannot submit one more." );
 
-        this->DebugCheck( lits );
+        this->debug_check( lits );
 
         /* Clause id is 1-based, and decreasing order. */
         auto clause_id = m_num_clauses - m_num_emitted_clauses;
@@ -91,7 +90,7 @@ auto
 WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
 {
         if ( m_num_emitted_clauses != m_num_clauses ) {
-                panic( "emitted clauses are not enough. expected %zu, got %zu",
+                PANIC( "emitted clauses are not enough. expected {}, got {}",
                        (size_t)m_num_clauses, (size_t)m_num_emitted_clauses );
         }
         /* === --- This algorithm is Vol 4b, Page 215. ------------------ === */
@@ -112,19 +111,19 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                 /* B3 Remove C(l) if possible. Page 573. Ex 124 */
                 size_t j = m_watch[comp_l];
 
-                if ( DEBUG )
-                        logDebug(
-                            "work at B3 at level d %zu to remove compliment of "
-                            "literal with starting clause %zu (comp l = %zu)",
+                if ( DEBUG_MODE )
+                        DEBUG(
+                            "work at B3 at level d {} to remove compliment of "
+                            "literal with starting clause {} (comp l = {})",
                             (size_t)d, j, comp_l );
 
                 while ( j != 0 ) {
-                        if ( DEBUG ) {
-                                logDebug(
+                        if ( DEBUG_MODE ) {
+                                DEBUG(
                                     "--> sub level B3 to work on clause j = "
-                                    "%zu",
+                                    "{}",
                                     (size_t)j );
-                                DebugPrint( );
+                                dump_debug_info( );
                         }
                         /* A literal other than comp_l should be watched in
                          * clause j. */
@@ -133,20 +132,20 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                         size_t end    = m_start[j - 1];
                         size_t next_j = m_link[j];
 
-                        if ( DEBUG ) {
+                        if ( DEBUG_MODE ) {
                                 if ( next_j > m_num_clauses ) {
-                                        DebugPrint( );
-                                        logFatal( "wrong next j" );
+                                        dump_debug_info( );
+                                        PANIC( "wrong next j" );
                                 }
                         }
 
                         size_t k = begin + 1;
                         for ( ; k < end; k++ ) {
-                                if ( DEBUG )
-                                        logDebug(
+                                if ( DEBUG_MODE )
+                                        DEBUG(
                                             "--> --> sub level B3 clause j = "
-                                            "%zu work on cell %zu (begin %zu, "
-                                            "end %zu)",
+                                            "{} work on cell {} (begin {}, "
+                                            "end {})",
                                             (size_t)j, (size_t)k, begin, end );
 
                                 size_t new_l = m_cells[k];
@@ -167,11 +166,11 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                         if ( k == end ) {
                                 /* Cannot stop watching on comp_l. */
                                 m_watch[comp_l] = j;
-                                if ( DEBUG )
-                                        logDebug(
+                                if ( DEBUG_MODE )
+                                        DEBUG(
                                             "cannot stop watching on "
                                             "compliment of literal, go to B5 "
-                                            "at level d %zu",
+                                            "at level d {}",
                                             (size_t)d );
                                 goto B5;
                         }
@@ -180,9 +179,8 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                 /* B4 Advance */
                 m_watch[comp_l] = 0;
                 d++;
-                if ( DEBUG )
-                        logDebug( "advance to with B2 at level d %zu",
-                                  (size_t)d );
+                if ( DEBUG_MODE )
+                        DEBUG( "advance to with B2 at level d {}", (size_t)d );
                 continue; /* Return to B2 */
 
         B5:
@@ -193,10 +191,10 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                         // l             = 2 * d + ( new_md & 1 );
                         comp_l = 2 * d + ( ( new_md & 1 ) ^ 1 );
 
-                        if ( DEBUG )
-                                logDebug(
-                                    "try again with B3 at level d %zu and m[d] "
-                                    "= %zu",
+                        if ( DEBUG_MODE )
+                                DEBUG(
+                                    "try again with B3 at level d {} and m[d] "
+                                    "= {}",
                                     (size_t)d, (size_t)new_md );
                         goto B3;
                 } else {
@@ -206,9 +204,9 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                         /* Otherwise */
                         d--;
 
-                        if ( DEBUG )
-                                logDebug( "backtrack with B5 at level d %zu",
-                                          (size_t)d );
+                        if ( DEBUG_MODE )
+                                DEBUG( "backtrack with B5 at level d {}",
+                                       (size_t)d );
                         goto B5;
                 }
         }
@@ -227,7 +225,7 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
 }
 
 auto
-WatchSolver::DebugPrint( ) -> void
+WatchSolver::dump_debug_info( ) -> void
 {
         /* === --- Internal --------------------------------------------- === */
         std::print( "internal\n" );
@@ -280,15 +278,15 @@ WatchSolver::DebugPrint( ) -> void
 }
 
 auto
-WatchSolver::DebugCheck( std::span<const literal_t> lits ) const -> void
+WatchSolver::debug_check( std::span<const literal_t> lits ) const -> void
 {
         for ( auto lit : lits ) {
                 auto raw_v = decode_literal_raw_value( lit );
                 if ( raw_v > m_num_literals ) {
-                        panic( "lit" );
+                        PANIC( "lit" );
                 }
                 if ( raw_v < 1 ) {
-                        panic( "lit < 1" );
+                        PANIC( "lit < 1" );
                 }
         }
 }
