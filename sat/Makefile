@@ -44,6 +44,7 @@ MODS     += ${BUILD_OBJ}/sat_watch.o
 
 compile: ${MODS} | ${DEPS}
 compile: ${BUILD}/sat_watch_main
+compile: ${BUILD}/test_main
 
 run: compile
 	${BUILD}/sat_watch_main
@@ -52,10 +53,14 @@ release: clean
 	make RELEASE=1 compile
 
 test: compile
+	${BUILD}/test_main
 
 # === Objs and Main ------------------------------------------------------------
 #
 ${BUILD}/sat_watch_main: ${BUILD}/sat_watch_main.o ${MODS} | ${DEPS}
+	${CXX} -o $@ $^ ${LDFLAGS}
+
+${BUILD}/test_main: ${BUILD}/test_main.o ${MODS} | ${DEPS}
 	${CXX} -o $@ $^ ${LDFLAGS}
 
 ${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
