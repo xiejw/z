@@ -54,9 +54,24 @@ mmap_file( const char *fname )
 
 }  // namespace
 
-auto
-open( ) -> void
+zion::Expected<void>
+open( )
 {
-        mmap_file( NULL );
+        auto rc = mmap_file( WF );
+        if ( !rc ) {
+                ZION_RETURN_ERR( rc.error( ),
+                                 "Failed to open gguf weights file." );
+        }
+        char *ptr = (char *)rc.value( );
+        INFO( "GGUF header           : {}", std::string_view( ptr, 4 ) );
+        ptr += 4;
+        INFO( "GGUF version          : {}", *(u32 *)ptr );
+        ptr += 4;
+        INFO( "GGUF tensor_count     : {}", *(u64 *)ptr );
+        ptr += 8;
+        INFO( "GGUF metadata_kv_count: {}", *(u64 *)ptr );
+        ptr += 8;
+
+        return zion::Expected<void>{ };
 }
 }  // namespace velo::gguf

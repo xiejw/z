@@ -1,9 +1,9 @@
-#include <zion/zion.h>
+// #include <zion/zion.h>
 
 #include "gguf.h"
 
 int
 main( )
 {
-        INFO( "hello" );
+        velo::gguf::open( );
 }

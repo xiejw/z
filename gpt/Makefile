@@ -8,12 +8,15 @@ BUILD_OBJ = ${BUILD}/objs
 
 ZION_PATH = ../zion/cc
 
+W_FILE    = ${HOME}/Desktop/weights/ggml-org_gpt-oss-20b-GGUF_gpt-oss-20b-mxfp4.gguf
+
 # === CXXFLAGS and LDFLAGS -----------------------------------------------------
 #
 CXXFLAGS += -std=c++23 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
 CXXFLAGS += -I${ZION_PATH}/include
+CXXFLAGS += -DWF=\"${W_FILE}\"
 
 DEPS     += ${BUILD} ${BUILD_OBJ}
 

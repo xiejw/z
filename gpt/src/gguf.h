@@ -7,5 +7,5 @@
 
 namespace velo::gguf {
 
-auto open( ) -> void;
+auto open( ) -> zion::Expected<void>;
 }
