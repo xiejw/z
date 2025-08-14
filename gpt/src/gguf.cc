@@ -72,6 +72,13 @@ open( )
         INFO( "GGUF metadata_kv_count: {}", *(u64 *)ptr );
         ptr += 8;
 
+        // loop of metadata
+        // key
+        INFO( "GGUF key len: {}", *(u64 *)ptr );
+        ptr += 8;
+        INFO( "GGUF key str: {}", std::string_view( ptr, 20 ) );
+        ptr += 20;
+
         return zion::Expected<void>{ };
 }
 }  // namespace velo::gguf
