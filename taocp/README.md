@@ -7,3 +7,5 @@ search and how powerful algorithms could reduce complexity significantly (Page
 Then introduce the words puzzle (Page 9) and further introduce graphs from words
 (Page 11). In order to use Graph tooling,  graph theory (Page 13) is carefully
 studied.
+
+spanning is vertex induced is edges 
