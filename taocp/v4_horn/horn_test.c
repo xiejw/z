@@ -2,6 +2,8 @@
 
 #include <stdio.h>
 
+void horn_core_compute( struct horn *h );
+
 // === --- Test Code ------------------------------------------------------- ===
 
 #define PANIC( )                     \
@@ -249,4 +251,3 @@ main( void )
         test_solve_multiple_no_solu( );
         printf( "Test passed.\n" );
 }
-

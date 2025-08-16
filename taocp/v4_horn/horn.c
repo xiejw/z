@@ -40,7 +40,7 @@ struct horn {
 // Compute the core of horn clauses.
 //
 // See TAOCP, vol 4a, Page 59, Algorithm C.
-static void
+void
 horn_core_compute( struct horn *h )
 {
         while ( h->stack_top != 0 ) {  // loop until no awaiting prop.

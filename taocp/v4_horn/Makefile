@@ -6,7 +6,8 @@ SHELL     = bash
 
 # === ZION ---------------------------------------------------------------------
 #
-ZION_PATH = ../../zion
+ZION_PATH = ../../zion/c
+include ${ZION_PATH}/zion.mk
 
 # === CFLAGS and LDFLAGS -------------------------------------------------------
 #
@@ -14,7 +15,7 @@ CFLAGS   += -std=c11 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
 CFLAGS   += -I..
-CFLAGS   += -I${ZION_PATH}/c/include
+CFLAGS   += -I${ZION_PATH}/include
 
 ifdef RELEASE
 CFLAGS   += -DNDEBUG -O3 -march=native
@@ -27,24 +28,30 @@ ifdef ASAN
 CFLAGS   += -fsanitize=address
 endif
 
+MODS      = ${BUILD}/horn.o
+
 # === Rules --------------------------------------------------------------------
 #
 .PHONY: release compile test clean fmt
 
-compile: | ${BUILD}
-	${CC} -o ${BUILD}/horn.o ${CFLAGS} -c horn.c
+compile: ${LIBZION} | ${BUILD}
 
 release: compile
 
-test: | ${BUILD}
+test: ${MODS} ${LIBZION} | ${BUILD}
 	@set -e
-	@${CC} -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} ${LIBZION} horn.c horn_test.c  && echo -n "horn  -- " && ./${BUILD}/test
+	@${CC} -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} $^ horn_test.c  && echo -n "test    --- horn   --- " && ./${BUILD}/test
 	@echo "All done."
+
+# === Mods ---------------------------------------------------------------------
+#
+${BUILD}/%.o: %.c | ${BUILD}
+	@echo -n "compile --- `basename $@`" && ${CC} -o $@ ${CFLAGS} -c $^ && echo "."
 
 # === House Keeping ------------------------------------------------------------
 #
 ${BUILD}:
-	mkdir -p ${BUILD}
+	@mkdir -p ${BUILD}
 
 fmt:
 	~/Workspace/y/tools/clang_format_all.sh .
