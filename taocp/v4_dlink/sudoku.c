@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <adt/dlink.h>
+#include "dlink.h"
 
 #define SIZE 9
 

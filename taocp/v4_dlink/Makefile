@@ -19,7 +19,6 @@ CFLAGS   += -I${ZION_PATH}/include
 
 ifdef RELEASE
 CFLAGS   += -DNDEBUG -O3 -march=native
-LDFLAGS  += -ffast-math
 else
 CFLAGS   += -g
 endif
@@ -28,7 +27,7 @@ ifdef ASAN
 CFLAGS   += -fsanitize=address
 endif
 
-MODS      = ${BUILD}/horn.o
+MODS     += ${BUILD}/dlink.o
 
 # === Rules --------------------------------------------------------------------
 #
@@ -36,14 +35,15 @@ MODS      = ${BUILD}/horn.o
 
 .DEFAULT_GOAL := compile
 
-compile: ${LIBZION} | ${BUILD}
+compile: ${MODS} ${LIBZION} | ${BUILD}
+
+run: ${MODS} ${LIBZION} | ${BUILD}
+	${CC} -o ${BUILD}/a.out ${CFLAGS} ${LDFLAGS} $^ sudoku.c && ./${BUILD}/a.out
 
 release: compile
 
-test: ${MODS} ${LIBZION} | ${BUILD}
-	@set -e
-	@${CC} -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} $^ horn_test.c  && echo -n "test    --- horn   --- " && ./${BUILD}/test
-	@echo "All done."
+test: ${LIBZION} ${MODS} | ${BUILD}
+	${CC} -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} $^ dlink_test.c && ./${BUILD}/test
 
 # === Mods ---------------------------------------------------------------------
 #
@@ -53,7 +53,7 @@ ${BUILD}/%.o: %.c | ${BUILD}
 # === House Keeping ------------------------------------------------------------
 #
 ${BUILD}:
-	@mkdir -p ${BUILD}
+	mkdir -p ${BUILD}
 
 fmt:
 	~/Workspace/y/tools/clang_format_all.sh .
