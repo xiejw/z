@@ -3,7 +3,7 @@
 
 #include <stddef.h>  // size_t
 
-#include <adt/types.h>
+#include <zion/zion.h>
 
 // === --- Horn Satisfiability --------------------------------------------- ===
 //
