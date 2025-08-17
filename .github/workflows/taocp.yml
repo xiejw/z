@@ -17,7 +17,7 @@ jobs:
           clang_version: 19
 
       - name: Run ${{ github.workflow }} Test
-        run: CC=clamake -C ${{ github.workspace }}/z/${{ github.workflow }} clean test
+        run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean test
       - name: Run ${{ github.workflow }} ASAN Test
         run: make -C ${{ github.workspace }}/z/${{ github.workflow }} ASAN=1 clean test
       - name: Run ${{ github.workflow }} Release
