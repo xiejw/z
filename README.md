@@ -9,6 +9,4 @@
   can be extended to help exact cover with colors problem (XCC).
 - **SAT Solver** ([sat](./sat)): Few algorithms which aim to solve the Boolean
   satisfiability problem (SAT).
-- **Tic Tac Toe** ([ttt](./ttt)): A [forked](https://github.com/antirez/ttt-rl)
-  Tic Tac Toe agent backed by Reinforcement Learning.
 
