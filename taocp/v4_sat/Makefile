@@ -6,7 +6,7 @@ SRC       = src
 BUILD     = .build
 BUILD_OBJ = ${BUILD}/objs
 
-ZION_PATH = ../zion/cc
+ZION_PATH = ../../zion/cc
 
 # === CXXFLAGS and LDFLAGS -----------------------------------------------------
 #

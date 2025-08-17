@@ -1,5 +1,4 @@
 test:
-	make -C sat          test && \
 	make -C c4c          test && \
 	make -C taocp        test && \
 	echo "We are good"

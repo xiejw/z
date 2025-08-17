@@ -16,6 +16,8 @@ jobs:
 
       - name: Run ${{ github.workflow }} Test
         run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean test
+      - name: Run ${{ github.workflow }} ASAN Test
+        run: make -C ${{ github.workspace }}/z/${{ github.workflow }} ASAN=1 clean test
       - name: Run ${{ github.workflow }} Release
         run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean release
 
