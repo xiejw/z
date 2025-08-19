@@ -10,3 +10,9 @@
 - **SAT Solver** ([sat](./taocp/v4_sat)): Few algorithms which aim to solve the
   Boolean satisfiability problem (SAT).
 
+
+## Project Names
+
+- The project name Zion symbolizes a foundation or stronghold (as in the “Rock
+  of Zion”), representing a core system built with vision and the pursuit of
+  excellence.
