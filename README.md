@@ -1,9 +1,14 @@
 ## Curated Project Lists
 
+### AI
+
 - **Connect 4** ([c4c](./c4c)): A MCTS based AI agent which can play [connect
   four](https://en.wikipedia.org/wiki/Connect_Four). Written in pure c (<1050L)
   without any dependency. It is quite strong.
   - [c4c](./c4c): Python version. Click [here](c4/README.md) to get started.
+
+### TAOCP
+
 - **Dancing Link** ([dlink](./taocp/v4_dlink)): An advanced data structure
   implementing backtracking algorithms, for the exact cover problem (XC). This
   can be extended to help exact cover with colors problem (XCC).
@@ -13,6 +18,6 @@
 
 ## Project Names
 
-- The project name Zion symbolizes a foundation or stronghold (as in the “Rock
-  of Zion”), representing a core system built with vision and the pursuit of
+- The project name `Zion` symbolizes a foundation or stronghold (as in the "Rock
+  of Zion"), representing a core system built with vision and the pursuit of
   excellence.
