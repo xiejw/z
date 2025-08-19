@@ -21,3 +21,7 @@
 - The project name `Zion` symbolizes a foundation or stronghold (as in the "Rock
   of Zion"), representing a core system built with vision and the pursuit of
   excellence.
+
+- The project name `EOS` evokes the idea of a new dawn or a fresh beginning in
+  technology, symbolizing the revolutionary change driven by the power of
+  generative AI.
