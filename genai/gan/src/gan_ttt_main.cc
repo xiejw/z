@@ -1,6 +1,9 @@
 // https://github.com/xiejw/z/commit/fd326f22906da2855497008aaedf0f3aa9590f8f
 #include <zion/zion.h>
 
+#include <cmath>
+#include <cstring>
+
 namespace eos::gan {
 // Neural Network Paramters.
 constexpr int kNNGameState  = 9;
