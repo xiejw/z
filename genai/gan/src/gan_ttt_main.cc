@@ -1,10 +1,12 @@
+// https://github.com/xiejw/z/commit/fd326f22906da2855497008aaedf0f3aa9590f8f
 #include <zion/zion.h>
 
 namespace eos::gan {
 // Neural Network Paramters.
-constexpr int kNNInputSize  = 18;
+constexpr int kNNGameState  = 9;
+constexpr int kNNInputSize  = kNNGameState * 2;
 constexpr int kNNHiddenSize = 100;
-constexpr int kNNOutputSize = 9;
+constexpr int kNNOutputSize = kNNGameState;
 // constexpr f32 kLearningRate = 0.1f;
 
 // Game board representation.
@@ -14,22 +16,25 @@ class GameState {
 };
 
 // Two-layer Neural network.
+template <std::size_t IN = kNNInputSize, std::size_t OUT = kNNOutputSize,
+          std::size_t HIDDEN = kNNHiddenSize>
 class NeuralNetwork {
       public:
         // Weights and biases.
-        float weights_ih[kNNInputSize * kNNHiddenSize];
-        float weights_ho[kNNHiddenSize * kNNOutputSize];
-        float biases_h[kNNHiddenSize];
-        float biases_o[kNNOutputSize];
+        float weights_ih[IN * HIDDEN];
+        float weights_ho[HIDDEN * OUT];
+        float biases_h[HIDDEN];
+        float biases_o[OUT];
 
         // Activations are part of the structure itself for simplicity.
-        float inputs[kNNInputSize];
-        float hidden[kNNHiddenSize];
-        float raw_logits[kNNOutputSize];  // Outputs before softmax().
-        float outputs[kNNOutputSize];     // Outputs after softmax().
-                                          //
+        float inputs[IN];
+        float hidden[HIDDEN];
+        float raw_logits[OUT];  // Outputs before softmax().
+        float outputs[OUT];     // Outputs after softmax().
+                                //
       public:
         void init( );
+        void forward( f32 * );
 };
 
 namespace {
@@ -42,23 +47,105 @@ rand_f32( )
         return ( ( (float)rand( ) / (float)RAND_MAX ) - 0.5f );
 }
 
+/* ReLU activation function */
+float
+relu( float x )
+{
+        return x > 0 ? x : 0;
+}
+
+///* Derivative of ReLU activation function */
+// float
+// relu_derivative( float x )
+//{
+//         return x > 0 ? 1.0f : 0.0f;
+// }
+
+/* Apply softmax activation function to an array input, and
+ * set the result into output. */
+void
+softmax( float *input, float *output, int size )
+{
+        /* Find maximum value then subtact it to avoid
+         * numerical stability issues with exp(). */
+        float max_val = input[0];
+        for ( int i = 1; i < size; i++ ) {
+                if ( input[i] > max_val ) {
+                        max_val = input[i];
+                }
+        }
+
+        // Calculate exp(x_i - max) for each element and sum.
+        float sum = 0.0f;
+        for ( int i = 0; i < size; i++ ) {
+                output[i] = expf( input[i] - max_val );
+                sum += output[i];
+        }
+
+        // Normalize to get probabilities.
+        if ( sum > 0 ) {
+                for ( int i = 0; i < size; i++ ) {
+                        output[i] /= sum;
+                }
+        } else {
+                /* Fallback in case of numerical issues, just provide
+                 * a uniform distribution. */
+                for ( int i = 0; i < size; i++ ) {
+                        output[i] = 1.0f / (float)size;
+                }
+        }
+}
+
 }  // namespace
 
+template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
 void
-NeuralNetwork::init( )
+NeuralNetwork<IN, OUT, HIDDEN>::init( )
 {
         // Initialize weights with random values between -0.5 and 0.5
-        for ( int i = 0; i < kNNInputSize * kNNHiddenSize; i++ )
+        for ( std::size_t i = 0; i < IN * HIDDEN; i++ )
                 this->weights_ih[i] = rand_f32( );
 
-        for ( int i = 0; i < kNNHiddenSize * kNNOutputSize; i++ )
+        for ( std::size_t i = 0; i < HIDDEN * OUT; i++ )
                 this->weights_ho[i] = rand_f32( );
 
-        for ( int i = 0; i < kNNHiddenSize; i++ )
+        for ( std::size_t i = 0; i < HIDDEN; i++ )
                 this->biases_h[i] = rand_f32( );
 
-        for ( int i = 0; i < kNNOutputSize; i++ )
-                this->biases_o[i] = rand_f32( );
+        for ( std::size_t i = 0; i < OUT; i++ ) this->biases_o[i] = rand_f32( );
+}
+
+/* Neural network foward pass (inference).
+ *
+ * NOTE: The activations are stored so we can also do backpropagation later.
+ */
+template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
+void
+NeuralNetwork<IN, OUT, HIDDEN>::forward( f32 *inputs )
+{
+        // Copy inputs.
+        memcpy( this->inputs, inputs, IN * sizeof( float ) );
+
+        // Input to hidden layer.
+        for ( std::size_t i = 0; i < HIDDEN; i++ ) {
+                float sum = this->biases_h[i];
+                for ( std::size_t j = 0; j < IN; j++ ) {
+                        sum += inputs[j] * this->weights_ih[j * HIDDEN + i];
+                }
+                this->hidden[i] = relu( sum );
+        }
+
+        // Hidden to output (raw logits).
+        for ( std::size_t i = 0; i < OUT; i++ ) {
+                this->raw_logits[i] = this->biases_o[i];
+                for ( std::size_t j = 0; j < HIDDEN; j++ ) {
+                        this->raw_logits[i] +=
+                            this->hidden[j] * this->weights_ho[j * OUT + i];
+                }
+        }
+
+        // Apply softmax to get the final probabilities.
+        softmax( this->raw_logits, this->outputs, OUT );
 }
 
 }  // namespace eos::gan
@@ -68,5 +155,8 @@ main( )
 {
         eos::gan::NeuralNetwork nn{ };
         nn.init( );
+
+        f32 inputs[eos::gan::kNNInputSize];
+        nn.forward( inputs );
         return 0;
 }

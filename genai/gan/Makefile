@@ -63,6 +63,8 @@ ${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
 ${BUILD}/%_main.o: src/%_main.cc | ${DEPS}
 	${CXX} ${CXXFLAGS} -o $@ -c $^
 
+# === House Keeping ------------------------------------------------------------
+#
 ${BUILD}:
 	@mkdir -p ${BUILD}
 
