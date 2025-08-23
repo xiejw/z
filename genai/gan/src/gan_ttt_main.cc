@@ -4,19 +4,25 @@
 #include <cmath>
 #include <cstring>
 
-namespace eos::gan {
-// Neural Network Paramters.
-constexpr int kNNGameState  = 9;
-constexpr int kNNInputSize  = kNNGameState * 2;
-constexpr int kNNHiddenSize = 100;
-constexpr int kNNOutputSize = kNNGameState;
-// constexpr f32 kLearningRate = 0.1f;
+// === Game Board State ---------------------------------------------------- ===
 
+namespace eos::gan {
+constexpr int kGameStateCount = 9;
 // Game board representation.
 class GameState {
       public:
-        char board[9];
+        char board[kGameStateCount];
 };
+}  // namespace eos::gan
+
+// === NeuralNetwork ------------------------------------------------------- ===
+
+namespace eos::gan {
+// Neural Network Paramters.
+constexpr int kNNInputSize  = kGameStateCount * 2;
+constexpr int kNNHiddenSize = 100;
+constexpr int kNNOutputSize = kGameStateCount;
+// constexpr f32 kLearningRate = 0.1f;
 
 // Two-layer Neural network.
 template <std::size_t IN = kNNInputSize, std::size_t OUT = kNNOutputSize,
