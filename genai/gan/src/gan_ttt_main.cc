@@ -15,8 +15,13 @@ constexpr int kGameStateCount = kGameRowCount * kGameColCount;
 
 // Game board representation.
 class GameState {
-      public:
+      private:
         char board[kGameStateCount];  // Can be "." (empty) or "X", "O".
+
+      public:
+        constexpr static char CharNotSet = '.';
+        constexpr static char CharBlack  = 'X';
+        constexpr static char CharWhite  = 'O';
 
       public:
         GameState( );
@@ -67,13 +72,14 @@ GameState::convert_board_to_inputs( std::span<f32> &inputs ) const -> void
 
         f32 *data = inputs.data( );
         for ( int i = 0; i < 9; i++ ) {
-                if ( this->board[i] == '.' ) {
+                if ( this->board[i] == CharNotSet ) {
                         data[i * 2]     = 0;
                         data[i * 2 + 1] = 0;
-                } else if ( this->board[i] == 'X' ) {
+                } else if ( this->board[i] == CharBlack ) {
                         data[i * 2]     = 1;
                         data[i * 2 + 1] = 0;
-                } else {  // 'O'
+                } else {
+                        assert( this->board[i] == CharWhite );
                         data[i * 2]     = 0;
                         data[i * 2 + 1] = 1;
                 }
