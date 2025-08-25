@@ -19,9 +19,10 @@ class GameState {
         char board[kGameStateCount];  // Can be "." (empty) or "X", "O".
 
       public:
-        constexpr static char CharNotSet = '.';
-        constexpr static char CharBlack  = 'X';
-        constexpr static char CharWhite  = 'O';
+        using Player                        = char;
+        constexpr static Player PlayerNA    = '.';
+        constexpr static Player PlayerBlack = 'X';
+        constexpr static Player PlayerWhite = 'O';
 
       public:
         GameState( );
@@ -35,13 +36,19 @@ class GameState {
         // Instead of one-hot encoding, we can represent N different categories
         // as different bit patterns. In this specific case it's trivial:
         //
-        // 00 = empty
-        // 10 = X
-        // 01 = O
+        // 00 = PlayerNA (empty)
+        // 10 = PlayerBlack (X)
+        // 01 = PlayerWhite (O)
         //
         // Two inputs per symbol instead of 3 in this case, but in the general
         // case this reduces the input dimensionality A LOT.
         auto convert_board_to_inputs( std::span<f32> &inputs ) const -> void;
+
+        /* Check if the game is over (win or tie).
+         * Return None if game is not over
+         * Return PlayerNA if tie. PlayerBlack or PlayerWhite if winner exists.
+         */
+        auto is_game_over( ) -> std::optional<Player>;
 };
 
 GameState::GameState( ) { memset( this->board, '.', kGameStateCount ); }
@@ -72,18 +79,60 @@ GameState::convert_board_to_inputs( std::span<f32> &inputs ) const -> void
 
         f32 *data = inputs.data( );
         for ( int i = 0; i < 9; i++ ) {
-                if ( this->board[i] == CharNotSet ) {
+                if ( this->board[i] == PlayerNA ) {
                         data[i * 2]     = 0;
                         data[i * 2 + 1] = 0;
-                } else if ( this->board[i] == CharBlack ) {
+                } else if ( this->board[i] == PlayerBlack ) {
                         data[i * 2]     = 1;
                         data[i * 2 + 1] = 0;
                 } else {
-                        assert( this->board[i] == CharWhite );
+                        assert( this->board[i] == PlayerWhite );
                         data[i * 2]     = 0;
                         data[i * 2 + 1] = 1;
                 }
         }
+}
+auto
+GameState::is_game_over( ) -> std::optional<Player>
+{
+        // Check rows.
+        for ( int i = 0; i < 3; i++ ) {
+                if ( this->board[i * 3] != PlayerNA &&
+                     this->board[i * 3] == this->board[i * 3 + 1] &&
+                     this->board[i * 3 + 1] == this->board[i * 3 + 2] ) {
+                        return this->board[i * 3];
+                }
+        }
+
+        // Check columns.
+        for ( int i = 0; i < 3; i++ ) {
+                if ( this->board[i] != PlayerNA &&
+                     this->board[i] == this->board[i + 3] &&
+                     this->board[i + 3] == this->board[i + 6] ) {
+                        return this->board[i];
+                }
+        }
+
+        // Check diagonals.
+        if ( this->board[0] != PlayerNA && this->board[0] == this->board[4] &&
+             this->board[4] == this->board[8] ) {
+                return this->board[0];
+        }
+        if ( this->board[2] != PlayerNA && this->board[2] == this->board[4] &&
+             this->board[4] == this->board[6] ) {
+                return this->board[2];
+        }
+
+        // Check for tie (no free tiles left).
+        int empty_tiles = 0;
+        for ( int i = 0; i < 9; i++ ) {
+                if ( this->board[i] == PlayerNA ) empty_tiles++;
+        }
+        if ( empty_tiles == 0 ) {
+                return PlayerNA;  // Tie
+        }
+
+        return std::nullopt;  // Game continues.
 }
 }  // namespace eos::gan
 
