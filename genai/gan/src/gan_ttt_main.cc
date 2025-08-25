@@ -3,16 +3,82 @@
 
 #include <cmath>
 #include <cstring>
+#include <print>
+#include <span>
 
 // === Game Board State ---------------------------------------------------- ===
 
 namespace eos::gan {
-constexpr int kGameStateCount = 9;
+constexpr int kGameRowCount   = 3;
+constexpr int kGameColCount   = 3;
+constexpr int kGameStateCount = kGameRowCount * kGameColCount;
+
 // Game board representation.
 class GameState {
       public:
-        char board[kGameStateCount];
+        char board[kGameStateCount];  // Can be "." (empty) or "X", "O".
+
+      public:
+        GameState( );
+
+      public:
+        // Show board on screen in ASCII "art".
+        auto display_board( ) -> void;
+
+        // Convert board state to neural network inputs.
+        //
+        // Instead of one-hot encoding, we can represent N different categories
+        // as different bit patterns. In this specific case it's trivial:
+        //
+        // 00 = empty
+        // 10 = X
+        // 01 = O
+        //
+        // Two inputs per symbol instead of 3 in this case, but in the general
+        // case this reduces the input dimensionality A LOT.
+        auto convert_board_to_inputs( std::span<f32> &inputs ) const -> void;
 };
+
+GameState::GameState( ) { memset( this->board, '.', kGameStateCount ); }
+
+auto
+GameState::display_board( ) -> void
+{
+        for ( int row = 0; row < kGameRowCount; row++ ) {
+                // Display the board symbols.
+                std::print( "{}{}{} ", this->board[row * kGameColCount],
+                            this->board[row * kGameColCount + 1],
+                            this->board[row * kGameColCount + 2] );
+
+                // Display the position numbers for this row, for the poor
+                // human.
+                std::print( "{}{}{}\n", row * kGameColCount,
+                            row * kGameColCount + 1, row * kGameColCount + 2 );
+        }
+        std::print( "\n" );
+}
+auto
+GameState::convert_board_to_inputs( std::span<f32> &inputs ) const -> void
+{
+        if ( inputs.size( ) < kGameStateCount * 2 ) {
+                PANIC( "inputs are not big enough: expect: {} got: {}",
+                       kGameStateCount * 2, inputs.size( ) );
+        }
+
+        f32 *data = inputs.data( );
+        for ( int i = 0; i < 9; i++ ) {
+                if ( this->board[i] == '.' ) {
+                        data[i * 2]     = 0;
+                        data[i * 2 + 1] = 0;
+                } else if ( this->board[i] == 'X' ) {
+                        data[i * 2]     = 1;
+                        data[i * 2 + 1] = 0;
+                } else {  // 'O'
+                        data[i * 2]     = 0;
+                        data[i * 2 + 1] = 1;
+                }
+        }
+}
 }  // namespace eos::gan
 
 // === NeuralNetwork ------------------------------------------------------- ===
@@ -162,6 +228,9 @@ NeuralNetwork<IN, OUT, HIDDEN>::forward( f32 *inputs )
 int
 main( )
 {
+        eos::gan::GameState s{ };
+        s.display_board( );
+
         eos::gan::NeuralNetwork nn{ };
         nn.init( );
 
