@@ -35,6 +35,7 @@ endif
 # === Mods ---------------------------------------------------------------------
 #
 # n/a
+MODS      =
 
 # === Rules --------------------------------------------------------------------
 #
@@ -42,10 +43,10 @@ endif
 .DEFAULT_GOAL = run
 
 compile: ${MODS} | ${DEPS}
-compile: ${BUILD}/gan_ttt
+compile: ${BUILD}/ttt
 
 run: compile
-	${BUILD}/gan_ttt
+	${BUILD}/ttt
 
 release: clean
 	make RELEASE=1 compile
@@ -54,7 +55,7 @@ test: compile
 
 # === Objs and Main ------------------------------------------------------------
 #
-${BUILD}/gan_ttt: ${BUILD}/gan_ttt_main.o ${MODS} | ${DEPS}
+${BUILD}/ttt: ${BUILD}/ttt_main.o ${MODS} | ${DEPS}
 	${CXX} -o $@ $^ ${LDFLAGS}
 
 ${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
