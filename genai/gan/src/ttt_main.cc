@@ -54,7 +54,7 @@ class GameState {
         auto is_game_over( ) -> std::optional<Symbol>;
 };
 
-GameState::GameState( ) { memset( this->board, '.', kGameStateCount ); }
+GameState::GameState( ) { memset( this->board, SymNA, kGameStateCount ); }
 
 auto
 GameState::display_board( ) -> void
@@ -100,6 +100,9 @@ GameState::convert_board_to_inputs( std::span<f32> inputs ) const -> void
 auto
 GameState::is_game_over( ) -> std::optional<Symbol>
 {
+        // Hard code some rules
+        assert( kGameRowCount == 3 && kGameColCount == 3 );
+
         // Check rows.
         for ( int i = 0; i < 3; i++ ) {
                 if ( this->board[i * 3] != SymNA &&
@@ -170,6 +173,7 @@ class NeuralNetwork {
       public:
         void init( );
         void forward( f32 * );
+        void backward( f32 *target_probs, f32 lr, f32 reward_scaling );
 };
 
 namespace {
@@ -262,6 +266,11 @@ NeuralNetwork<IN, OUT, HIDDEN>::forward( f32 *inputs )
         memcpy( this->inputs, inputs, IN * sizeof( float ) );
 
         // Input to hidden layer.
+        //
+        // Shapes
+        // - matmul (inputs / 1 x IN, weights_ih / IN x HIDDEN)
+        // - biases_h / HIDDEN
+        //
         for ( std::size_t i = 0; i < HIDDEN; i++ ) {
                 float sum = this->biases_h[i];
                 for ( std::size_t j = 0; j < IN; j++ ) {
@@ -271,6 +280,11 @@ NeuralNetwork<IN, OUT, HIDDEN>::forward( f32 *inputs )
         }
 
         // Hidden to output (raw logits).
+        //
+        // Shapes
+        // - matmul (inputs / 1 x HIDDEN, weights_ho / HIDDEN x OUT )
+        // - biases_o / OUT
+        //
         for ( std::size_t i = 0; i < OUT; i++ ) {
                 this->raw_logits[i] = this->biases_o[i];
                 for ( std::size_t j = 0; j < HIDDEN; j++ ) {
@@ -280,7 +294,87 @@ NeuralNetwork<IN, OUT, HIDDEN>::forward( f32 *inputs )
         }
 
         // Apply softmax to get the final probabilities.
-        softmax( this->raw_logits, this->outputs, OUT );
+        //
+        // Shapes
+        // - raw_logits / OUT
+        // - outputs / OUT
+        //
+        softmax( /*input=*/this->raw_logits, /*output=*/this->outputs, OUT );
+}
+
+/* Backpropagation function.
+ *
+ * The only difference here from vanilla backprop is that we have
+ * a 'reward_scaling' argument that makes the output error more/less
+ * dramatic, so that we can adjust the weights proportionally to the
+ * reward we want to provide.
+ */
+template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
+void
+NeuralNetwork<IN, OUT, HIDDEN>::backward( f32 *target_probs, f32 lr,
+                                          f32 reward_scaling )
+{
+        f32 raw_logits_deltas[OUT];
+        f32 hidden_deltas[HIDDEN];
+
+        /* === --- STEP 1: Compute deltas ------------------------------- === */
+
+        /* Calculate output layer deltas:
+         *
+         * Note what's going on here: we are technically using softmax
+         * from raw_logits to output in forward function which uses cross
+         * entropy as loss.
+         *
+         * Still calculating the deltas as:
+         *
+         *      output[i] - target[i]
+         *
+         * NOTE: This is gradients w.r.t. to raw_logits not outputs (even
+         * though it uses outputs only). Check the gradients for cross entropy
+         * for details.
+         */
+        for ( int i = 0; i < OUT; i++ ) {
+                raw_logits_deltas[i] = ( this->outputs[i] - target_probs[i] ) *
+                                       fabsf( reward_scaling );
+        }
+
+        // Backpropagate error to hidden layer.
+        for ( int i = 0; i < HIDDEN; i++ ) {
+                f32 error = 0;
+                for ( int j = 0; j < OUT; j++ ) {
+                        error += raw_logits_deltas[j] *
+                                 this->weights_ho[i * OUT + j];
+                }
+                hidden_deltas[i] = error * relu_derivative( this->hidden[i] );
+        }
+
+        (void)lr;
+
+        // /* === STEP 2: Weights updating === */
+
+        // // Output layer weights and biases.
+        // for ( int i = 0; i < NN_HIDDEN_SIZE; i++ ) {
+        //         for ( int j = 0; j < NN_OUTPUT_SIZE; j++ ) {
+        //                 this->weights_ho[i * NN_OUTPUT_SIZE + j] -=
+        //                     learning_rate * raw_logits_deltas[j] *
+        //                     this->hidden[i];
+        //         }
+        // }
+        // for ( int j = 0; j < NN_OUTPUT_SIZE; j++ ) {
+        //         this->biases_o[j] -= learning_rate * raw_logits_deltas[j];
+        // }
+
+        // // Hidden layer weights and biases.
+        // for ( int i = 0; i < NN_INPUT_SIZE; i++ ) {
+        //         for ( int j = 0; j < NN_HIDDEN_SIZE; j++ ) {
+        //                 this->weights_ih[i * NN_HIDDEN_SIZE + j] -=
+        //                     learning_rate * hidden_deltas[j] *
+        //                     this->inputs[i];
+        //         }
+        // }
+        // for ( int j = 0; j < NN_HIDDEN_SIZE; j++ ) {
+        //         this->biases_h[j] -= learning_rate * hidden_deltas[j];
+        // }
 }
 
 }  // namespace eos::gan
