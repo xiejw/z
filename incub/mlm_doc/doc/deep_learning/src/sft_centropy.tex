@@ -1,7 +1,22 @@
 \input src/format
 
+\font\titlefont=cmss16
+\font\subtitlefont=cmcsc8
+
+% Two-argument form
+\def\twotitle#1#2{%
+  \vskip 2em
+  \hfill{\titlefont #1\par} % main title
+  \ifx\empty#2\empty\else   % if subtitle not empty
+    \hfill{\subtitlefont #2\par}%
+  \fi
+  \vskip 1em
+}
+
 \def\loss{{\rm Loss}}
 \def\dv{{\rm d}}
+
+\twotitle{Cross Entropy and Gradients}{2019-05-01}
 
 % {{{1 Section Problem
 \sec{Problem}
