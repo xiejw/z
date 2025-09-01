@@ -193,12 +193,12 @@ relu( float x )
         return x > 0 ? x : 0;
 }
 
-///* Derivative of ReLU activation function */
-// float
-// relu_derivative( float x )
-//{
-//         return x > 0 ? 1.0f : 0.0f;
-// }
+/* Derivative of ReLU activation function */
+f32
+relu_derivative( f32 x )
+{
+        return x > 0 ? 1.0f : 0.0f;
+}
 
 /* Apply softmax activation function to an array input, and
  * set the result into output. */
@@ -270,6 +270,7 @@ NeuralNetwork<IN, OUT, HIDDEN>::forward( f32 *inputs )
         // Shapes
         // - matmul (inputs / 1 x IN, weights_ih / IN x HIDDEN)
         // - biases_h / HIDDEN
+        // - hidden / HIDDEN
         //
         for ( std::size_t i = 0; i < HIDDEN; i++ ) {
                 float sum = this->biases_h[i];
@@ -282,8 +283,9 @@ NeuralNetwork<IN, OUT, HIDDEN>::forward( f32 *inputs )
         // Hidden to output (raw logits).
         //
         // Shapes
-        // - matmul (inputs / 1 x HIDDEN, weights_ho / HIDDEN x OUT )
+        // - matmul (hidden / 1 x HIDDEN, weights_ho / HIDDEN x OUT )
         // - biases_o / OUT
+        // - raw_logits / OUT
         //
         for ( std::size_t i = 0; i < OUT; i++ ) {
                 this->raw_logits[i] = this->biases_o[i];
@@ -317,7 +319,7 @@ NeuralNetwork<IN, OUT, HIDDEN>::backward( f32 *target_probs, f32 lr,
         f32 raw_logits_deltas[OUT];
         f32 hidden_deltas[HIDDEN];
 
-        /* === --- STEP 1: Compute deltas ------------------------------- === */
+        /* === --- STEP 1: Compute Deltas ------------------------------- === */
 
         /* Calculate output layer deltas:
          *
@@ -332,49 +334,90 @@ NeuralNetwork<IN, OUT, HIDDEN>::backward( f32 *target_probs, f32 lr,
          * NOTE: This is gradients w.r.t. to raw_logits not outputs (even
          * though it uses outputs only). Check the gradients for cross entropy
          * for details.
+         *
+         * Shapes
+         * - outputs / OUT
+         * - target_probs / OUT
+         * - raw_logits_deltas / OUT
+         *
          */
-        for ( int i = 0; i < OUT; i++ ) {
+        for ( std::size_t i = 0; i < OUT; i++ ) {
                 raw_logits_deltas[i] = ( this->outputs[i] - target_probs[i] ) *
                                        fabsf( reward_scaling );
         }
 
         // Backpropagate error to hidden layer.
-        for ( int i = 0; i < HIDDEN; i++ ) {
+        //
+        // Shapes
+        // - matmul(
+        //     raw_logits_deltas /  OUT,
+        //     trans( weights_ho / HIDDEN x OUT )
+        //   )
+        // - hidden / 1 x HIDDEN
+        // - hidden_deltas / 1 x HIDDEN
+        //
+        for ( std::size_t i = 0; i < HIDDEN; i++ ) {
                 f32 error = 0;
-                for ( int j = 0; j < OUT; j++ ) {
+                for ( std::size_t j = 0; j < OUT; j++ ) {
                         error += raw_logits_deltas[j] *
                                  this->weights_ho[i * OUT + j];
                 }
                 hidden_deltas[i] = error * relu_derivative( this->hidden[i] );
         }
 
-        (void)lr;
+        /* === --- STEP 2: Weights Updating -----------------------------=== */
 
-        // /* === STEP 2: Weights updating === */
+        // Output layer weights and biases.
+        //
+        // Shapes
+        // - hidden / 1 x HIDDEN
+        // - weights_ho / HIDDEN x OUT
+        // - raw_logits_deltas / 1 x OUT
+        //
+        // Forward
+        // - hidden ** weights_ho = raw_logits
+        // Backward
+        // - d_weights_ho = matmul(trans(hidden), d_raw_logits)
+        //
+        for ( std::size_t i = 0; i < HIDDEN; i++ ) {
+                for ( std::size_t j = 0; j < OUT; j++ ) {
+                        this->weights_ho[i * OUT + j] -=
+                            lr * raw_logits_deltas[j] * this->hidden[i];
+                }
+        }
+        // Shapes
+        // - biases_o / 1 x OUT
+        // - raw_logits_deltas / 1 x OUT
+        //
+        for ( std::size_t j = 0; j < OUT; j++ ) {
+                this->biases_o[j] -= lr * raw_logits_deltas[j];
+        }
 
-        // // Output layer weights and biases.
-        // for ( int i = 0; i < NN_HIDDEN_SIZE; i++ ) {
-        //         for ( int j = 0; j < NN_OUTPUT_SIZE; j++ ) {
-        //                 this->weights_ho[i * NN_OUTPUT_SIZE + j] -=
-        //                     learning_rate * raw_logits_deltas[j] *
-        //                     this->hidden[i];
-        //         }
-        // }
-        // for ( int j = 0; j < NN_OUTPUT_SIZE; j++ ) {
-        //         this->biases_o[j] -= learning_rate * raw_logits_deltas[j];
-        // }
-
-        // // Hidden layer weights and biases.
-        // for ( int i = 0; i < NN_INPUT_SIZE; i++ ) {
-        //         for ( int j = 0; j < NN_HIDDEN_SIZE; j++ ) {
-        //                 this->weights_ih[i * NN_HIDDEN_SIZE + j] -=
-        //                     learning_rate * hidden_deltas[j] *
-        //                     this->inputs[i];
-        //         }
-        // }
-        // for ( int j = 0; j < NN_HIDDEN_SIZE; j++ ) {
-        //         this->biases_h[j] -= learning_rate * hidden_deltas[j];
-        // }
+        // Hidden layer weights and biases.
+        //
+        // Shapes
+        // - inputs 1 x IN
+        // - weights_ih IN x HIDDEN
+        // - hidden_deltas 1 x HIDDEN
+        //
+        // Forward
+        // - inputs ** weights_ih = hidden
+        // Backward
+        // - d_weights_ih = trans(d_inputs) ** hidden
+        //
+        for ( std::size_t i = 0; i < IN; i++ ) {
+                for ( std::size_t j = 0; j < HIDDEN; j++ ) {
+                        this->weights_ih[i * HIDDEN + j] -=
+                            lr * hidden_deltas[j] * this->inputs[i];
+                }
+        }
+        // Shapes
+        // - biases_h / 1 x HIDDEN
+        // - hidden_deltas / 1 x HIDDEN
+        //
+        for ( std::size_t j = 0; j < HIDDEN; j++ ) {
+                this->biases_h[j] -= lr * hidden_deltas[j];
+        }
 }
 
 }  // namespace eos::gan
@@ -424,6 +467,7 @@ main( )
 
         f32 inputs[eos::gan::kNNInputSize];
         nn.forward( inputs );
+        nn.backward( inputs, /*lr=*/0.1f, /*reward_scaling=*/1.0f );
 
         eos::gan::Sampler::get_best_move( &s, &nn );
         return 0;
