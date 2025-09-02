@@ -469,6 +469,21 @@ struct Sampler {
                 }
                 return best_move;
         }
+
+      public:
+        /* Get a random valid move, this is used for training against a random
+         * opponent. Note: this function will loop forever if the board is
+         * full, but here we want simple code.
+         */
+        static auto get_random_move( GameState *state ) -> int
+        {
+                while ( 1 ) {
+                        int move = rand( ) % kGameStateCount;
+                        if ( state->get_symbol_at( move ) != GameState::SymNA )
+                                continue;
+                        return move;
+                }
+        }
 };
 }  // namespace eos::gan
 
@@ -479,6 +494,10 @@ namespace eos::gan {
 struct RLLearner {
       public:
         constexpr static f32 LEARNING_RATE = 0.1f;
+
+      private:
+#define cyan  "\x1b[36m"
+#define reset "\x1b[0m"
 
       public:
         template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
@@ -491,9 +510,8 @@ struct RLLearner {
                 int ties            = 0;
                 int nn_starts_first = 0;
 
-                std::print(
-                    "Training neural network against {} random games...\n",
-                    num_games );
+                INFO( "Training neural network against {} random games...",
+                      num_games );
 
                 int played_games = 0;
                 for ( int i = 0; i < num_games; i++ ) {
@@ -516,14 +534,15 @@ struct RLLearner {
 
                         // Show progress every many games to avoid flooding the
                         // stdout.
-                        if ( ( i + 1 ) % 10000 == 0 ) {
-                                std::print(
+                        if ( ( i < 10000 && ( i + 1 ) % 100 == 0 ) ||
+                             ( i + 1 ) % 10000 == 0 ) {
+                                INFO(
                                     "Games progress: {} ({:.1f}%) "
                                     "(NN starts {:.1f}%), "
-                                    "Wins: {} ({:.1f}%), "
+                                    "Wins: {} (" cyan "{:.1f}%)" reset
+                                    ", "
                                     "Losses: {} ({:.1f}%), "
-                                    "Ties: {} ({:.1f}%)"
-                                    "\n",
+                                    "Ties: {} ({:.1f}%)",
                                     i + 1,
                                     f32( i + 1 ) * 100.f / f32( num_games ),
                                     (float)nn_starts_first * 100.0f /
@@ -540,7 +559,7 @@ struct RLLearner {
                                 ties         = 0;
                         }
                 }
-                std::print( "\nTraining complete!\n" );
+                INFO( "Training complete!" );
         }
 
       private:
@@ -581,7 +600,8 @@ struct RLLearner {
                                 // move = PLAY_RANDOM_GAME_AGAINST_NN
                                 //            ? Sampler::get_best_move( &state,
                                 //            nn) : get_random_move( &state );
-                                move = Sampler::get_best_move( &state, nn );
+                                // move = Sampler::get_best_move( &state, nn );
+                                move = Sampler::get_random_move( &state );
                         } else {  // Neural network's turn
                                 move = Sampler::get_best_move( &state, nn );
                         }
@@ -633,7 +653,7 @@ struct RLLearner {
                         }
 
                         // Recreate board state BEFORE this move was made.
-                        GameState state;
+                        GameState state{ };
                         for ( int i = 0; i < move_idx; i++ ) {
                                 state.place_next_move_at( move_history[i] );
                         }
@@ -711,17 +731,9 @@ struct RLLearner {
 int
 main( )
 {
-        eos::gan::GameState s{ };
-        s.display_board( );
-
+        srand( (unsigned)time( NULL ) );
         eos::gan::NeuralNetwork nn{ };
         nn.init( );
-
-        f32 inputs[eos::gan::kNNInputSize];
-        nn.forward( inputs );
-        nn.backward( inputs, /*lr=*/0.1f, /*reward_scaling=*/1.0f );
-
-        eos::gan::Sampler::get_best_move( &s, &nn );
         eos::gan::RLLearner::train_against_random( &nn, 150000 );
         return 0;
 }
