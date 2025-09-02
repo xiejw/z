@@ -478,6 +478,9 @@ namespace eos::gan {
 
 struct RLLearner {
       public:
+        constexpr static f32 LEARNING_RATE = 0.1f;
+
+      public:
         template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
         static void train_against_random( NeuralNetwork<IN, OUT, HIDDEN> *nn,
                                           int num_games )
@@ -589,136 +592,119 @@ struct RLLearner {
                         move_history[( num_moves )++] = move;
                 }
 
-                // // Learn from this game
-                // learn_from_game( nn, move_history, *num_moves,
-                //                  state.nn_symbol ? 1 : 0, winner );
+                // Learn from this game
+                update_nn( nn, move_history, num_moves, nn_symbol, winner );
                 return winner;
         }
 
-        // /* Train the neural network based on game outcome.
-        //  *
-        //  * The move_history is just an integer array with the index of all
-        //  the
-        //  * moves. This function is designed so that you can specify if the
-        //  * game was started by the move by the NN or human, but actually the
-        //  * code always let the human move first. */
-        // template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
-        // static void learn_from_game( NeuralNetwork *nn, int *move_history,
-        //                              int num_moves, int nn_moves_even,
-        //                              char winner )
-        // {
-        //         // Determine reward based on game outcome
-        //         float reward;
-        //         char  nn_symbol = nn_moves_even ? 'O' : 'X';
+        /* Update the neural network based on game outcome.
+         *
+         * The move_history is just an integer array with the index of all
+         * the moves. This function is designed so that you can specify if the
+         * game was started by the move by the NN or human, but actually the
+         * code always let the human move first. */
+        template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
+        static void update_nn( NeuralNetwork<IN, OUT, HIDDEN> *nn,
+                               int *move_history, int num_moves,
+                               GameState::Symbol nn_symbol,
+                               GameState::Symbol winner )
+        {
+                // Determine reward based on game outcome
+                float reward;
 
-        //         if ( winner == 'T' ) {
-        //                 reward = 0.3f;  // Small reward for draw
-        //         } else if ( winner == nn_symbol ) {
-        //                 reward = 1.0f;  // Large reward for win
-        //         } else {
-        //                 reward = -2.0f;  // Negative reward for loss
-        //         }
+                int nn_moves_even = nn_symbol == GameState::SymWT;
 
-        //         GameState state;
-        //         float     target_probs[NN_OUTPUT_SIZE];
+                if ( winner == GameState::SymNA ) {
+                        reward = 0.3f;  // Small reward for draw
+                } else if ( winner == nn_symbol ) {
+                        reward = 1.0f;  // Large reward for win
+                } else {
+                        reward = -2.0f;  // Negative reward for loss
+                }
 
-        //         // Process each move the neural network made.
-        //         for ( int move_idx = 0; move_idx < num_moves; move_idx++ ) {
-        //                 // Skip if this wasn't a move by the neural network.
-        //                 if ( ( nn_moves_even && move_idx % 2 != 1 ) ||
-        //                      ( !nn_moves_even && move_idx % 2 != 0 ) ) {
-        //                         continue;
-        //                 }
+                f32 target_probs[OUT];
 
-        //                 // Recreate board state BEFORE this move was made.
-        //                 init_game( &state );
-        //                 for ( int i = 0; i < move_idx; i++ ) {
-        //                         char symbol = ( i % 2 == 0 ) ? 'X' : 'O';
-        //                         state.board[move_history[i]] = symbol;
-        //                 }
+                // Process each move the neural network made.
+                for ( int move_idx = 0; move_idx < num_moves; move_idx++ ) {
+                        // Skip if this wasn't a move by the neural network.
+                        if ( ( nn_moves_even && move_idx % 2 != 1 ) ||
+                             ( !nn_moves_even && move_idx % 2 != 0 ) ) {
+                                continue;
+                        }
 
-        //                 // Convert board to inputs and do forward pass.
-        //                 float inputs[NN_INPUT_SIZE];
-        //                 board_to_inputs( &state, inputs );
-        //                 forward_pass( nn, inputs );
+                        // Recreate board state BEFORE this move was made.
+                        GameState state;
+                        for ( int i = 0; i < move_idx; i++ ) {
+                                state.place_next_move_at( move_history[i] );
+                        }
 
-        //                 /* The move that was actually made by the NN, that is
-        //                  * the one we want to reward (positively or
-        //                  negatively).
-        //                  */
-        //                 int move = move_history[move_idx];
+                        // Convert board to inputs and do forward pass.
+                        float inputs[IN];
+                        state.convert_board_to_inputs( inputs );
+                        nn->forward( inputs );
 
-        //                 /* Here we can't really implement temporal difference
-        //                 in
-        //                  * the strict reinforcement learning sense, since we
-        //                  * don't have an easy way to evaluate if the current
-        //                  * situation is better or worse than the previous
-        //                  state
-        //                  * in the game.
-        //                  *
-        //                  * However "time related" we do something that is
-        //                  very
-        //                  * effective in this case: we scale the reward
-        //                  according
-        //                  * to the move time, so that later moves are more
-        //                  * impacted (the game is less open to different
-        //                  * solutions as we go forward).
-        //                  *
-        //                  * We give a fixed 0.5 importance to all the moves
-        //                  plus
-        //                  * a 0.5 that depends on the move position.
-        //                  *
-        //                  * NOTE: this makes A LOT of difference. Experiment
-        //                  with
-        //                  * different values.
-        //                  *
-        //                  * LEARNING OPPORTUNITY: Temporal Difference in
-        //                  * Reinforcement Learning is a very important result,
-        //                  * that was worth the Turing Award in 2024 to Sutton
-        //                  and
-        //                  * Barto. You may want to read about it. */
-        //                 float move_importance =
-        //                     0.5f + 0.5f * (float)move_idx / (float)num_moves;
-        //                 float scaled_reward = reward * move_importance;
+                        /* The move that was actually made by the NN, that is
+                         * the one we want to reward (positively or negatively).
+                         */
+                        int move = move_history[move_idx];
 
-        //                 /* Create target probability distribution:
-        //                  * let's start with the logits all set to 0. */
-        //                 for ( int i = 0; i < NN_OUTPUT_SIZE; i++ )
-        //                         target_probs[i] = 0;
+                        /* Here we can't really implement temporal difference in
+                         * the strict reinforcement learning sense, since we
+                         * don't have an easy way to evaluate if the current
+                         * situation is better or worse than the previous state
+                         * in the game.
+                         *
+                         * However "time related" we do something that is very
+                         * effective in this case: we scale the reward according
+                         * to the move time, so that later moves are more
+                         * impacted (the game is less open to different
+                         * solutions as we go forward).
+                         *
+                         * We give a fixed 0.5 importance to all the moves plus
+                         * a 0.5 that depends on the move position.
+                         *
+                         * NOTE: this makes A LOT of difference. Experiment with
+                         * different values.
+                         */
+                        f32 move_importance =
+                            0.5f + 0.5f * (f32)move_idx / (f32)num_moves;
+                        f32 scaled_reward = reward * move_importance;
 
-        //                 /* Set the target for the chosen move based on
-        //                 reward:
-        //                  */
-        //                 if ( scaled_reward >= 0 ) {
-        //                         /* For positive reward, set probability of
-        //                         the
-        //                          * chosen move to 1, with all the rest set to
-        //                          0.
-        //                          */
-        //                         target_probs[move] = 1;
-        //                 } else {
-        //                         /* For negative reward, distribute
-        //                         probability
-        //                          * to OTHER valid moves, which is
-        //                          conceptually
-        //                          * the same as discouraging the move that we
-        //                          * want to discourage. */
-        //                         int   valid_moves_left = 9 - move_idx - 1;
-        //                         float other_prob =
-        //                             1.0f / (float)valid_moves_left;
-        //                         for ( int i = 0; i < 9; i++ ) {
-        //                                 if ( state.board[i] == '.' &&
-        //                                      i != move ) {
-        //                                         target_probs[i] = other_prob;
-        //                                 }
-        //                         }
-        //                 }
+                        /* Create target probability distribution:
+                         * let's start with the logits all set to 0. */
+                        for ( std::size_t i = 0; i < OUT; i++ )
+                                target_probs[i] = 0;
 
-        //                 /* Call the generic backpropagation function, using
-        //                  * our target logits as target. */
-        //                 backprop( nn, target_probs, LEARNING_RATE,
-        //                           scaled_reward );
-        //         }
+                        /* Set the target for the chosen move based on reward:
+                         */
+                        if ( scaled_reward >= 0 ) {
+                                /* For positive reward, set probability of the
+                                 * chosen move to 1, with all the rest set to 0.
+                                 */
+                                target_probs[move] = 1.0f;
+                        } else {
+                                /* For negative reward, distribute probability
+                                 * to OTHER valid moves, which is conceptually
+                                 * the same as discouraging the move that we
+                                 * want to discourage. */
+                                int   valid_moves_left = 9 - move_idx - 1;
+                                float other_prob =
+                                    1.0f / (float)valid_moves_left;
+                                for ( int i = 0; i < 9; i++ ) {
+                                        if ( state.get_symbol_at( i ) ==
+                                                 GameState::SymNA &&
+                                             i != move ) {
+                                                target_probs[i] = other_prob;
+                                        }
+                                }
+                        }
+
+                        /* Call the generic backpropagation function, using
+                         * our target logits as target. */
+                        nn->backward( target_probs, LEARNING_RATE,
+                                      scaled_reward );
+                }
+        }
 };
 }  // namespace eos::gan
 
