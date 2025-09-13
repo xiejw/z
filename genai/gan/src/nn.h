@@ -20,6 +20,12 @@ class NeuralNetwork {
         float biases_h[HIDDEN];
         float biases_o[OUT];
 
+        // Grads for weights and biases.
+        float grad_weights_ih[IN * HIDDEN];
+        float grad_weights_ho[HIDDEN * OUT];
+        float grad_biases_h[HIDDEN];
+        float grad_biases_o[OUT];
+
         // Activations are part of the structure itself for simplicity.
         float inputs[IN];
         float hidden[HIDDEN];
@@ -29,7 +35,13 @@ class NeuralNetwork {
       public:
         void init( );
         void forward( f32 * );
+        // Consider to remove.
         void backward( f32 *target_probs, f32 lr, f32 reward_scaling );
+
+        // New apis
+        void zero_grad( );
+        void backward( f32 *target_probs );
+        void apply_grad( f32 lr, f32 reward_scaling );
 };
 
 namespace {
