@@ -109,7 +109,6 @@ template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
 void
 NeuralNetwork<IN, OUT, HIDDEN>::init( )
 {
-        // Initialize weights with random values between -0.5 and 0.5
         for ( std::size_t i = 0; i < IN * HIDDEN; i++ )
                 this->weights_ih[i] = rand_f32( );
 
@@ -120,6 +119,16 @@ NeuralNetwork<IN, OUT, HIDDEN>::init( )
                 this->biases_h[i] = rand_f32( );
 
         for ( std::size_t i = 0; i < OUT; i++ ) this->biases_o[i] = rand_f32( );
+}
+
+template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
+void
+NeuralNetwork<IN, OUT, HIDDEN>::zero_grad( )
+{
+        memset( this->grad_weights_ih, 0, IN * HIDDEN * sizeof( f32 ) );
+        memset( this->grad_weights_ho, 0, HIDDEN * OUT * sizeof( f32 ) );
+        memset( this->grad_biases_h, 0, HIDDEN * 1 * sizeof( f32 ) );
+        memset( this->grad_biases_o, 0, OUT * 1 * sizeof( f32 ) );
 }
 
 /* Neural network foward pass (inference).
