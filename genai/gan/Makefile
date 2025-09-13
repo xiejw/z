@@ -61,8 +61,8 @@ ${BUILD}/ttt: ${BUILD}/ttt_main.o ${MODS} | ${DEPS}
 ${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
 	${CXX} ${CXXFLAGS} -o $@ -c $<
 
-${BUILD}/%_main.o: src/%_main.cc | ${DEPS}
-	${CXX} ${CXXFLAGS} -o $@ -c $^
+${BUILD}/%_main.o: src/%_main.cc ${SRC}/*.h | ${DEPS}
+	${CXX} ${CXXFLAGS} -o $@ -c $<
 
 # === House Keeping ------------------------------------------------------------
 #

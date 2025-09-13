@@ -1,15 +1,11 @@
 // TODO
 // - loop out so reuse
 // - apply gradient is out. must have zero. calculate and apply 3 steps.
+// - flow grad to input
 // https://github.com/xiejw/z/commit/fd326f22906da2855497008aaedf0f3aa9590f8f
 #include <zion/zion.h>
 
-#include <cmath>
-#include <cstring>
-#include <print>
-#include <span>
-
-// Must import in order.
+// Must import in order. There is no dependency encoded in these header files.
 // clang-format off
 #include "game.h"
 #include "nn.h"

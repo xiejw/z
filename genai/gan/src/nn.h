@@ -3,6 +3,7 @@
 // === NeuralNetwork ------------------------------------------------------- ===
 
 namespace eos::gan {
+
 // Neural Network Paramters.
 constexpr int kNNInputSize  = kGameStateCount * 2;
 constexpr int kNNHiddenSize = 100;
@@ -21,6 +22,7 @@ class NeuralNetwork {
         float biases_o[OUT];
 
         // Grads for weights and biases.
+        float grad_inpus[IN];
         float grad_weights_ih[IN * HIDDEN];
         float grad_weights_ho[HIDDEN * OUT];
         float grad_biases_h[HIDDEN];
@@ -125,6 +127,7 @@ template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
 void
 NeuralNetwork<IN, OUT, HIDDEN>::zero_grad( )
 {
+        memset( this->grad_inpus, 0, IN * 1 * sizeof( f32 ) );
         memset( this->grad_weights_ih, 0, IN * HIDDEN * sizeof( f32 ) );
         memset( this->grad_weights_ho, 0, HIDDEN * OUT * sizeof( f32 ) );
         memset( this->grad_biases_h, 0, HIDDEN * 1 * sizeof( f32 ) );
