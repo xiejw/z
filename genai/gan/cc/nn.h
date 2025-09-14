@@ -42,8 +42,8 @@ class NeuralNetwork {
 
         // New apis
         void zero_grad( );
-        void backward( f32 *target_probs );
-        void apply_grad( f32 lr, f32 reward_scaling );
+        void backward( f32 *target_probs, f32 reward_scaling = 1.0f);
+        void apply_grad( f32 lr,  );
 };
 
 namespace {
@@ -196,6 +196,7 @@ void
 NeuralNetwork<IN, OUT, HIDDEN>::backward( f32 *target_probs, f32 lr,
                                           f32 reward_scaling )
 {
+  // gradients w.r.t. logits
         f32 raw_logits_deltas[OUT];
         f32 hidden_deltas[HIDDEN];
 
@@ -298,6 +299,11 @@ NeuralNetwork<IN, OUT, HIDDEN>::backward( f32 *target_probs, f32 lr,
         for ( std::size_t j = 0; j < HIDDEN; j++ ) {
                 this->biases_h[j] -= lr * hidden_deltas[j];
         }
+}
+
+template <std::size_t IN, std::size_t OUT, std::size_t HIDDEN>
+void
+NeuralNetwork<IN, OUT, HIDDEN>::backward(  f32 *target_probs , f32 reward_scaling) {
 }
 
 }  // namespace eos::gan
