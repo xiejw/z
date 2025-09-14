@@ -15,8 +15,6 @@ LDFLAGS  += -lm
 
 CXXFLAGS += -I${ZION_PATH}/include
 
-DEPS     += ${BUILD} ${BUILD_OBJ}
-
 # Release
 ifdef RELEASE
 CXXFLAGS += -DNDEBUG -O3 -march=native
@@ -34,6 +32,7 @@ endif
 
 # === Mods ---------------------------------------------------------------------
 #
+DEPS     += ${BUILD} ${BUILD_OBJ}
 # n/a
 MODS      =
 
@@ -58,8 +57,10 @@ test: compile
 ${BUILD}/ttt: ${BUILD}/ttt_main.o ${MODS} | ${DEPS}
 	${CXX} -o $@ $^ ${LDFLAGS}
 
-${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
-	${CXX} ${CXXFLAGS} -o $@ -c $<
+# Disable as not used.
+#
+# ${BUILD_OBJ}/%.o: ${SRC}/%.cc ${SRC}/*.h | ${DEPS}
+# 	${CXX} ${CXXFLAGS} -o $@ -c $<
 
 ${BUILD}/%_main.o: src/%_main.cc ${SRC}/*.h | ${DEPS}
 	${CXX} ${CXXFLAGS} -o $@ -c $<
