@@ -5,9 +5,14 @@ pub mod eval {
 }
 
 pub mod rl {
-    use crate::nn::NeuralNet;
+    use crate::nn;
 
-    pub fn train_against_random(_model: &mut NeuralNet, _iter_count: usize) {}
+    pub fn train_against_random(model: &mut nn::NeuralNet, _iter_count: usize) {
+        let mut opt = nn::SGDOpt {
+            learning_rate: 0.1f32,
+        };
+        model.init_opt(&mut opt);
+    }
 }
 
 pub mod gan {

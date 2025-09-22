@@ -30,10 +30,10 @@ pub trait Optimizer {
 }
 
 impl NeuralNet {
-    pub fn new(cfg: Config, opt: &mut dyn Optimizer) -> Rc<RefCell<Self>> {
+    pub fn new(cfg: Config) -> Rc<RefCell<Self>> {
         let weights_ih = vec![0f32; cfg.in_size * cfg.hidden_size];
         let grad_weights_ih = vec![0f32; cfg.in_size * cfg.hidden_size];
-        let state_weights_ih = opt.init(&weights_ih);
+        let state_weights_ih = None;
 
         let inputs = vec![0f32; cfg.in_size];
         Rc::new(RefCell::new(NeuralNet {
@@ -43,6 +43,10 @@ impl NeuralNet {
             grad_weights_ih,
             state_weights_ih,
         }))
+    }
+
+    pub fn init_opt(&mut self, opt: &mut dyn Optimizer) {
+        self.state_weights_ih = opt.init(&self.weights_ih);
     }
 
     pub fn fill_random(&mut self) {
