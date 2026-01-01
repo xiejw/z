@@ -6,7 +6,7 @@ SHELL     = bash
 
 # === ZION ---------------------------------------------------------------------
 #
-ZION_PATH = ../../zion/c
+ZION_PATH = zion_c
 include ${ZION_PATH}/zion.mk
 
 # === CFLAGS and LDFLAGS -------------------------------------------------------

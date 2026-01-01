@@ -4,18 +4,13 @@ UNAME     = $(shell uname)
 BUILD     = .build
 SHELL     = bash
 
-# === ZION ---------------------------------------------------------------------
-#
-ZION_PATH = zion_c
-include ${ZION_PATH}/zion.mk
 
 # === CFLAGS and LDFLAGS -------------------------------------------------------
 #
 CFLAGS   += -std=c11 -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
 LDFLAGS  += -lm
 
-CFLAGS   += -I.
-CFLAGS   += -I${ZION_PATH}/include
+CFLAGS   += -Iinclude
 
 ifdef RELEASE
 CFLAGS   += -DNDEBUG -O3 -march=native
@@ -28,32 +23,42 @@ ifdef ASAN
 CFLAGS   += -fsanitize=address
 endif
 
-MODS      = ${BUILD}/horn.o
+MODS     += ${BUILD}/vec.o
+MODS     += ${BUILD}/sds.o
 
 # === Rules --------------------------------------------------------------------
 #
-.PHONY: release compile test clean fmt
+.PHONY: release compile test fmt clean
+compile: ${MODS}
 
-.DEFAULT_GOAL := compile
+release: clean
+	make RELEASE=1 libzion
 
-compile: ${LIBZION} | ${BUILD}
+libzion: ${BUILD}/libzion.a
 
-release: compile
-
-test: ${MODS} ${LIBZION} | ${BUILD}
+test: ${MODS} | ${BUILD}
 	@set -e
-	@${CC} -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} $^ horn_test.c  && echo -n "test    --- horn   --- " && ./${BUILD}/test
+	@${CC} -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} $^ src/vec_test.c   && echo -n "vec   -- " && ./${BUILD}/test
+	@${CC} -o ${BUILD}/test ${CFLAGS} ${LDFLAGS} $^ src/sds_test.c   && echo -n "sds   -- " && ./${BUILD}/test
 	@echo "All done."
 
-# === Mods ---------------------------------------------------------------------
+# === Mods & Archive -----------------------------------------------------------
 #
-${BUILD}/%.o: %.c | ${BUILD}
-	@echo -n "compile --- `basename $@`" && ${CC} -o $@ ${CFLAGS} -c $^ && echo "."
+${BUILD}/%.o: src/%.c | ${BUILD}
+	${CC} -o $@ ${CFLAGS} -c $^
+
+${BUILD}/libzion.a: ${MODS}
+ifdef RELEASE
+	ar -cr $@ $^
+else
+	@echo building libzion.a must be RELEASE mode.
+	exit 1
+endif  # RELEASE
 
 # === House Keeping ------------------------------------------------------------
 #
 ${BUILD}:
-	@mkdir -p ${BUILD}
+	mkdir -p ${BUILD}
 
 fmt:
 	~/Workspace/y/tools/clang_format_all.sh .
