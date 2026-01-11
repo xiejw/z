@@ -13,8 +13,8 @@ namespace {
 // kNum =  8   Counter = 92
 // kNum = 16   Counter = 14772512  MEM Acc Counter = 33859294165
 //
-// constexpr int kNum = 8;
-constexpr int kNum = 16;
+constexpr int kNum = 8;
+// constexpr int kNum = 16;
 
 // Static allocating the data structures. All arrays start from base 1.
 int  X[kNum + 1]         = { 0 };
