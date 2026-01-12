@@ -10,17 +10,17 @@ namespace {
 //
 // Hard code the number of Queues.
 //
-// kNum =  8   Counter = 92        MEM Acc Counter = 41'096
-// kNum = 16   Counter = 14772512  MEM Acc Counter = 33'859'294'165
+// kNum =  8   Counter = 92        MEM Acc Counter = 4112
+// kNum = 16   Counter = 14772512  MEM Acc Counter = 2'282'380'604
 //
-constexpr int kNum = 8;
-// constexpr int kNum = 16;
+// constexpr int kNum = 8;
+constexpr int kNum = 16;
+
+// Bit vector algorithm assumes the size of register.
+static_assert( 2 * kNum <= sizeof( uint64_t ) * 8 );
 
 // Static allocating the data structures. All arrays start from base 1.
-int  X[kNum + 1]         = { 0 };
-char A[kNum + 1]         = { 0 };
-char B[2 * kNum - 1 + 1] = { 0 };
-char C[2 * kNum - 1 + 1] = { 0 };
+int X[kNum + 1] = { 0 };
 
 // === --- Memory Access Macros -------------------------------------------- ===
 
@@ -41,10 +41,31 @@ VisitSolution( )
         counter++;
 }
 
-// === --- Algorithm B - Basic Backtrack - Vol 4B Page 32 ------------------ ===
+// === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
+//
+
+// === --- Algorithm B - Basic Backtrack - Vol 4B Page 33 ------------------
+//
+// This code is actually the Algorithm B with register as auxiliary data
+// structures.
+
+// Assume 1 based access. Read is straightforward. Write is using a
+// clear-then-set logic, like x = (x & ~(1u << t)) | ((v & 1u) << t);
+//
+#define REG_R( x, t ) ( ( ( x ) >> ( t ) ) & 1 )
+#define REG_W( x, t, v )                                  \
+        ( x = ( ( ( x ) & ~( uint64_t( 1 ) << ( t ) ) ) | \
+                ( ( ( v ) & 1u ) << ( t ) ) ) )
+
 void
 Search( )
 {
+        // Use variable to hold A, B, C and hope compiler can put them into
+        // registers.
+        uint64_t A = 0;
+        uint64_t B = 0;
+        uint64_t C = 0;
+
         int t;
         int l;
 
@@ -67,14 +88,14 @@ B2:  // Enter level l
         // Fallthrough
 
 B3:  // Try t
-        if ( MEM_R( A, t ) || MEM_R( B, t + l - 1 ) ||
-             MEM_R( C, t - l + kNum ) ) {
+        if ( REG_R( A, t ) || REG_R( B, t + l - 1 ) ||
+             REG_R( C, t - l + kNum ) ) {
                 goto B4;
         }
 
-        MEM_W( A, t, 1 );
-        MEM_W( B, t + l - 1, 1 );
-        MEM_W( C, t - l + kNum, 1 );
+        REG_W( A, t, 1 );
+        REG_W( B, t + l - 1, 1 );
+        REG_W( C, t - l + kNum, 1 );
         MEM_W( X, l, t );
         l++;
         goto B2;
@@ -91,9 +112,9 @@ B5:  // Backtrack
         l--;
         if ( l > 0 ) {
                 t = MEM_R( X, l );
-                MEM_W( C, t - l + kNum, 0 );
-                MEM_W( B, t + l - 1, 0 );
-                MEM_W( A, t, 0 );
+                REG_W( C, t - l + kNum, 0 );
+                REG_W( B, t + l - 1, 0 );
+                REG_W( A, t, 0 );
                 goto B4;
         }
 
