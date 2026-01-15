@@ -1,6 +1,5 @@
-MODS    += ${BUILD}/cmd_main.o
-MODS    += ${BUILD_OBJS}/log.o
+compile:
+	go run main.go
 
-include mk.tpl
-
-test: run
+fmt:
+	gofmt -w main.go
