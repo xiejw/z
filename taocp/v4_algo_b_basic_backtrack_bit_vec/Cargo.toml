@@ -4,3 +4,9 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+
+[profile.release]
+opt-level = 3          # Maximize optimizations (Default for release)
+lto = "fat"            # Full Link-Time Optimization (analyzes entire program)
+codegen-units = 1      # Disables parallel compilation to allow global optimization
+panic = "abort"        # Removes stack unwinding code; smaller and slightly faster

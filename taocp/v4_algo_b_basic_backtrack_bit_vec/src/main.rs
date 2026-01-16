@@ -15,13 +15,15 @@ static mut MEM_ACCESS_COUNTER: u64 = 0;
 #[inline]
 fn mem_r(x: &[usize], i: usize) -> usize {
     unsafe { MEM_ACCESS_COUNTER += 1 };
-    x[i]
+    unsafe { *x.get_unchecked(i) }
+    //x[i]
 }
 
 #[inline]
 fn mem_w(x: &mut [usize], i: usize, v: usize) {
     unsafe { MEM_ACCESS_COUNTER += 1 };
-    x[i] = v;
+    unsafe { *x.get_unchecked_mut(i) = v };
+    //x[i] = v;
 }
 
 /// === --- Count number of solutions --------------------------------------- ===
