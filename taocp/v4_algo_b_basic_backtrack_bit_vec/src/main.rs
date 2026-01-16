@@ -5,8 +5,8 @@
 /// NUM_QUEUE =  8   Counter = 92        MEM Acc Counter = 4112
 /// NUM_QUEUE = 16   Counter = 14772512  MEM Acc Counter = 2'282'380'604
 ///
-const NUM_QUEUE: isize = 8;
-//const NUM_QUEUE: isize = 16;
+const NUM_QUEUE: usize = 8;
+//const NUM_QUEUE: usize = 16;
 
 /// === --- Memory Access Macros -------------------------------------------- ===
 
@@ -58,4 +58,87 @@ fn main() {
     println!("Memory Access: {}", unsafe { MEM_ACCESS_COUNTER });
 }
 
-fn search() {}
+enum Step {
+    B1,
+    B2,
+    B3,
+    B4,
+    B5,
+}
+
+fn search() {
+    // Use array to hold X state.
+    let mut x = [0usize; NUM_QUEUE + 1];
+
+    // Use variable to hold A, b, C and hope compiler can put them into
+    // registers.
+    let mut a: u64 = 0;
+    let mut b: u64 = 0;
+    let mut c: u64 = 0;
+
+    let mut t: usize = 0;
+    let mut l: usize = 0;
+
+    let mut step = Step::B1;
+
+    loop {
+        match step {
+            Step::B1 => {
+                // Initialize
+                l = 1;
+                step = Step::B2;
+            }
+
+            Step::B2 => {
+                // Enter level l
+                if l > NUM_QUEUE {
+                    visit_solution();
+                    step = Step::B5;
+                } else {
+                    // Scan domain now.
+                    t = 1;
+                    step = Step::B3;
+                }
+            }
+
+            Step::B3 => {
+                // Try t
+                if reg_r(a, t) != 0 || reg_r(b, t + l - 1) != 0 || reg_r(c, t + NUM_QUEUE - l) != 0
+                {
+                    step = Step::B4;
+                } else {
+                    reg_w(&mut a, t, 1);
+                    reg_w(&mut b, t + l - 1, 1);
+                    reg_w(&mut c, t + NUM_QUEUE - l, 1);
+                    mem_w(&mut x, l, t);
+                    l += 1;
+                    step = Step::B2;
+                }
+            }
+
+            Step::B4 => {
+                // Try next t
+                if t < NUM_QUEUE {
+                    t += 1;
+                    step = Step::B3;
+                } else {
+                    step = Step::B5;
+                }
+            }
+
+            Step::B5 => {
+                // Backtrack
+                l -= 1;
+                if l > 0 {
+                    t = mem_r(&x, l);
+                    reg_w(&mut c, t + NUM_QUEUE - l, 0);
+                    reg_w(&mut b, t + l - 1, 0);
+                    reg_w(&mut a, t, 0);
+                    step = Step::B4;
+                } else {
+                    break;
+                }
+            }
+        };
+    }
+}
