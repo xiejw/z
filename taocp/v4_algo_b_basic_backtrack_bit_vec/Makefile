@@ -1,17 +1,6 @@
-run:
-	cargo run
+MODS    += ${BUILD}/cmd_main.o
+MODS    += ${BUILD_OBJS}/log.o
 
-compile:
-	cargo build
+include mk.tpl
 
-release:
-	RUSTFLAGS="-C target-cpu=native" cargo build --release
-
-test:
-	cargo test
-
-fmt:
-	cargo fmt
-
-clean:
-	cargo clean
+test: run

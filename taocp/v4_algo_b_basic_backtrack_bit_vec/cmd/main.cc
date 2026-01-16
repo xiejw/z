@@ -13,8 +13,8 @@ namespace {
 // kNum =  8   Counter = 92        MEM Acc Counter = 4112
 // kNum = 16   Counter = 14772512  MEM Acc Counter = 2'282'380'604
 //
-// constexpr int kNum = 8;
-constexpr int kNum = 16;
+constexpr int kNum = 8;
+// constexpr int kNum = 16;
 
 // Bit vector algorithm assumes the size of register.
 static_assert( 2 * kNum <= sizeof( uint64_t ) * 8 );
@@ -126,7 +126,9 @@ B5:  // Backtrack
 int
 main( )
 {
-        INFO( "Basic Backtrack + Bit Vectors (Vol 4B, Page 32) - N Queue: N = %d", kNum );
+        INFO(
+            "Basic Backtrack + Bit Vectors (Vol 4B, Page 32) - N Queue: N = %d",
+            kNum );
         Search( );
         INFO( "Done: %" PRIu64, counter );
         INFO( "Memory Access: %" PRIu64, mem_access_counter );
