@@ -18,6 +18,8 @@ inputs:
     default: false
   go_version:
     default: 1.23
+  require_rs:
+    default: false
 runs:
   using: "composite"
   steps:
@@ -92,3 +94,17 @@ runs:
       if: ${{ inputs.require_go == 'true' }}
       shell: bash
       run: ${GO} version
+
+
+    # --------------------------------------------------------------------------
+    # Rust related
+    #
+    - name: Install Rust
+      if: ${{ inputs.require_rs == 'true' }}
+      uses: hecrj/setup-rust-action@v2
+      with:
+        rust-version: stable
+    - name: Display Rust version
+      if: ${{ inputs.require_rs == 'true' }}
+      shell: bash
+      run: rustc --version
