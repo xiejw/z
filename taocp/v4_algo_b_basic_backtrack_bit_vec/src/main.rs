@@ -12,14 +12,14 @@ const NUM_QUEUE: usize = 8;
 
 static mut MEM_ACCESS_COUNTER: u64 = 0;
 
-#[inline]
+#[inline(always)]
 fn mem_r(x: &[usize], i: usize) -> usize {
     unsafe { MEM_ACCESS_COUNTER += 1 };
     unsafe { *x.get_unchecked(i) }
     //x[i]
 }
 
-#[inline]
+#[inline(always)]
 fn mem_w(x: &mut [usize], i: usize, v: usize) {
     unsafe { MEM_ACCESS_COUNTER += 1 };
     unsafe { *x.get_unchecked_mut(i) = v };
@@ -29,6 +29,7 @@ fn mem_w(x: &mut [usize], i: usize, v: usize) {
 /// === --- Count number of solutions --------------------------------------- ===
 static mut COUNTER: u64 = 0;
 
+#[inline(always)]
 fn visit_solution() {
     unsafe { COUNTER += 1 };
 }
@@ -40,12 +41,12 @@ fn visit_solution() {
 
 /// Assume 1 based access. Read is straightforward. Write is using a
 /// clear-then-set logic, like x = (x & ~(1u << t)) | ((v & 1u) << t);
-#[inline]
+#[inline(always)]
 fn reg_r(x: u64, t: usize) -> u64 {
     (x >> t) & 1
 }
 
-#[inline]
+#[inline(always)]
 fn reg_w(x: &mut u64, t: usize, v: u64) {
     *x = (*x & !(1u64 << t)) | ((v & 1u64) << t)
 }
