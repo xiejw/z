@@ -24,6 +24,7 @@ SRC_DEPS    += $(wildcard cmd/*.cc)
 
 ifdef RELEASE
 CXXFLAGS   += -DNDEBUG -O3 -march=native
+CXXFLAGS   += -flto -ffast-math
 else
 CXXFLAGS   += -g
 endif
