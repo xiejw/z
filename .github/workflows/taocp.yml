@@ -13,7 +13,7 @@ jobs:
         with:
           require_gcc: true
           require_clang: true
-          clang_version: 19
+          clang_version: 20
 
       - name: Run ${{ github.workflow }} Test
         run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean test
