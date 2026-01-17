@@ -30,6 +30,8 @@
 
 \urldef{\codeAlgoB}\url{https://github.com/xiejw/z/blob/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack/cmd/main.cc#L44-L103}
 \urldef{\codeAlgoBVec}\url{https://github.com/xiejw/z/blob/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/cmd/main.cc#L58-L121}
+\urldef{\codeAlgoBVecGo}\url{https://github.com/xiejw/z/tree/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/go}
+\urldef{\codeAlgoBVecRs}\url{https://github.com/xiejw/z/tree/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/rs}
 
 On page 30, Algorithm B introduces a simple yet powerful backtracking scheme.
 It is built on properties $(1)$ and $(2)$: namely, that $P_{l}$ holds whenever
@@ -62,7 +64,7 @@ set of lightweight stack frames, effectively managing state in a manner
 analogous to recursive function calls.
 
 Optimizing the implementation to use registers\sidenote{The C++ code can be
-found at \codeAlgoBVec.\vskip1.5em} instead of auxiliary data structures, such
+found at \codeAlgoBVec.\vskip1.2em} instead of auxiliary data structures, such
 as the $\mathtt{A}$, $\mathtt{B}$, and $\mathtt{C}$ arrays, is an interesting
 direction that I explored. In theory, the memory access count should reduce
 from 34 billion mems to 9 billion mems; however, I did not find it to be
@@ -71,6 +73,13 @@ version\sidenote{Tested on Apple Silicon M4 Max with \texttt{clang++17} and
 \texttt{CXXFLAGS=}\texttt{-DNDEBUG -O3 -march=native}}.  My hypothesis is that
 all data already resides within cache lines, making the cost of memory reads
 and writes negligible.
+
+In addition, I implemented the register-based bit-vector version in C++,
+Go\sidenote{See Go here: \codeAlgoBVecGo.\vskip1.2em}, and Rust\sidenote{See
+Rust here: \codeAlgoBVecRs.}. For Rust, I explored unsafe implementations,
+disabled bounds checking, and enabled aggressive inlining and native
+optimizations. The measured wall-clock runtimes are 33 seconds for C++, 47
+seconds for Go, and 44 seconds for Rust.
 
 
 \end{document}
