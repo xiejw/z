@@ -1,3 +1,5 @@
+// === --- Algorithm B - Basic Backtrack - Vol 4B Page 33 ------------------
+//
 #include <inttypes.h>  // Required for PRIu64
 #include <stdint.h>
 #include <stdio.h>

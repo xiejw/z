@@ -1,5 +1,12 @@
+// === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
+//
+// History
+// - 2026-01-20 Versin can work. But mem access is 14761611371, too high.
+//   Wall clock is 6 seconds.
+//
 #include <inttypes.h>  // Required for PRIu64
 #include <stdint.h>
+#include <assert.h>
 #include <stdio.h>
 
 #include "log.h"  // Required for INFO
@@ -10,17 +17,14 @@ namespace {
 //
 // Hard code the number of Queues.
 //
-// kNum =  8   Counter = 92        MEM Acc Counter = 4112
-// kNum = 16   Counter = 14772512  MEM Acc Counter = 2'282'380'604
+// kNum =  8   Counter = 92        MEM Acc Counter = 26'273
+// kNum = 16   Counter = 14772512  MEM Acc Counter = 14'761'611'371
 //
 // constexpr int kNum = 8;
 constexpr int kNum = 16;
 
 // Bit vector algorithm assumes the size of register.
-static_assert( 2 * kNum <= sizeof( uint64_t ) * 8 );
-
-// Static allocating the data structures. All arrays start from base 1.
-int X[kNum + 1] = { 0 };
+static_assert( kNum + 1 <= sizeof( uint64_t ) * 8 );
 
 // === --- Memory Access Macros -------------------------------------------- ===
 
@@ -43,81 +47,76 @@ VisitSolution( )
 
 // === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
 //
-
-// === --- Algorithm B - Basic Backtrack - Vol 4B Page 33 ------------------
-//
-// This code is actually the Algorithm B with register as auxiliary data
-// structures.
-
-// Assume 1 based access. Read is straightforward. Write is using a
-// clear-then-set logic, like x = (x & ~(1u << t)) | ((v & 1u) << t);
-//
-#define REG_R( x, t ) ( ( ( x ) >> ( t ) ) & 1 )
-#define REG_W( x, t, v )                                  \
-        ( x = ( ( ( x ) & ~( uint64_t( 1 ) << ( t ) ) ) | \
-                ( ( ( v ) & 1u ) << ( t ) ) ) )
+// The answer to the exercise is on Page 398.
 
 void
 Search( )
 {
-        // Use variable to hold A, B, C and hope compiler can put them into
-        // registers.
-        uint64_t A = 0;
-        uint64_t B = 0;
-        uint64_t C = 0;
+        /// Mask
+        constexpr int64_t U = ( 1 << ( kNum ) ) - 1;
 
-        int t;
+        // All arrays start from base 1. All arraries might to to kNum + 1 level.
+        int64_t A[kNum + 1+ 1] = { 0 };
+        int64_t B[kNum + 1+ 1] = { 0 };
+        int64_t C[kNum + 1+ 1] = { 0 };
+        int64_t S[kNum + 1+ 1] = { 0 };
+
         int l;
 
-        goto B1;
+        int64_t t;    // tmp var
+        int64_t s_l;  // tmp var to store S[l];
 
-B1:  // Initialize
+        goto W1;
+
+W1:  // Initialize
         l = 1;
 
         // Fallthrough
 
-B2:  // Enter level l
+W2:  // Enter level l
         if ( l > kNum ) {
                 VisitSolution( );
-                goto B5;
+                goto W4;
         }
 
-        // Scan domain now.
-        t = 1;
+        // Invariant.
+        assert(l >= 1 && l <= kNum);
+
+        /// Update S[l]
+        {
+                t = MEM_R( A, l ) | MEM_R( B, l ) | MEM_R( C, l );
+                MEM_W( S, l, ( U & ( ~( t ) ) ) );
+        }
 
         // Fallthrough
 
-B3:  // Try t
-        if ( REG_R( A, t ) || REG_R( B, t + l - 1 ) ||
-             REG_R( C, t - l + kNum ) ) {
-                goto B4;
+W3:  // Try advance
+
+        // Invariant.
+        assert(l >= 1 && l  <= kNum);
+
+        s_l = MEM_R( S, l );
+
+        if ( s_l == 0 ) {  // S_l is empty
+                goto W4;
         }
 
-        REG_W( A, t, 1 );
-        REG_W( B, t + l - 1, 1 );
-        REG_W( C, t - l + kNum, 1 );
-        MEM_W( X, l, t );
+        t = s_l & ( -s_l );
+        MEM_W( A, l + 1, MEM_R( A, l ) + t );
+        MEM_W( B, l + 1, ( MEM_R( B, l ) + t ) >> 1 );
+        MEM_W( C, l + 1, ( ( MEM_R( C, l ) + t ) << 1 ) & U );
+        MEM_W( S, l, s_l - t );  // This is the undo work for W4
+
         l++;
-        goto B2;
+        goto W2;
 
-B4:  // Try next t
-        if ( t < kNum ) {
-                t++;
-                goto B3;
-        }
-
-        // Fallthrough
-
-B5:  // Backtrack
+W4:  // Backtrack
         l--;
-        if ( l > 0 ) {
-                t = MEM_R( X, l );
-                REG_W( C, t - l + kNum, 0 );
-                REG_W( B, t + l - 1, 0 );
-                REG_W( A, t, 0 );
-                goto B4;
-        }
 
+        if ( l > 0 ) {
+                // No Work to do as Done in W3 already.
+                goto W3;
+        }
         // Fallthrough
 
         // Exit
@@ -129,7 +128,7 @@ B5:  // Backtrack
 int
 main( )
 {
-        INFO( "Basic Backtrack (Vol 4B, Page 32) - N Queue: N = %d", kNum );
+        INFO( "Walker's Backtrack (Vol 4B, Page 33) - N Queue: N = %d", kNum );
         Search( );
         INFO( "Done: %" PRIu64, counter );
         INFO( "Memory Access: %" PRIu64, mem_access_counter );
