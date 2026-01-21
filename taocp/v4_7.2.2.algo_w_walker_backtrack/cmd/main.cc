@@ -114,16 +114,19 @@ W2:  // Enter level l
         t   = a_l | b_l | c_l;
         s_l = U & ( ~( t ) );
 
-        // Promote from W3 to here.
-        if ( s_l == 0 ) {  // S_l is empty
-                goto W4;   // Backtrack
-        }
+         // Promote from W3 to here.
+         if ( s_l == 0 ) {  // S_l is empty
+                 goto W4;   // Backtrack
+         }
 
-        if ( l == kNumQueue ) {
-                // No need to goto W3 as we can deduce answer already.
-                l++;
-                goto W2;  // Leverage the VisitSolution().
-        }
+        // // NOTE: This special check can roughly save 6'952'497'635 -
+        // // 6'893'407'587 mems as it skips the entire W3 for unncessary
+        // // execution. Though these computation is needed to recover solution X.
+        // if ( l == kNumQueue ) {
+        //         // No need to goto W3 as we can deduce answer already.
+        //         l++;
+        //         goto W2;  // Leverage the VisitSolution().
+        // }
 
         // Fallthrough
 
@@ -134,7 +137,6 @@ W3:  // Try advance
 
         // NOTE: s_l is prepared in label W2 or W4 already. So no need to load
         // memory now.
-
         t = s_l & ( -s_l );
 
         // NOTE:
@@ -173,10 +175,10 @@ W4:  // Backtrack
         // s_l already.
         s_l = MEM_R( S, l );
 
-        // Skip checking this in W3 and goto W4 for backtrack directly.
-        if ( s_l == 0 ) {
-                goto W4;
-        }
+         // Skip checking this in W3 and goto W4 for backtrack directly.
+         if ( s_l == 0 ) {
+                 goto W4;
+         }
 
         // Similar to the s_l idea above, load a_l/b_l/c_l from memory  so both
         // W4->W3 and W2->W3 can prepare them  already.
