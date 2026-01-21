@@ -83,7 +83,8 @@ Search( )
         goto W1;
 
 W1:  // Initialize
-        l = 1;
+        l   = 1;
+        a_l = b_l = c_l = 0;
 
         // Fallthrough
 
@@ -97,22 +98,21 @@ W2:  // Enter level l
         assert( l >= 1 && l <= kNumQueue );
 
         /// Update S[l]
-        if ( l > 1 ) {
-                // There is only one chance to go here is from W3's goto W2.
-                // So, all a_l/b_l/c_l are stored in registers already.  The
-                // following 3 MEM_R can be saved for each level advance!
-                //
-                // a_l = MEM_R( A, l );
-                // b_l = MEM_R( B, l );
-                // c_l = MEM_R( C, l );
-                //
-                t   = a_l | b_l | c_l;
-                s_l = U & ( ~( t ) );
-        } else {  // Save 3 MEM_R. As we know the answer already.
-                assert( l == 1 );
-                a_l = b_l = c_l = 0;
-                s_l             = U;
-        }
+
+        // NOTE:
+        // There are two possible branches touching here
+        // 1. From W1, a_l/b_l/c_l are initialized already.
+        // 2. From W3's goto W2, where all a_l/b_l/c_l are stored in
+        //    registers already.
+        //
+        // The following 3 MEM_R can be saved for each level advance!
+        //
+        // a_l = MEM_R( A, l );
+        // b_l = MEM_R( B, l );
+        // c_l = MEM_R( C, l );
+        //
+        t   = a_l | b_l | c_l;
+        s_l = U & ( ~( t ) );
 
         // Promote from W3 to here.
         if ( s_l == 0 ) {  // S_l is empty
