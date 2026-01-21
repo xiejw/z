@@ -1,10 +1,12 @@
 // === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
 //
 // History:
+// - [2026-01-20] V2 Optimize away unncessary A/B/C reads and move s_l check.
 // - [2026-01-20] V1 Optimize away S_l reading in W2 and W3.
 // - [2026-01-20] V0 can work. But mem access is much higher than book reports.
 //
 // Table:
+// - V2 Mems 10'331'751'008 Wall Clock 5.8 secs
 // - V1 Mems 12'508'775'789 Wall Clock 6.1 secs
 // - V0 Mems 14'761'611'371 Wall Clock 6.3 secs
 //
@@ -69,6 +71,9 @@ Search( )
         int l;
 
         int64_t t;    // tmp var
+        int64_t a_l;  // tmp var to store A[l];
+        int64_t b_l;  // tmp var to store B[l];
+        int64_t c_l;  // tmp var to store C[l];
         int64_t s_l;  // tmp var to store S[l];
 
         goto W1;
@@ -89,8 +94,16 @@ W2:  // Enter level l
 
         /// Update S[l]
         {
-                t   = MEM_R( A, l ) | MEM_R( B, l ) | MEM_R( C, l );
+                a_l = MEM_R( A, l );
+                b_l = MEM_R( B, l );
+                c_l = MEM_R( C, l );
+                t   = a_l | b_l | c_l;
                 s_l = U & ( ~( t ) );
+        }
+
+        // Promote from W3 to here.
+        if ( s_l == 0 ) {  // S_l is empty
+                goto W4;
         }
 
         // Fallthrough
@@ -102,14 +115,10 @@ W3:  // Try advance
 
         // s_l is read from W2 or W4.
 
-        if ( s_l == 0 ) {  // S_l is empty
-                goto W4;
-        }
-
         t = s_l & ( -s_l );
-        MEM_W( A, l + 1, MEM_R( A, l ) + t );
-        MEM_W( B, l + 1, ( MEM_R( B, l ) + t ) >> 1 );
-        MEM_W( C, l + 1, ( ( MEM_R( C, l ) + t ) << 1 ) & U );
+        MEM_W( A, l + 1, a_l + t );
+        MEM_W( B, l + 1, ( b_l + t ) >> 1 );
+        MEM_W( C, l + 1, ( ( c_l + t ) << 1 ) & U );
 
         s_l = s_l - t;       // This is the undo work for W4
                              //
@@ -121,16 +130,24 @@ W3:  // Try advance
 W4:  // Backtrack
         l--;
 
-        if ( l > 0 ) {
-                // No UNDO Work to do as Done in W3 already.
-
-                s_l = MEM_R( S, l );  // Load from memory for backtrack.
-                goto W3;
+        if ( l == 0 ) {
+                return;
         }
-        // Fallthrough
 
-        // Exit
-        return;
+        assert( l > 0 );
+        // No UNDO Work to do as Done in W3 already.
+
+        s_l = MEM_R( S, l );  // Load from memory for backtrack.
+
+        // Skip checking this in W3 and goto W4 directly.
+        if ( s_l == 0 ) {
+                goto W4;
+        }
+
+        a_l = MEM_R( A, l );
+        b_l = MEM_R( B, l );
+        c_l = MEM_R( C, l );
+        goto W3;
 }
 
 }  // namespace
