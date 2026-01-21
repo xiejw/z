@@ -1,12 +1,16 @@
 // === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
 //
-// History
-// - 2026-01-20 Versin can work. But mem access is 14761611371, too high.
-//   Wall clock is 6 seconds.
+// History:
+// - [2026-01-20] V1 Optimize away S_l reading in W2 and W3.
+// - [2026-01-20] V0 can work. But mem access is much higher than book reports.
 //
+// Table:
+// - V1 Mems 12'508'775'789 Wall Clock 6.1 secs
+// - V0 Mems 14'761'611'371 Wall Clock 6.3 secs
+//
+#include <assert.h>
 #include <inttypes.h>  // Required for PRIu64
 #include <stdint.h>
-#include <assert.h>
 #include <stdio.h>
 
 #include "log.h"  // Required for INFO
@@ -55,11 +59,12 @@ Search( )
         /// Mask
         constexpr int64_t U = ( 1 << ( kNum ) ) - 1;
 
-        // All arrays start from base 1. All arraries might to to kNum + 1 level.
-        int64_t A[kNum + 1+ 1] = { 0 };
-        int64_t B[kNum + 1+ 1] = { 0 };
-        int64_t C[kNum + 1+ 1] = { 0 };
-        int64_t S[kNum + 1+ 1] = { 0 };
+        // All arrays start from base 1. All arraries might to to kNum + 1
+        // level.
+        int64_t A[kNum + 1 + 1] = { 0 };
+        int64_t B[kNum + 1 + 1] = { 0 };
+        int64_t C[kNum + 1 + 1] = { 0 };
+        int64_t S[kNum + 1 + 1] = { 0 };
 
         int l;
 
@@ -80,12 +85,12 @@ W2:  // Enter level l
         }
 
         // Invariant.
-        assert(l >= 1 && l <= kNum);
+        assert( l >= 1 && l <= kNum );
 
         /// Update S[l]
         {
-                t = MEM_R( A, l ) | MEM_R( B, l ) | MEM_R( C, l );
-                MEM_W( S, l, ( U & ( ~( t ) ) ) );
+                t   = MEM_R( A, l ) | MEM_R( B, l ) | MEM_R( C, l );
+                s_l = U & ( ~( t ) );
         }
 
         // Fallthrough
@@ -93,9 +98,9 @@ W2:  // Enter level l
 W3:  // Try advance
 
         // Invariant.
-        assert(l >= 1 && l  <= kNum);
+        assert( l >= 1 && l <= kNum );
 
-        s_l = MEM_R( S, l );
+        // s_l is read from W2 or W4.
 
         if ( s_l == 0 ) {  // S_l is empty
                 goto W4;
@@ -105,7 +110,10 @@ W3:  // Try advance
         MEM_W( A, l + 1, MEM_R( A, l ) + t );
         MEM_W( B, l + 1, ( MEM_R( B, l ) + t ) >> 1 );
         MEM_W( C, l + 1, ( ( MEM_R( C, l ) + t ) << 1 ) & U );
-        MEM_W( S, l, s_l - t );  // This is the undo work for W4
+
+        s_l = s_l - t;       // This is the undo work for W4
+                             //
+        MEM_W( S, l, s_l );  // Store to memory for backtrack.
 
         l++;
         goto W2;
@@ -114,7 +122,9 @@ W4:  // Backtrack
         l--;
 
         if ( l > 0 ) {
-                // No Work to do as Done in W3 already.
+                // No UNDO Work to do as Done in W3 already.
+
+                s_l = MEM_R( S, l );  // Load from memory for backtrack.
                 goto W3;
         }
         // Fallthrough
