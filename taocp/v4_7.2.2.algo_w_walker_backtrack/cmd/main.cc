@@ -8,7 +8,7 @@
 // - [2026-01-20] V0 can work. But mem access is much higher than book reports.
 //
 // Table:
-// - V4 Mems  6'893'407'587 Wall Clock 4.9 secs
+// - V4 Mems  6'893'407'587 Wall Clock 4.7 secs
 // - V3 Mems 10'272'660'960 Wall Clock 5.2 secs
 // - V2 Mems 10'331'751'008 Wall Clock 5.8 secs
 // - V1 Mems 12'508'775'789 Wall Clock 6.1 secs
@@ -114,18 +114,25 @@ W2:  // Enter level l
         t   = a_l | b_l | c_l;
         s_l = U & ( ~( t ) );
 
-         // Promote from W3 to here.
-         if ( s_l == 0 ) {  // S_l is empty
-                 goto W4;   // Backtrack
-         }
+        /* NOTE:
 
-        // // NOTE: This special check can roughly save 6'952'497'635 -
-        // // 6'893'407'587 mems as it skips the entire W3 for unncessary
-        // // execution. Though these computation is needed to recover solution X.
-        // if ( l == kNumQueue ) {
-        //         // No need to goto W3 as we can deduce answer already.
+           This special optimization can roughly reduce mems from 6'952'497'635
+           to 6'893'407'587 mems as it skips the entire W3 for 'unncessary'
+           execution.
+
+           In order to visit the solution X, we could deduce the final bit with
+
+              t = s_l & ( -s_l )
+
+           That's it. All the MEM_W in the W3 can be skipped.
+
+           Keep the code in comment so the code looks similar to the algorithm
+           in the book.
+        */
+        // if ( s_l != 0 && l == kNumQueue ) {
         //         l++;
-        //         goto W2;  // Leverage the VisitSolution().
+        //         VisitSolution( );
+        //         goto W4;
         // }
 
         // Fallthrough
@@ -135,7 +142,12 @@ W3:  // Try advance
         // Invariant.
         assert( l >= 1 && l <= kNumQueue );
 
-        // NOTE: s_l is prepared in label W2 or W4 already. So no need to load
+        // NOTE: If W2 and W4 have s_l ==0 check. This branch can be removed.
+        if ( s_l == 0 ) {  // S_l is empty
+                goto W4;   // Backtrack
+        }
+
+        // NOTE: s_l is prepared in W2 or W4 already. So no need to load
         // memory now.
         t = s_l & ( -s_l );
 
@@ -175,10 +187,10 @@ W4:  // Backtrack
         // s_l already.
         s_l = MEM_R( S, l );
 
-         // Skip checking this in W3 and goto W4 for backtrack directly.
-         if ( s_l == 0 ) {
-                 goto W4;
-         }
+        // Skip checking this in W3 and goto W4 for backtrack directly.
+        if ( s_l == 0 ) {
+                goto W4;
+        }
 
         // Similar to the s_l idea above, load a_l/b_l/c_l from memory  so both
         // W4->W3 and W2->W3 can prepare them  already.
