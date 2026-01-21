@@ -1,11 +1,13 @@
 // === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
 //
 // History:
+// - [2026-01-20] V3 Skip l==kNum computation.
 // - [2026-01-20] V2 Optimize away unncessary A/B/C reads and move s_l check.
 // - [2026-01-20] V1 Optimize away S_l reading in W2 and W3.
 // - [2026-01-20] V0 can work. But mem access is much higher than book reports.
 //
 // Table:
+// - V3 Mems 10'272'660'960 Wall Clock 5.2 secs
 // - V2 Mems 10'331'751'008 Wall Clock 5.8 secs
 // - V1 Mems 12'508'775'789 Wall Clock 6.1 secs
 // - V0 Mems 14'761'611'371 Wall Clock 6.3 secs
@@ -104,6 +106,11 @@ W2:  // Enter level l
         // Promote from W3 to here.
         if ( s_l == 0 ) {  // S_l is empty
                 goto W4;
+        }
+
+        if ( l == kNum ) {
+                l++;
+                goto W2;
         }
 
         // Fallthrough
