@@ -1,12 +1,14 @@
 // === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
 //
 // History:
-// - [2026-01-20] V3 Skip l==kNum computation.
+// - [2026-01-20] V4 Avoid a_l/b_l/c_l loads from W3->W2.
+// - [2026-01-20] V3 Skip l==kNumQueue computation.
 // - [2026-01-20] V2 Optimize away unncessary A/B/C reads and move s_l check.
 // - [2026-01-20] V1 Optimize away S_l reading in W2 and W3.
 // - [2026-01-20] V0 can work. But mem access is much higher than book reports.
 //
 // Table:
+// - V4 Mems  6'893'407'587 Wall Clock 4.9 secs
 // - V3 Mems 10'272'660'960 Wall Clock 5.2 secs
 // - V2 Mems 10'331'751'008 Wall Clock 5.8 secs
 // - V1 Mems 12'508'775'789 Wall Clock 6.1 secs
@@ -25,14 +27,14 @@ namespace {
 //
 // Hard code the number of Queues.
 //
-// kNum =  8   Counter = 92        MEM Acc Counter = 26'273
-// kNum = 16   Counter = 14772512  MEM Acc Counter = 14'761'611'371
+// kNumQueue =  8   Counter = 92
+// kNumQueue = 16   Counter = 14772512
 //
-// constexpr int kNum = 8;
-constexpr int kNum = 16;
+// constexpr int kNumQueue = 8;
+constexpr int kNumQueue = 16;
 
 // Bit vector algorithm assumes the size of register.
-static_assert( kNum + 1 <= sizeof( uint64_t ) * 8 );
+static_assert( kNumQueue + 1 <= sizeof( uint64_t ) * 8 );
 
 // === --- Memory Access Macros -------------------------------------------- ===
 
@@ -61,14 +63,14 @@ void
 Search( )
 {
         /// Mask
-        constexpr int64_t U = ( 1 << ( kNum ) ) - 1;
+        constexpr int64_t U = ( 1 << ( kNumQueue ) ) - 1;
 
-        // All arrays start from base 1. All arraries might to to kNum + 1
+        // All arrays start from base 1. All arrays might go to kNumQueue + 1
         // level.
-        int64_t A[kNum + 1 + 1] = { 0 };
-        int64_t B[kNum + 1 + 1] = { 0 };
-        int64_t C[kNum + 1 + 1] = { 0 };
-        int64_t S[kNum + 1 + 1] = { 0 };
+        int64_t A[kNumQueue + 1 + 1] = { 0 };
+        int64_t B[kNumQueue + 1 + 1] = { 0 };
+        int64_t C[kNumQueue + 1 + 1] = { 0 };
+        int64_t S[kNumQueue + 1 + 1] = { 0 };
 
         int l;
 
@@ -86,31 +88,41 @@ W1:  // Initialize
         // Fallthrough
 
 W2:  // Enter level l
-        if ( l > kNum ) {
+        if ( l > kNumQueue ) {
                 VisitSolution( );
                 goto W4;
         }
 
         // Invariant.
-        assert( l >= 1 && l <= kNum );
+        assert( l >= 1 && l <= kNumQueue );
 
         /// Update S[l]
-        {
-                a_l = MEM_R( A, l );
-                b_l = MEM_R( B, l );
-                c_l = MEM_R( C, l );
+        if ( l > 1 ) {
+                // There is only one chance to go here is from W3's goto W2.
+                // So, all a_l/b_l/c_l are stored in registers already.  The
+                // following 3 MEM_R can be saved for each level advance!
+                //
+                // a_l = MEM_R( A, l );
+                // b_l = MEM_R( B, l );
+                // c_l = MEM_R( C, l );
+                //
                 t   = a_l | b_l | c_l;
                 s_l = U & ( ~( t ) );
+        } else {  // Save 3 MEM_R. As we know the answer already.
+                assert( l == 1 );
+                a_l = b_l = c_l = 0;
+                s_l             = U;
         }
 
         // Promote from W3 to here.
         if ( s_l == 0 ) {  // S_l is empty
-                goto W4;
+                goto W4;   // Backtrack
         }
 
-        if ( l == kNum ) {
+        if ( l == kNumQueue ) {
+                // No need to goto W3 as we can deduce answer already.
                 l++;
-                goto W2;
+                goto W2;  // Leverage the VisitSolution().
         }
 
         // Fallthrough
@@ -118,17 +130,30 @@ W2:  // Enter level l
 W3:  // Try advance
 
         // Invariant.
-        assert( l >= 1 && l <= kNum );
+        assert( l >= 1 && l <= kNumQueue );
 
-        // s_l is read from W2 or W4.
+        // NOTE: s_l is prepared in label W2 or W4 already. So no need to load
+        // memory now.
 
         t = s_l & ( -s_l );
-        MEM_W( A, l + 1, a_l + t );
-        MEM_W( B, l + 1, ( b_l + t ) >> 1 );
-        MEM_W( C, l + 1, ( ( c_l + t ) << 1 ) & U );
 
-        s_l = s_l - t;       // This is the undo work for W4
-                             //
+        // NOTE:
+        // 1. a_l/b_l/c_l are prepared in label W2 and W4 already. No need to
+        //    load them in this tight loop.
+        // 2. Store a_l/b_l/c_l in place so the goto W2 later can skip the load.
+        //
+        a_l = a_l + t;
+        b_l = ( b_l + t ) >> 1;
+        c_l = ( ( c_l + t ) << 1 ) & U;
+
+        // Store them in case backtrack
+        MEM_W( A, l + 1, a_l );
+        MEM_W( B, l + 1, b_l );
+        MEM_W( C, l + 1, c_l );
+
+        // This is the undo work for W4. Mentioned in Exercise 10
+        s_l = s_l - t;
+
         MEM_W( S, l, s_l );  // Store to memory for backtrack.
 
         l++;
@@ -144,13 +169,18 @@ W4:  // Backtrack
         assert( l > 0 );
         // No UNDO Work to do as Done in W3 already.
 
-        s_l = MEM_R( S, l );  // Load from memory for backtrack.
+        // Load from memory for backtrack so both W4->W3 and W2->W3 can prepare
+        // s_l already.
+        s_l = MEM_R( S, l );
 
-        // Skip checking this in W3 and goto W4 directly.
+        // Skip checking this in W3 and goto W4 for backtrack directly.
         if ( s_l == 0 ) {
                 goto W4;
         }
 
+        // Similar to the s_l idea above, load a_l/b_l/c_l from memory  so both
+        // W4->W3 and W2->W3 can prepare them  already.
+        //
         a_l = MEM_R( A, l );
         b_l = MEM_R( B, l );
         c_l = MEM_R( C, l );
@@ -162,7 +192,8 @@ W4:  // Backtrack
 int
 main( )
 {
-        INFO( "Walker's Backtrack (Vol 4B, Page 33) - N Queue: N = %d", kNum );
+        INFO( "Walker's Backtrack (Vol 4B, Page 33) - N Queue: N = %d",
+              kNumQueue );
         Search( );
         INFO( "Done: %" PRIu64, counter );
         INFO( "Memory Access: %" PRIu64, mem_access_counter );
