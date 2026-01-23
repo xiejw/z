@@ -18,6 +18,7 @@
 #include <inttypes.h>  // Required for PRIu64
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "log.h"  // Required for INFO
 
@@ -36,6 +37,8 @@ constexpr int kNumQueue = 8;
 // Bit vector algorithm assumes the size of register.
 static_assert( kNumQueue + 1 <= sizeof( uint64_t ) * 8 );
 
+#define PRINT_SOLUTION 0
+
 // === --- Memory Access Macros -------------------------------------------- ===
 
 uint64_t mem_access_counter = 0;
@@ -50,9 +53,47 @@ uint64_t mem_access_counter = 0;
 uint64_t counter = 0;
 
 void
-VisitSolution( )
+VisitSolution( int64_t *A )
 {
         counter++;
+
+        if ( !PRINT_SOLUTION ) return;
+
+        int64_t X[1 + kNumQueue];
+
+        // Deduce the t based on A based on the hint of exercise 10.
+        for ( int i = 1; i <= kNumQueue; i++ ) {
+                int64_t t = A[i + 1] - A[i];
+                // Deduce the x from t (pos is 0 based).
+                int     pos = 0;
+                int64_t x   = t;
+                while ( ( x & 1 ) == 0 ) {
+                        x >>= 1;
+                        pos++;
+                }
+                pos++;  // Convert 0 based to 1 based.
+                X[i] = pos;
+
+                printf( "%d -> t %3d -> pos %d\n", i, (int)t, pos );
+        }
+
+        // Plot the board with all queues.
+        printf( "|" );
+        for ( int i = 1; i <= kNumQueue; i++ ) {
+                printf( "%d", i );
+        }
+        printf( "|\n" );
+
+        for ( int i = 1; i <= kNumQueue; i++ ) {
+                int64_t x = X[i];
+                printf( "|" );
+                for ( int col = 1; col <= kNumQueue; col++ ) {
+                        printf( "%c", col == x ? 'X' : ' ' );
+                }
+                printf( "|\n" );
+        }
+        printf( "One solution is printed. Abort now so you can read.\n" );
+        exit( 0 );
 }
 
 // === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
@@ -90,7 +131,7 @@ W1:  // Initialize
 
 W2:  // Enter level l
         if ( l > kNumQueue ) {
-                VisitSolution( );
+                VisitSolution( &A[0] );
                 goto W4;
         }
 
