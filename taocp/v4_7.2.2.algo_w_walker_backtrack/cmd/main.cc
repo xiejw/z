@@ -30,8 +30,8 @@ namespace {
 // kNumQueue =  8   Counter = 92
 // kNumQueue = 16   Counter = 14772512
 //
-// constexpr int kNumQueue = 8;
-constexpr int kNumQueue = 16;
+constexpr int kNumQueue = 8;
+// constexpr int kNumQueue = 16;
 
 // Bit vector algorithm assumes the size of register.
 static_assert( kNumQueue + 1 <= sizeof( uint64_t ) * 8 );
