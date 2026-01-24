@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 
-namespace base {
+namespace base::cc17 {
 
 #define ZION_COLOR_CYAN  "\033[1;36m"
 #define ZION_COLOR_RED   "\033[1;31m"
@@ -80,4 +80,4 @@ WarnImpl( const char *file, int line, const char *fmt, ... )
         va_end( args );
 }
 
-}  // namespace base
+}  // namespace base::cc17
