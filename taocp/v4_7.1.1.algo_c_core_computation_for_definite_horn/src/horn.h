@@ -1,34 +1,30 @@
-#ifndef ADT_HORN_H_
-#define ADT_HORN_H_
-
-#include <stddef.h>  // size_t
-
-#include <zion/zion.h>
-
-// === --- Horn Satisfiability --------------------------------------------- ===
+// vim: ft=cpp
 //
-// #### TLDR
+// === --- Horn Satisfiability Vol 4A 7.1.1 Algorithrm C Page 59 ----------- ===
 //
-// Concludes whether horn formula is satisfiable.
+// === --- TLDR
 //
-// #### Definition
+// - Compures the core of definite horn function.
+// - Concludes whether horn function is satisfiable.
+//
+// === --- Definition of Horn Clause
 //
 // A Horn clause is a clause (a disjunction of literals) with at most one
-// positive literal. A Horn formula is a propositional formula formed by
+// positive literal. A Horn function is a propositional formula formed by
 // conjunction of Horn clauses.
 //
-// #### Definite Horn Formula and The Core
+// === --- Definite Horn Function and The Core
 //
-// The definite Horn formula must satisfy
+// The definite Horn function must satisfy
 //
 // ```
 // f(1, 1, ..., 1) = 1.
 // ```
 //
-// The _Core_ of the definite Horn formula is set the variables which must be
+// The _Core_ of the definite Horn function is set the variables which must be
 // true whenever `f` is true.
 //
-// #### Algorithrm C
+// === --- Algorithrm C (Vol 4A, Page 59)
 //
 // The algorithm is as follows:
 //
@@ -40,9 +36,9 @@
 //   in a clause are deduced, its positive literal, if present, must be in
 //   Core.
 //
-// #### Indefinite Horn Formula
+// === --- Indefinite Horn Function
 //
-// Exercise 48 provides the steps to test satisfiability of Horn formula in
+// Exercise 48 provides the steps to test satisfiability of Horn function in
 // general. The idea is quite simple:
 //
 // - Introduce a new variable `lambda`, and convert all indefinite causes to
@@ -58,20 +54,53 @@
 //   !a || !b || lambda
 //   ```
 //
-// - Apply _Algorithrm C_ to the new definite Horn formula. The original Horn
-//   formula is satisfiable if and only if `lambda` is not in the Core of the
-//   new definite Horn formula.
+// - Apply _Algorithrm C_ to the new definite Horn function. The original Horn
+//   function is satisfiable if and only if `lambda` is not in the Core of the
+//   new definite Horn function.
 //
+#pragma once
+
+#include <stddef.h>  // size_t
+
+namespace taocp {
 
 // Forward declaration.
 struct horn;
 
-extern struct horn *horn_new( int num_propositions );
-extern void         horn_free( struct horn * );
+struct horn *horn_new( int num_variables );
+void         horn_free( struct horn * );
 
 // Append a clause with hypotheses and conclusion (-1 if no conclusion)
-void horn_add_clause( struct horn *, int conclusion, int num_hypotheses,
-                      int *hypotheses );
+void horn_add_clause( struct horn *, int id_of_conclusion, int num_hypotheses,
+                      int *id_of_hypotheses );
+
+// Return true if the horn function is satisfiable; false otherwise.
+//
+// NOTE: cannot be called twice on the struct horn as it mutates the data
+// structure.
+//
+// - See TAOCP, Vol 4a, Page 543, Exercise 48.
+[[nodiscard]] bool horn_is_satisfiable( struct horn * );
+
+// After horn_is_satisfiable returns, check whether 0-based variable (specified
+// via id_of_var) is in core or not.
+//
+// Return true if in core, false otherwise.
+//
+// NOTE:
+// - Must be called after horn_is_satisfiable.
+// - Core is defined as the variables which must be true whenever the
+//   boolean function is true (see TAOCP, Vol 4a, Page 58), for example, for
+//   horn clauses like
+//
+//       2
+//       !0 || 1
+//
+//   only 2 is in core, 1 is not as both (bar 0, 2) and (1, 2) are solutions
+//   only 2 is in the minimum vector to make this boolean function be true.
+bool horn_is_var_in_core( struct horn *h, int id_of_var );
+
+///////// TODO
 
 // Helper macros
 #define HORN_ADD_CLAUSE( h, conclusion, num_hy, ... )       \
@@ -83,25 +112,4 @@ void horn_add_clause( struct horn *, int conclusion, int num_hypotheses,
 #define HORN_ADD_CLAUSE_WO_HYPOTHESES( h, conclusion ) \
         horn_add_clause( ( h ), ( conclusion ), ( 0 ), NULL )
 
-// Return OK if the horn formula is satisfiable; ENOTEXIST otherwise.
-error_t horn_search( struct horn * );
-
-// After horn_search returns OK, check whether 0-based proposition (specified
-// via prop_id) is in core or not.
-//
-// Return 1 if in core, 0 otherwise.
-//
-// NOTE:
-// - must be called after horn_search.
-// - Core is defined as the propositions which must be true whenever the
-//   boolean function is true (see TAOCP, Vol 4a, Page 58), for example, for
-//   horn clauses like
-//
-//       2
-//       !0 || 1
-//
-//   only 2 is in core, 1 is not as both (bar 0, 2) and (1, 2) are solutions
-//   only 2 is in the minimum vector to make this boolean function be true.
-int horn_is_prop_in_core( struct horn *, int prop_id );
-
-#endif  // ADT_HORN_H_
+}  // namespace taocp
