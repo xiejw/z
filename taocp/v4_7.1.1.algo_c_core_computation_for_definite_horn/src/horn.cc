@@ -146,10 +146,12 @@ horn_free( struct horn *ptr )
 
 // See TAOCP, Vol 4a, Page 59, Algorithm C.
 void
-horn_add_clause( struct horn *h, int id_of_conclusion, int num_hypotheses,
-                 int *hypotheses )
+horn_add_clause( struct horn *h, struct horn_conclusion conclusion,
+                 int num_hypotheses, int *hypotheses )
 {
         assert( !h->core_computed );
+
+        int id_of_conclusion = conclusion.id;
 
         // Set is_definite.
         if ( id_of_conclusion == -1 ) {

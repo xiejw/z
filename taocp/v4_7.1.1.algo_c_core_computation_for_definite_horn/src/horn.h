@@ -67,12 +67,23 @@ namespace taocp {
 // Forward declaration.
 struct horn;
 
+// A wrapper to make conclusion strong type.
+struct horn_conclusion {
+        int id;  // -1 if no conclusion.
+};
+
+inline struct horn_conclusion
+horn_no_conclusion( )
+{
+        return horn_conclusion{ -1 };
+}
+
 struct horn *horn_new( int num_variables );
 void         horn_free( struct horn * );
 
 // Append a clause with hypotheses and conclusion (-1 if no conclusion)
-void horn_add_clause( struct horn *, int id_of_conclusion, int num_hypotheses,
-                      int *id_of_hypotheses );
+void horn_add_clause( struct horn *, struct horn_conclusion conclusion,
+                      int num_hypotheses, int *id_of_hypotheses );
 
 // Compute the core of horn clauses.
 //

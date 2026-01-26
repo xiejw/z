@@ -24,9 +24,9 @@ FORGE_TEST( test_core_no_progress )
         //
         // expected: core: 2
 
-        horn_add_clause( h, 2, 0, NULL );
-        horn_add_clause( h, 2, 0, NULL );
-        HORN_ADD_CLAUSE_HELPER( h, 1, 1, 0 );
+        horn_add_clause( h, horn_conclusion{ 2 }, 0, NULL );
+        horn_add_clause( h, horn_conclusion{ 2 }, 0, NULL );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 1 }, 1, 0 );
 
         horn_core_compute( h );
 
@@ -49,12 +49,12 @@ FORGE_TEST( test_core_simple )
         // 4
         //
         // expected: core: 0, 1, 2, 4
-        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, 2 );
-        HORN_ADD_CLAUSE_HELPER( h, 1, 1, 2 );
-        HORN_ADD_CLAUSE_HELPER( h, 0, 1, 3 );
-        HORN_ADD_CLAUSE_HELPER( h, 0, 2, 1, 4 );
-        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, 4 );
-        horn_add_clause( h, 4, 0, NULL );
+        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, horn_conclusion{ 2 } );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 1 }, 1, 2 );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 0 }, 1, 3 );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 0 }, 2, 1, 4 );
+        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, horn_conclusion{ 4 } );
+        horn_add_clause( h, horn_conclusion{ 4 }, 0, NULL );
 
         horn_core_compute( h );
 
@@ -78,9 +78,9 @@ FORGE_TEST( test_solve_easy )
         //
         // expected: yes
 
-        horn_add_clause( h, 2, 0, NULL );
-        horn_add_clause( h, 2, 0, NULL );
-        HORN_ADD_CLAUSE_HELPER( h, 1, 1, 0 );
+        horn_add_clause( h, horn_conclusion{ 2 }, 0, NULL );
+        horn_add_clause( h, horn_conclusion{ 2 }, 0, NULL );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 1 }, 1, 0 );
 
         horn_core_compute( h );
         EXPECT_TRUE( true == horn_is_satisfiable( h ), "yes" );
@@ -104,11 +104,11 @@ FORGE_TEST( test_solve_no_solu )
         //
         // expected: no
 
-        horn_add_clause( h, 2, 0, NULL );
-        horn_add_clause( h, 2, 0, NULL );
-        HORN_ADD_CLAUSE_HELPER( h, 1, 1, 0 );
-        horn_add_clause( h, 0, 0, NULL );
-        HORN_ADD_CLAUSE_HELPER( h, -1, 1, 1 );
+        horn_add_clause( h, horn_conclusion{ 2 }, 0, NULL );
+        horn_add_clause( h, horn_conclusion{ 2 }, 0, NULL );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 1 }, 1, 0 );
+        horn_add_clause( h, horn_conclusion{ 0 }, 0, NULL );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ -1 }, 1, 1 );
 
         horn_core_compute( h );
 
@@ -129,11 +129,11 @@ FORGE_TEST( test_solve_simple )
         // 4
         //
         // expected: yes
-        horn_add_clause( h, 2, 0, NULL );
-        HORN_ADD_CLAUSE_HELPER( h, 1, 1, 2 );
-        HORN_ADD_CLAUSE_HELPER( h, 0, 1, 3 );
-        HORN_ADD_CLAUSE_HELPER( h, 0, 2, 1, 4 );
-        horn_add_clause( h, 4, 0, NULL );
+        horn_add_clause( h, horn_conclusion{ 2 }, 0, NULL );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 1 }, 1, 2 );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 0 }, 1, 3 );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 0 }, 2, 1, 4 );
+        horn_add_clause( h, horn_conclusion{ 4 }, 0, NULL );
 
         horn_core_compute( h );
 
@@ -159,11 +159,11 @@ FORGE_TEST( test_solve_simple_not_def )
         // 4
         //
         // expected: yes
-        horn_add_clause( h, 2, 0, NULL );
-        HORN_ADD_CLAUSE_HELPER( h, 1, 1, 2 );
-        HORN_ADD_CLAUSE_HELPER( h, -1, 1, 3 );
-        HORN_ADD_CLAUSE_HELPER( h, 0, 2, 1, 4 );
-        horn_add_clause( h, 4, 0, NULL );
+        horn_add_clause( h, horn_conclusion{ 2 }, 0, NULL );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 1 }, 1, 2 );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ -1 }, 1, 3 );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 0 }, 2, 1, 4 );
+        horn_add_clause( h, horn_conclusion{ 4 }, 0, NULL );
         horn_core_compute( h );
 
         EXPECT_TRUE( true == horn_is_satisfiable( h ), "yes" );
@@ -181,9 +181,9 @@ FORGE_TEST( test_solve_multiple )
         // !2 || 0
         //
         // expected: yes
-        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, 2 );
-        HORN_ADD_CLAUSE_HELPER( h, 1, 1, 2 );
-        HORN_ADD_CLAUSE_HELPER( h, 0, 1, 2 );
+        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, horn_conclusion{ 2 } );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 1 }, 1, 2 );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 0 }, 1, 2 );
 
         horn_core_compute( h );
         EXPECT_TRUE( true == horn_is_satisfiable( h ), "yes" );
@@ -205,9 +205,9 @@ FORGE_TEST( test_solve_multiple_no_solu )
         // !2
         //
         // expected: no
-        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, 2 );
-        HORN_ADD_CLAUSE_HELPER( h, 1, 1, 2 );
-        HORN_ADD_CLAUSE_HELPER( h, -1, 1, 2 );
+        HORN_ADD_CLAUSE_WO_HYPOTHESES( h, horn_conclusion{ 2 } );
+        HORN_ADD_CLAUSE_HELPER( h, horn_conclusion{ 1 }, 1, 2 );
+        HORN_ADD_CLAUSE_HELPER( h, horn_no_conclusion( ), 1, 2 );
         horn_core_compute( h );
 
         EXPECT_TRUE( false == horn_is_satisfiable( h ), "no solution" );
