@@ -6,6 +6,8 @@
 
 namespace taocp {
 
+namespace {
+
 /* === --- Data Structures -------------------------------------------------- */
 
 struct horn_clause {
@@ -29,10 +31,15 @@ struct horn_clause_node {
         struct horn_clause       clause;
         struct horn_clause_node *next;
 };
+}  // namespace
 
 struct horn {
         int  num_variables;  // Num of proposition.
         bool is_definite;    // whether is definite horn formula.
+
+#ifndef NDEBUG
+        bool core_computed;
+#endif
 
         // Variables known to be true but not yet asserted.
         // At most num_variables large.
@@ -45,10 +52,12 @@ struct horn {
 
 // === --- Implementation -------------------------------------------------- ===
 
+namespace {
+
 // Compute the core of horn clauses.
 //
 // See TAOCP, vol 4a, Page 59, Algorithm C.
-static void
+void
 horn_core_compute( struct horn *h )
 {
         while ( h->stack_top != 0 ) {  // loop until no awaiting prop.
@@ -97,6 +106,10 @@ horn_core_compute( struct horn *h )
         }
 }
 
+}  // namespace
+
+// === --- Public APIs ----------------------------------------------------- ===
+
 struct horn *
 horn_new( int num_variables )
 {
@@ -109,7 +122,12 @@ horn_new( int num_variables )
 
         ptr->num_variables = num_variables;
         ptr->is_definite   = true;
-        ptr->stack         = (int *)calloc( n, sizeof( int ) );
+
+#ifndef NDEBUG
+        ptr->core_computed = false;
+#endif
+
+        ptr->stack = (int *)calloc( n, sizeof( int ) );
         return ptr;
 }
 
@@ -134,6 +152,8 @@ void
 horn_add_clause( struct horn *h, int id_of_conclusion, int num_hypotheses,
                  int *hypotheses )
 {
+        assert( !h->core_computed );
+
         // Set is_definite.
         if ( id_of_conclusion == -1 ) {
                 h->is_definite = 0;
@@ -183,6 +203,8 @@ horn_add_clause( struct horn *h, int id_of_conclusion, int num_hypotheses,
 bool
 horn_is_satisfiable( struct horn *h )
 {
+        assert( !h->core_computed && ( h->core_computed = true ) );
+
         // Introdcue lambda.
         int lambda_id = h->num_variables;
         assert( h->vars[lambda_id].truth == 0 );
@@ -204,6 +226,7 @@ horn_is_satisfiable( struct horn *h )
 bool
 horn_is_var_in_core( struct horn *h, int id_of_var )
 {
+        assert( h->core_computed );
         return h->vars[id_of_var].truth;
 }
 }  // namespace taocp
