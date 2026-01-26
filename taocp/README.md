@@ -8,7 +8,7 @@ solving the definite case via a specialized waterfall algorithm, followed by an
 elegant general-case solution outlined in Exercise 48. Because the Horn function
 serves as a foundational logic deduction framework ($A \land B \land \dots
 \Rightarrow Z$), it remains highly practical for various real-world
-applications, (e.g. Volume 4C).
+applications, (e.g. Consistency in Section 7.2.2.3-(88)).
 
 ## Backtrack Algorithm
 
