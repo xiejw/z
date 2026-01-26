@@ -6,7 +6,7 @@
 Horn functions (V4 7.1.1C) offer an interesting approach to logic by first
 solving the definite case via a specialized waterfall algorithm, followed by an
 elegant general-case solution outlined in Exercise 48. Because the Horn function
-serves as a foundational logic deduction framework ($A \and B \and \cdots
+serves as a foundational logic deduction framework ($A \land B \land \dots
 \Rightarrow Z$), it remains highly practical for various real-world
 applications, (e.g. Volume 4C).
 
