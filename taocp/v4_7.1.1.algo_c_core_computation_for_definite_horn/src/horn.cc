@@ -1,3 +1,5 @@
+// forge:v1
+//
 #include <assert.h>
 #include <stdlib.h>  // calloc
 #include <string.h>  // memcpy
