@@ -74,10 +74,17 @@ void         horn_free( struct horn * );
 void horn_add_clause( struct horn *, int id_of_conclusion, int num_hypotheses,
                       int *id_of_hypotheses );
 
-// Return true if the horn function is satisfiable; false otherwise.
+// Compute the core of horn clauses.
 //
 // NOTE: cannot be called twice on the struct horn as it mutates the data
 // structure.
+//
+// See TAOCP, vol 4a, Page 59, Algorithm C.
+void horn_core_compute( struct horn *h );
+
+// Return true if the horn function is satisfiable; false otherwise.
+//
+// NOTE: Must be called after horn_core_compute.
 //
 // - See TAOCP, Vol 4a, Page 543, Exercise 48.
 [[nodiscard]] bool horn_is_satisfiable( struct horn * );
@@ -88,7 +95,7 @@ void horn_add_clause( struct horn *, int id_of_conclusion, int num_hypotheses,
 // Return true if in core, false otherwise.
 //
 // NOTE:
-// - Must be called after horn_is_satisfiable.
+// - NOTE: Must be called after horn_core_compute.
 // - Core is defined as the variables which must be true whenever the
 //   boolean function is true (see TAOCP, Vol 4a, Page 58), for example, for
 //   horn clauses like
@@ -103,11 +110,12 @@ bool horn_is_var_in_core( struct horn *h, int id_of_var );
 ///////// TODO
 
 // Helper macros
-#define HORN_ADD_CLAUSE( h, conclusion, num_hy, ... )       \
-        horn_add_clause( ( h ), ( conclusion ), ( num_hy ), \
-                         (int[]){ __VA_ARGS__ } )
-#define HORN_ADD_CLAUSE_WO_CONCLUSION( h, num_hy, ... ) \
-        horn_add_clause( ( h ), ( -1 ), ( num_hy ), (int[]){ __VA_ARGS__ } )
+#define HORN_ADD_CLAUSE_HELPER( h, conclusion, num_hy, ... )        \
+        do {                                                        \
+                int hypotheses[] = { __VA_ARGS__ };                 \
+                horn_add_clause( ( h ), ( conclusion ), ( num_hy ), \
+                                 hypotheses );                      \
+        } while ( 0 )
 
 #define HORN_ADD_CLAUSE_WO_HYPOTHESES( h, conclusion ) \
         horn_add_clause( ( h ), ( conclusion ), ( 0 ), NULL )

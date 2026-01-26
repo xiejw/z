@@ -29,7 +29,7 @@
 //
 // Usage
 //
-//     TEST( test_foo )
+//     FORGE_TEST( test_foo )
 //     {
 //             return NULL;
 //     }
@@ -64,7 +64,7 @@ test_suite_run( )
 }
 }  // namespace forge
 
-#define TEST( fn_name )                                            \
+#define FORGE_TEST( fn_name )                                      \
         char *fn_name( );                                          \
         struct fn_name##_registrar {                               \
                 fn_name##_registrar( )                             \

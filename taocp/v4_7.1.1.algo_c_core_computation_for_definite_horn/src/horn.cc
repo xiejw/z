@@ -45,11 +45,8 @@ struct horn {
 
 // === --- Implementation -------------------------------------------------- ===
 
-// Compute the core of horn clauses.
-//
-// See TAOCP, vol 4a, Page 59, Algorithm C.
 static void
-horn_core_compute( struct horn *h )
+horn_core_compute_impl( struct horn *h )
 {
         while ( h->stack_top != 0 ) {  // loop until no awaiting prop.
                 int prop = h->stack[--h->stack_top];
@@ -179,9 +176,8 @@ horn_add_clause( struct horn *h, int id_of_conclusion, int num_hypotheses,
         pvar->last                = c;
 }
 
-// See TAOCP, Vol 4a, Page 543, Exercise 48.
-bool
-horn_is_satisfiable( struct horn *h )
+void
+horn_core_compute( struct horn *h )
 {
         // Introdcue lambda.
         int lambda_id = h->num_variables;
@@ -197,13 +193,21 @@ horn_is_satisfiable( struct horn *h )
                 node = next;
         }
 
-        horn_core_compute( h );
-        return h->vars[lambda_id].truth;
+        horn_core_compute_impl( h );
+}
+
+// See TAOCP, Vol 4a, Page 543, Exercise 48.
+bool
+horn_is_satisfiable( struct horn *h )
+{
+        int lambda_id = h->num_variables;
+        return !h->vars[lambda_id].truth;
 }
 
 bool
 horn_is_var_in_core( struct horn *h, int id_of_var )
 {
+        assert( id_of_var < h->num_variables );
         return h->vars[id_of_var].truth;
 }
 }  // namespace taocp
