@@ -1,14 +1,20 @@
 ## Boolean  Basics
-Algorithm List:
-- V4 7.1.1C
+|Algorithm List|
+| :--- |
+| V4 7.1.1C|
 
 Horn functions (V4 7.1.1C) offer an interesting approach to logic by first
 solving the definite case via a specialized waterfall algorithm, followed by an
 elegant general-case solution outlined in Exercise 48. Because the Horn function
 serves as a foundational logic deduction framework (`A && B && .. => Z`), it
-remains highly practical for various real-world applications, (e.g. Vol4C).
+remains highly practical for various real-world applications, (e.g. Volume 4C).
 
 ## Backtrack Algorithm
+
+|Algorithm List|
+| :--- |
+| V4 7.2.2.B |
+| V4 7.2.2.W |
 
 The key to designing an effective backtracking algorithm lies in three main aspects:
 - A. a well-designed data structure,
@@ -16,9 +22,6 @@ The key to designing an effective backtracking algorithm lies in three main aspe
 - C. highly aggressive pruning heuristics to cut off the search space early.
 
 ### N=16 Queues
-Algorithm List:
-- V4 7.2.2.B
-- V4 7.2.2.W
 
 | Algorithm | Mems | Wall Clock (Apple M4 Max) |
 | ------------- | ------------- | --|
@@ -30,4 +33,4 @@ Algorithm List:
 
 - Focus on Volume 4A, 4B, etc
 - Write all algorithms in C++ with simple APIs.
-- Use clang-20 with c++17 only.
+- Use clang-19 above with c++17 only.
