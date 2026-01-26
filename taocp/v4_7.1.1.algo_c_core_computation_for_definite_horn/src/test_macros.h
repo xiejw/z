@@ -2,6 +2,9 @@
 //
 // === --- Test Code ------------------------------------------------------- ===
 //
+// History
+// - [2026-01-26]: V1 Simple EXPECT_TRUE.
+//
 // This file offers the macros to make testing easier.
 //
 #include <stdio.h>

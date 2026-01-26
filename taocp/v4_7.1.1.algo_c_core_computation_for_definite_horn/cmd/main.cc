@@ -1,24 +1,24 @@
-// #include "horn.h"
-
 #include <stdio.h>
 
+#include "horn.h"
 #include "log.h"
 #include "test_macros.h"
 
-// void horn_core_compute( struct horn *h );
+namespace {
+using namespace taocp;
 
-// static char *
-// test_new( void )
-// {
-//         struct horn *h = horn_new( /*num_props=*/3 );
-//         horn_free( h );
-//         return NULL;
-// }
-//
+char *
+test_new( void )
+{
+        struct horn *h = horn_new( /*num_variables=*/3 );
+        horn_free( h );
+        return NULL;
+}
+
 // static char *
 // test_core_no_progress( void )
 // {
-//         struct horn *h = horn_new( /*num_props=*/3 );
+//         struct horn *h = horn_new( /*num_variables=*/3 );
 //
 //         // 2
 //         // 2
@@ -43,7 +43,7 @@
 // static char *
 // test_core_simple( void )
 // {
-//         struct horn *h = horn_new( /*num_props=*/5 );
+//         struct horn *h = horn_new( /*num_variables=*/5 );
 //
 //         // 2
 //         // !2 || 1
@@ -74,7 +74,7 @@
 // static char *
 // test_solve_easy( void )
 // {
-//         struct horn *h = horn_new( /*num_props=*/3 );
+//         struct horn *h = horn_new( /*num_variables=*/3 );
 //
 //         // 2
 //         // 2
@@ -98,7 +98,7 @@
 // static char *
 // test_solve_no_solu( void )
 // {
-//         struct horn *h = horn_new( /*num_props=*/3 );
+//         struct horn *h = horn_new( /*num_variables=*/3 );
 //
 //         // 2
 //         // 2
@@ -123,7 +123,7 @@
 // static char *
 // test_solve_simple( void )
 // {
-//         struct horn *h = horn_new( /*num_props=*/5 );
+//         struct horn *h = horn_new( /*num_variables=*/5 );
 //
 //         // 2
 //         // !2 || 1
@@ -152,7 +152,7 @@
 // static char *
 // test_solve_simple_not_def( void )
 // {
-//         struct horn *h = horn_new( /*num_props=*/5 );
+//         struct horn *h = horn_new( /*num_variables=*/5 );
 //
 //         // 2
 //         // !2 || 1
@@ -176,7 +176,7 @@
 // static char *
 // test_solve_multiple( void )
 // {
-//         struct horn *h = horn_new( /*num_props=*/3 );
+//         struct horn *h = horn_new( /*num_variables=*/3 );
 //
 //         // 2
 //         // !2 || 1
@@ -200,7 +200,7 @@
 // static char *
 // test_solve_multiple_no_solu( void )
 // {
-//         struct horn *h = horn_new( /*num_props=*/3 );
+//         struct horn *h = horn_new( /*num_variables=*/3 );
 //
 //         // 2
 //         // !2 || 1
@@ -219,11 +219,12 @@
 //         horn_free( h );
 //         return NULL;
 // }
+}  // namespace
 
 int
 main( )
 {
-        // test_new( );
+        test_new( );
         // test_core_no_progress( );
         // test_core_simple( );
         // test_solve_easy( );
