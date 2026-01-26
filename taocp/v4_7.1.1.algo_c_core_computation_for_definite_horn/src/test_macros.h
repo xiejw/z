@@ -1,5 +1,7 @@
 // vim: ft=cpp
 //
+// forge:v1
+//
 // === --- Test Code ------------------------------------------------------- ===
 //
 // History
@@ -14,6 +16,10 @@
 //
 // === --- Assert Macros --------------------------------------------------- ===
 //
+// Usage:
+//
+//     EXPECT_TRUE(foo_return_one() == 1, "expect 1");
+//
 
 #define EXPECT_TRUE( eq_condition, msg ) \
         _EXPECT_TRUE_IMPL( eq_condition, msg, __FILE__, __LINE__ )
@@ -21,12 +27,25 @@
 //
 // === --- Registry -------------------------------------------------------- ===
 //
+// Usage
+//
+//     TEST( test_foo )
+//     {
+//             return NULL;
+//     }
+//
+//     int
+//     main( )
+//     {
+//             forge::test_suite_run( );
+//     }
+//
 #include <functional>
 #include <vector>
 
-namespace tests {
+namespace forge {
 inline std::vector<std::pair<const char *, std::function<char *( )>>> &
-registry( )
+test_suite_registry( )
 {
         static std::vector<std::pair<const char *, std::function<char *( )>>>
             funcs;
@@ -34,25 +53,27 @@ registry( )
 }
 
 inline void
-run( )
+test_suite_run( )
 {
-        for ( auto &f : registry( ) ) {
+        for ( auto &f : test_suite_registry( ) ) {
                 printf( "[ RUN ] %s", f.first );
                 f.second( );
                 printf( ".\n" );
         }
+        printf( "Test passed.\n" );
 }
-}  // namespace tests
+}  // namespace forge
 
-#define TEST( fn_name )                                                        \
-        char *fn_name( );                                                      \
-        struct fn_name##_registrar {                                           \
-                fn_name##_registrar( )                                         \
-                {                                                              \
-                        tests::registry( ).push_back( { #fn_name, fn_name } ); \
-                }                                                              \
-        };                                                                     \
-        static fn_name##_registrar fn_name##_instance;                         \
+#define TEST( fn_name )                                            \
+        char *fn_name( );                                          \
+        struct fn_name##_registrar {                               \
+                fn_name##_registrar( )                             \
+                {                                                  \
+                        ::forge::test_suite_registry( ).push_back( \
+                            { #fn_name, fn_name } );               \
+                }                                                  \
+        };                                                         \
+        static fn_name##_registrar fn_name##_instance;             \
         char                      *fn_name( )
 
 //

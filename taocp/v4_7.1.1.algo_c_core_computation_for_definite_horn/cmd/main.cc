@@ -223,6 +223,5 @@ TEST( test_new )
 int
 main( )
 {
-        tests::run( );
-        INFO( "Test passed." );
+        forge::test_suite_run( );
 }

@@ -1,6 +1,8 @@
 // vim: ft=cpp
 //
-// Log v1 (c++17)
+// forge:v1
+//
+// C++17 based Logging Library
 #pragma once
 
 #define PANIC( ... ) base::cc17::PanicImpl( __FILE__, __LINE__, __VA_ARGS__ )
