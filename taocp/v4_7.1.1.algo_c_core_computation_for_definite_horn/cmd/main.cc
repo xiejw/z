@@ -7,8 +7,7 @@
 namespace {
 using namespace taocp;
 
-char *
-test_new( void )
+TEST( test_new )
 {
         struct horn *h = horn_new( /*num_variables=*/3 );
         horn_free( h );
@@ -224,14 +223,6 @@ test_new( void )
 int
 main( )
 {
-        test_new( );
-        // test_core_no_progress( );
-        // test_core_simple( );
-        // test_solve_easy( );
-        // test_solve_no_solu( );
-        // test_solve_simple( );
-        // test_solve_simple_not_def( );
-        // test_solve_multiple( );
-        // test_solve_multiple_no_solu( );
+        tests::run( );
         INFO( "Test passed." );
 }
