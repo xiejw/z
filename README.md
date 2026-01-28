@@ -1,11 +1,12 @@
 ## Curated Project Lists
 
-### AI
+### Intelligence/AI
 
-- **Connect 4** ([c4c](./c4c)): A MCTS based AI agent which can play [connect
-  four](https://en.wikipedia.org/wiki/Connect_Four). Written in pure c (<1050L)
-  without any dependency. It is quite strong.
-  - [c4c](./c4c): Python version. Click [here](c4/README.md) to get started.
+- **Connect 4** ([c4c](./intelligence/c4c)): A MCTS based AI agent which can
+  play [connect four](https://en.wikipedia.org/wiki/Connect_Four). Written in
+  pure c (<1050L) without any dependency. It is quite strong.
+  - [c4](./intelligence/c4): Python version. Click
+    [here](intelligence/c4/README.md) to get started.
 
 ### TAOCP
 
