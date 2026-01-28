@@ -9,19 +9,21 @@
 
 ### TAOCP
 
-- **Dancing Link** ([dlink](./taocp/v4_dlink)): An advanced data structure
-  implementing backtracking algorithms, for the exact cover problem (XC). This
-  can be extended to help exact cover with colors problem (XCC).
-- **SAT Solver** ([sat](./taocp/v4_sat)): Few algorithms which aim to solve the
-  Boolean satisfiability problem (SAT).
+This section covers fundamental algorithms as presented in The Art of Computer
+Programming (TAOCP). It provides implementation details and practical code
+examples for core concepts, including Boolean basics, backtracking techniques,
+and related combinatorial algorithms.
 
+## Code Names
 
-## Project Names
+- _Forge_: Focused on foundational system libraries and design. The name signifies
+the creation of essential, high-performance building blocks—the "smithy" where
+our core infrastructure is forged. Each component is meticulously engineered to
+ensure peak performance and long-term durability.
 
-- The project name `Zion` symbolizes a foundation or stronghold (as in the "Rock
-  of Zion"), representing a core system built with vision and the pursuit of
-  excellence.
+- _Hermes_: Dedicated to advanced ML/AI system libraries. Inspired by the god of
+  speed and communication, Hermes focuses on high-velocity data flow and masters
+  the art of function approximation. It delivers elegant solutions to
+  sophisticated, real-world challenges by managing intricate low-level details
+  with absolute precision.
 
-- The project name `EOS` evokes the idea of a new dawn or a fresh beginning in
-  technology, symbolizing the revolutionary change driven by the power of
-  generative AI.
