@@ -10,9 +10,9 @@ void
 Run( SGB *g )
 {
         // Only used for assignment and comparision.
-        SGBNode *const SENT  = &g->vertices.data( )[g->vertices.size( )];
-        SGBNode *const START = &g->vertices.data( )[0];
-        size_t         n_g   = g->vertices.size( );
+        SGBNode *const SENT         = &g->vertices.data( )[g->vertices.size( )];
+        SGBNode *const START        = &g->vertices.data( )[0];
+        const size_t   NUM_VERTICES = g->vertices.size( );
 
         size_t           p;
         SGBNode         *SINK;
@@ -34,7 +34,7 @@ T1:  // Initialize
         p    = 0;
         SINK = SENT;
 
-        // T2:  // Done?
+T2:  // Done?
         if ( w == START ) return;
 
         do {
@@ -54,7 +54,7 @@ T3:  // Begin to explore from v;
 T4:  // Done with v
         if ( a == v->arcs.end( ) ) goto T7;
 
-        // T5: // Visit next arc, v -> u
+T5:  // Visit next arc, v -> u
         u = *a;
         a++;
 
@@ -67,7 +67,7 @@ T4:  // Done with v
         }
 
         // TODO; WHy???
-        if ( u == ROOT && p == n_g ) {  // Last component
+        if ( u == ROOT && p == NUM_VERTICES ) {  // Last component
                 while ( v != ROOT ) {
                         // Link into unsetteled nodes.
                         v->link = SINK;
@@ -89,16 +89,31 @@ T7:  // Finish with v;
         u = v->parent;
         if ( v->link == SENT ) goto T8;
 
-        if (v->rep < u->rep) {
-          u->rep = v->rep;
-          u->link = NULL;
+        if ( v->rep < u->rep ) {
+                u->rep  = v->rep;
+                u->link = NULL;
         }
-        // TODO
 
-        (void)SINK;
+        v->link = SINK;
+        SINK    = v;
+        goto T9;
+
 T8:  // New strong component
-        (void)ROOT;
-        (void)a;
+{
+        assert( v >= START );
+        // This is diff from the algorithm
+        size_t component_rep = NUM_VERTICES + size_t( v - START );
+        while ( SINK->rep >= v->rep ) {
+                SINK->rep = component_rep;
+                SINK      = SINK->link;
+        }
+        v->rep = component_rep;
+}
+T9:                                // Tree done?
+        if ( u == SENT ) goto T2;  // Tree done
+        v = u;
+        a = v->arc;
+        goto T4;
 };
 }  // namespace
 

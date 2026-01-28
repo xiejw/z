@@ -4,4 +4,7 @@ MODS    += ${BUILD_OBJS}/log.o
 
 include mk.tpl
 
+# Few labels in the algorithm are not used.
+CXXFLAGS += -Wno-unused-label
+
 test: run
