@@ -1,0 +1,21 @@
+name: c4x
+run-name: ${{ github.actor }} is running tests for ${{ github.workflow }}
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout z
+        uses: actions/checkout@v4
+        with:
+          path: z
+      - uses: ./z/.github/actions/base
+        with:
+          require_clang: true
+      - name: Install Openblas
+        shell: bash
+        run: sudo apt-get install -y --no-install-recommends libopenblas-dev
+      - name: Run ${{ github.workflow }} ASAN Test
+        run: make -C ${{ github.workspace }}/z/intelligence/${{ github.workflow }} ASAN=1 BLAS=1 MCTS_ITER_CNT=10 MCTS_SELF_PLAY=1 clean run
+      - name: Run ${{ github.workflow }} Release
+        run: make -C ${{ github.workspace }}/z/intelligence/${{ github.workflow }} RELEASE=1 BLAS=1 MCTS_ITER_CNT=10 MCTS_SELF_PLAY=1 clean run
