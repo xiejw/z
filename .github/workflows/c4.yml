@@ -20,6 +20,6 @@ jobs:
 
       # === --- Set up Python ---------------------------------------------- ===
       #
-      - working-directory: ${{ github.workspace }}/z/${{ github.workflow }}
+      - working-directory: ${{ github.workspace }}/z/intelligence/${{ github.workflow }}
         run:  |
           C4_SANITY_CHECK=1 ./run.sh
