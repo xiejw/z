@@ -1,12 +1,15 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <math.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+#include "tensor.h"
+
+using namespace hermes;
 
 /* === BLAS related header and kernels -------------------------------------- */
 
@@ -26,18 +29,12 @@
 
 /* === Configurations and Macros -------------------------------------------- */
 
-typedef float    f32;
-typedef uint32_t u32;
-typedef int32_t  i32;
-
 #define ROWS 6
 #define COLS 7
 
 #define BIN_DATA_FILE    ".build/tensor_data.bin" /* Tensor data dump file */
-#define MAX_DIM_LIMIT    4      /* Max dim for tensor shape. */
-#define MAX_TENSOR_LIMIT 128    /* Max number of tensors. */
-#define MAX_ELE_DISPLAY  20     /* Max number of elements to display. */
-#define BN_EPS           0.001f /* EPS for Batch norm. */
+#define MAX_TENSOR_LIMIT 128                      /* Max number of tensors. */
+#define BN_EPS           0.001f                   /* EPS for Batch norm. */
 #define MCTS_PROB_LOW_LIMIT \
         0.05f /* The low limit we allow for each MCTS node. */
 
@@ -48,8 +45,6 @@ typedef int32_t  i32;
  */
 #define MCTS_ITER_CNT 1600
 #endif
-
-#define DISABLE_SHOW_TENSOR 1
 
 #define DEBUG \
         if ( !DISABLE_SHOW_TENSOR ) printf
@@ -72,13 +67,6 @@ typedef int32_t  i32;
 /* === Tensor and NN related data structures -------------------------------- */
 
 typedef struct {
-        u32  dim;
-        u32  shape[MAX_DIM_LIMIT];
-        u32  ele_total;
-        f32 *data;
-} Tensor;
-
-typedef struct {
         u32    weight_cnt;                /* Total number of weights. */
         Tensor weights[MAX_TENSOR_LIMIT]; /* All weights. */
 } NN;
@@ -92,83 +80,6 @@ typedef struct {
         Color next_player;
         Color nn_player;
 } Game;
-
-/* === Utils to operate tensor ---------------------------------------------- */
-
-/* Display tensor elements in stdout after prompt. Number of elements to be
- * displayed is limited by MAX_ELE_DISPLAY.
- */
-void
-show_tensor( Tensor *t, const char *prompt )
-{
-        if ( DISABLE_SHOW_TENSOR ) return;
-
-        printf( "%s tensor data: ", prompt );
-        for ( u32 i = 0; i < t->ele_total && i < MAX_ELE_DISPLAY; i++ ) {
-                if ( i % 6 == 0 ) printf( "\n\t" );
-                printf( "%g, ", t->data[i] );
-        }
-        printf( "\n" );
-}
-
-/* Allocates a tensor with shape and dim but random data buffer. */
-void
-alloc_tensor( Tensor **dst, u32 dim, u32 *shape )
-{
-        Tensor *t = (Tensor *)malloc( sizeof( *t ) );
-        assert( t != NULL );
-        t->dim = dim;
-        memcpy( t->shape, shape, sizeof( u32 ) * dim );
-        *dst = t;
-
-        u32 ele_total = 1;
-        for ( u32 i = 0; i < dim; i++ ) {
-                ele_total *= shape[i];
-        }
-        t->ele_total = ele_total;
-
-        f32 *buf = (f32 *)malloc( sizeof( f32 ) * t->ele_total );
-        assert( buf != NULL );
-        t->data = buf;
-}
-
-/* Dup a tensor with the same shape and dim as src. If copy_data is non-zero,
- * the data buffer is copied as well.
- */
-void
-dup_tensor( Tensor **dst, Tensor *src, int copy_data )
-{
-        Tensor *t = (Tensor *)malloc( sizeof( *t ) );
-        assert( t != NULL );
-        memcpy( t, src, sizeof( *t ) );
-        *dst = t;
-
-        f32 *buf = (f32 *)malloc( sizeof( f32 ) * t->ele_total );
-        assert( buf != NULL );
-        t->data = buf;
-
-        if ( !copy_data ) return;
-
-        memcpy( buf, src->data, sizeof( f32 ) * t->ele_total );
-}
-
-/* Free a tensor on heap. */
-void
-free_tensor( Tensor *p )
-{
-        if ( p == NULL ) return;
-        free( p->data );
-        free( p );
-}
-
-/* Free tensor data inside a static allocated tensor array (tensors). */
-void
-free_static_tensor_data( u32 tensor_cnt, Tensor *tensors )
-{
-        for ( u32 i = 0; i < tensor_cnt; i++ ) {
-                free( tensors[i].data );
-        }
-}
 
 /* === Utils to read tensor data file --------------------------------------- */
 
