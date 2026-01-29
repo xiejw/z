@@ -1,31 +1,44 @@
+// TAOCP Vol F12A, Section 7.4.1.2 Page 10
+//
 // forge:v1
 //
 #include "graph_sgb.h"
+
+#include <algorithm>
 
 #include "assert.h"
 
 namespace taocp {
 namespace {
+
 void
-Run( SGB *g )
+RunAlgoT( SGBGraph *g )
 {
-        // Only used for assignment and comparision.
+        // Only used for assignment and comparison.
+        //
+        // NOTE: REP(SENT) is not set as 0. See special treatment in T8 how it
+        // is handled. Otherwise, SENT->rep is operated on a invalid memory
+        // slot.
+        //
         SGBNode *const SENT         = &g->vertices.data( )[g->vertices.size( )];
         SGBNode *const START        = &g->vertices.data( )[0];
         const size_t   NUM_VERTICES = g->vertices.size( );
 
-        size_t           p;
-        SGBNode         *SINK;
-        SGBNode         *ROOT;
-        SGBNode         *w;
-        SGBNode         *v;
-        SGBNode         *u;
-        SGBNode::ArcIter a;
+        // Aux vars used by the Algorithm
+        size_t           p;     // Current LOW. <= NUM_VERTICES. See T3.
+        SGBNode         *SINK;  // Top of the stack of unsettled vertices.
+        SGBNode         *ROOT;  // Root of current tree. See T2.
+        SGBNode         *v;     // Current working node. See T3.
+        SGBNode::ArcIter a;     // Current working arc. See T3.
+        SGBNode         *w;     // Current working tree root. See T2.
 
-        goto T1;
+        // Dual usage:
+        // - Tip of the current arc. See T5.
+        // - When hit T8, u is the parent of v. T9 uses it.
+        //
+        SGBNode *u;
 
 T1:  // Initialize
-
         for ( auto &v : g->vertices ) {
                 v.parent = NULL;
                 v.arc    = v.arcs.begin( );
@@ -35,9 +48,14 @@ T1:  // Initialize
         SINK = SENT;
 
 T2:  // Done?
-        if ( w == START ) return;
+
+        // Invariant:
+        // - w is the current tree root.
+        // - At the begin of T2, w is not visited yet.
+        //
 
         do {
+                if ( w == START ) return;  // g->vertices is 0 based.
                 w--;
         } while ( w->parent != NULL );
 
@@ -46,71 +64,133 @@ T2:  // Done?
         ROOT      = v;
 
 T3:  // Begin to explore from v;
-        a = v->arcs.begin( );
+
+        // Invariant:
+        // - Explore v for the first time.
+        // - The arc a is set to the beginning of the arcs (not arc).
+        // - Set rep with p and increase p.
+        //
         p++;
+        assert( p <= NUM_VERTICES );
+
+        a       = v->arcs.begin( );
         v->rep  = p;
-        v->link = SENT;
+        v->link = SENT;  // See (11)
 
 T4:  // Done with v
+
+        // The arc must belong to v.
+        assert( std::any_of( v->arcs.begin( ), v->arcs.end( ),
+                             [=]( auto it ) { return it == *a; } ) );
         if ( a == v->arcs.end( ) ) goto T7;
 
-T5:  // Visit next arc, v -> u
+T5:  // Visit next arc: v -> u
+
+        // Invariant: v -> u
+        //
         u = *a;
         a++;
 
-        // T6: // if u is new move to it
-        if ( u->parent == NULL ) {
+T6:  // if u is new move to it
+
+        // Invariant: u is the Tip of the arc a: v -> u.
+        //
+        if ( u->parent == NULL ) {  // Move to u as new v.
                 u->parent = v;
                 v->arc    = a;  // Store the state. T3 will overwrite a.
                 v         = u;
                 goto T3;
         }
 
-        // TODO; WHy???
+        // TODO; Why???
         if ( u == ROOT && p == NUM_VERTICES ) {  // Last component
                 while ( v != ROOT ) {
-                        // Link into unsetteled nodes.
+                        // Link into unsettled stack nodes.
                         v->link = SINK;
                         SINK    = v;
-                        v       = v->parent;
+
+                        v = v->parent;
                 }
+
+                // Invariant:
+                // - v is the ROOT now.
+                // - u is used for other purposes now. u is the v's parent
+                //   before goto T8 as T9, follows T8, uses u's value (the
+                //   SENT).
+                //
                 u = SENT;
                 goto T8;
         }
 
+        // Mature the arc. See paragraph before Theorem T (F12A, Page 9).
         if ( u->rep < v->rep ) {
                 v->rep  = u->rep;
-                v->link = NULL;
+                v->link = NULL;  // See (11)
         }
 
         goto T4;
 
 T7:  // Finish with v;
-        u = v->parent;
-        if ( v->link == SENT ) goto T8;
 
+        // Invariant:
+        // - v, the current working node, is finished.
+        // - u will be used for other purposes in this code block. u is the v's
+        //   parent before goto T8/T9 as T9, follows T8, uses u's value.
+        //
+        u = v->parent;  // u must be set before goto T8 as it is used in T9.
+
+        if ( v->link == SENT ) goto T8;  // See (11)
+
+        // Mature the arc. See paragraph before Theorem T (F12A, Page 9).
         if ( v->rep < u->rep ) {
                 u->rep  = v->rep;
-                u->link = NULL;
+                u->link = NULL;  // See (11)
         }
 
+        // Link into unsettled stack nodes.
         v->link = SINK;
         SINK    = v;
+
+        assert( u == v->parent );
         goto T9;
 
 T8:  // New strong component
-{
+
+        // Invariant:
+        // - v and its unsettled descendants form a strong component that will
+        //   be represented by v.
+        // - u must be the v's parent.
+        assert( u == v->parent );
         assert( v >= START );
-        // This is diff from the algorithm
-        size_t component_rep = NUM_VERTICES + size_t( v - START );
-        while ( SINK->rep >= v->rep ) {
-                SINK->rep = component_rep;
-                SINK      = SINK->link;
+
+        {
+                // This is diff from the algorithm to leverage pointer
+                // arithmetic in c++. Value must >= NUM_VERTICES.  Idea is
+                // same.
+                //
+                // See (12).
+                size_t component_rep = NUM_VERTICES + size_t( v - START );
+                while ( true ) {
+                        size_t sink_rep = SINK == SENT ? 0 : SINK->rep;
+                        if ( sink_rep < v->rep ) break;
+
+                        SINK->rep = component_rep;
+                        SINK      = SINK->link;
+                }
+                v->rep = component_rep;
         }
-        v->rep = component_rep;
-}
-T9:                                // Tree done?
-        if ( u == SENT ) goto T2;  // Tree done
+
+T9:  // Tree done?
+
+        // Invariant
+        // - u is the parent of v.
+
+        assert( u == v->parent );
+        if ( u == SENT ) goto T2;  // Tree done. See T2 of the condition.
+
+        // Otherwise, backtrack and restore v be the working node and a be the
+        // next arc. u will be set in T5.
+        //
         v = u;
         a = v->arc;
         goto T4;
@@ -118,8 +198,8 @@ T9:                                // Tree done?
 }  // namespace
 
 void
-SGB::Run( )
+SGBGraph::RunAlgoT( )
 {
-        taocp::Run( this );
+        taocp::RunAlgoT( this );
 };
 }  // namespace taocp
