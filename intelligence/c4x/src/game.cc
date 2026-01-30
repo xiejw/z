@@ -147,4 +147,36 @@ game_winner( Game *g )
         /* Still ongoing */
         return -1;
 }
+
+void
+convert_game_to_tensor_input( Tensor **dst, Game *g )
+{
+        Tensor *in;
+        u32     shape[] = { 1, 3, ROWS, COLS };
+        alloc_tensor( &in, 4, shape );
+        memset( in->data, 0, sizeof( f32 ) * 3 * ROWS * COLS );
+
+        if ( g->next_player == BLACK ) {
+                f32 *ptr = in->data + 2 * ROWS * COLS;
+                for ( int i = 0; i < ROWS * COLS; i++ ) ptr[i] = 1.0f;
+        }
+
+        Color *board     = g->board;
+        f32   *black_ptr = in->data;
+        f32   *white_ptr = in->data + 1 * ROWS * COLS;
+        for ( int row = 0; row < ROWS; row++ ) {
+                for ( int col = 0; col < COLS; col++ ) {
+                        int   idx = COL_ROW_TO_IDX( col, row );
+                        Color c   = board[idx];
+                        if ( c == NA ) continue;
+                        if ( c == BLACK ) {
+                                black_ptr[idx] = 1.0f;
+                        } else {
+                                white_ptr[idx] = 1.0f;
+                        }
+                }
+        }
+        *dst = in;
+}
+
 }  // namespace hermes
