@@ -44,7 +44,7 @@ endif
 run: compile ${BUILD}/tensor_data.bin
 
 ${BUILD}/tensor_data.bin: | ${BUILD}
-	curl -L -C - -o $@ ${DATA_FILE} && sha256sum -c checksum.txt
+	curl -L -C - -o $@ ${DATA_FILE} && sha256sum -c etc/checksum.txt
 
 test: compile
 

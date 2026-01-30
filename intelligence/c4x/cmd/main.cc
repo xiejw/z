@@ -69,7 +69,7 @@ int
 policy_nn_move( Game *g, NN *nn )
 {
         Tensor *in;
-        Valconvert_game_to_tensor_input( &in, g );
+        convert_game_to_tensor_input( &in, g );
 
         // Call nn
         //

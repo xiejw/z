@@ -31,7 +31,7 @@
 
 /* === NN -------------------------------------------------------------------
  *
- * See reference_model.py for the PyTorch reference model.
+ * See etc/reference_model.py for the PyTorch reference model.
  */
 
 namespace hermes {
