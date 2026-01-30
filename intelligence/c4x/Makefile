@@ -5,6 +5,7 @@ DATA_FILE = https://github.com/xiejw/z/releases/download/v0.0.3/tensor_data.bin
 # === Mods ---------------------------------------------------------------------
 #
 MODS    += ${BUILD}/cmd_main.o
+MODS    += ${BUILD_OBJS}/game.o
 MODS    += ${BUILD_OBJS}/log.o
 MODS    += ${BUILD_OBJS}/nn.o
 MODS    += ${BUILD_OBJS}/tensor.o

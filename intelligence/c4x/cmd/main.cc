@@ -7,15 +7,13 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "game.h"
 #include "nn.h"
 #include "tensor.h"
 
 using namespace hermes;
 
 /* === Configurations and Macros -------------------------------------------- */
-
-#define ROWS 6
-#define COLS 7
 
 #define BIN_DATA_FILE ".build/tensor_data.bin" /* Tensor data dump file */
 #define MCTS_PROB_LOW_LIMIT \
@@ -36,23 +34,11 @@ using namespace hermes;
                 exit( -1 );          \
         } while ( 0 )
 
-#define COL_ROW_TO_IDX( col, row ) ( ( row ) * COLS + ( col ) )
-
 #define RESET_TENSOR( t )         \
         do {                      \
                 free_tensor( t ); \
                 ( t ) = NULL;     \
         } while ( 0 )
-
-/* === Game play related data structures ------------------------------------ */
-
-typedef enum { NA, BLACK, WHITE } Color;
-
-typedef struct {
-        Color board[ROWS * COLS];
-        Color next_player;
-        Color nn_player;
-} Game;
 
 /* Convert game board to feature input.
  *
@@ -98,11 +84,6 @@ convert_game_to_tensor_input( Tensor **dst, Game *g )
 }
 
 /* === MCTS node and tree --------------------------------------------------- */
-
-Game *game_dup_snapshot( Game *g );
-int   game_legal_row( Game *g, int col );
-int   game_winner( Game *g );
-void  game_free( Game *g );
 
 /* The node data structure for MCTS tree. All simulation rewards information is
  * backed up and recorded in the node.
@@ -370,156 +351,6 @@ mcts_run_simulation( MCTSNode *root, int iterations )
                                 (int)iterations, progress );
                 }
         }
-}
-
-/* === Game related utilities ----------------------------------------------- */
-
-/* Creates a new game and initializes nn player randomly. */
-Game *
-game_new( void )
-{
-        Game *g = (Game *)calloc( 1, sizeof( *g ) );
-        assert( g != NULL );
-        g->next_player = BLACK;
-        g->nn_player   = ( ( rand( ) % 2 == 0 ) ? BLACK : WHITE );
-        return g;
-}
-
-void
-game_free( Game *g )
-{
-        if ( g == NULL ) return;
-        free( g );
-}
-
-Game *
-game_dup_snapshot( Game *g )
-{
-        Game *ng = (Game *)malloc( sizeof( *ng ) );
-        assert( ng != NULL );
-        memcpy( ng, g, sizeof( *ng ) );
-        return ng;
-}
-
-/* Display the board. */
-void
-show_board( Game *g )
-{
-        printf( "  " );
-        for ( int i = 0; i < COLS; i++ ) printf( " %d", i + 1 );
-        printf( "\n" );
-
-        for ( int y = 0; y < ROWS; y++ ) {
-                printf( "%d ", y + 1 );
-                for ( int x = 0; x < COLS; x++ ) {
-                        Color c = g->board[COL_ROW_TO_IDX( x, y )];
-                        if ( c == NA )
-                                printf( " ." );
-                        else if ( c == BLACK )
-                                printf( " x" );
-                        else if ( c == WHITE )
-                                printf( " o" );
-                }
-                printf( "\n" );
-        }
-}
-
-/* Return the next legal row to place a stone in column (col) or -1 if no way.
- */
-int
-game_legal_row( Game *g, int col )
-{
-        Color *board = g->board;
-        for ( int row = ROWS - 1; row >= 0; row-- ) {
-                if ( board[COL_ROW_TO_IDX( col, row )] == NA ) return row;
-        }
-        return -1;
-}
-
-/* Return BLACK or WHITE if winner exists, 0 if tie, -1 if game is still
- * ongoing.
- */
-int
-game_winner( Game *g )
-{
-        Color *board = g->board;
-        assert( (int)BLACK > 0 );
-        assert( (int)WHITE > 0 );
-        /* Pass 1: check winner. */
-        for ( int row = 0; row < ROWS; row++ ) {
-                for ( int col = 0; col < COLS; col++ ) {
-                        Color c = board[COL_ROW_TO_IDX( col, row )];
-                        if ( c == NA ) continue;
-
-                        /* Go right */
-                        {
-                                int i = 1;
-                                for ( ; i <= 3; i++ ) {
-                                        if ( col + i >= COLS ) break;
-                                        int idx =
-                                            COL_ROW_TO_IDX( col + i, row );
-                                        if ( board[idx] != c ) break;
-                                }
-
-                                if ( i == 4 ) return (int)c;
-                        }
-
-                        /* Go down */
-                        {
-                                int i = 1;
-                                for ( ; i <= 3; i++ ) {
-                                        if ( row + i >= ROWS ) break;
-                                        int idx =
-                                            COL_ROW_TO_IDX( col, row + i );
-                                        if ( board[idx] != c ) break;
-                                }
-
-                                if ( i == 4 ) return (int)c;
-                        }
-
-                        /* Go up right */
-                        {
-                                int i = 1;
-                                for ( ; i <= 3; i++ ) {
-                                        if ( row - i < 0 ) break;
-                                        if ( col + i >= COLS ) break;
-                                        int idx =
-                                            COL_ROW_TO_IDX( col + i, row - i );
-                                        if ( board[idx] != c ) break;
-                                }
-
-                                if ( i == 4 ) return (int)c;
-                        }
-
-                        /* Go down right */
-                        {
-                                int i = 1;
-                                for ( ; i <= 3; i++ ) {
-                                        if ( col + i >= COLS ) break;
-                                        if ( row + i >= ROWS ) break;
-                                        int idx =
-                                            COL_ROW_TO_IDX( col + i, row + i );
-                                        if ( board[idx] != c ) break;
-                                }
-
-                                if ( i == 4 ) return (int)c;
-                        }
-                }
-        }
-
-        /* Pass 2: check tie. */
-        int tie = 1;
-        for ( int x = 0; x < ROWS * COLS; x++ ) {
-                if ( board[x] == NA ) {
-                        tie = 0;
-                        break;
-                }
-        }
-
-        if ( tie ) return 0;
-
-        /* Still ongoing */
-        return -1;
 }
 
 int
