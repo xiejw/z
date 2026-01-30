@@ -1,6 +1,6 @@
 test:
-	make -C c4c          test && \
-	make -C taocp        test && \
+	make -C intelligence   test && \
+	make -C taocp          test && \
 	echo "We are good"
 
 clean:
