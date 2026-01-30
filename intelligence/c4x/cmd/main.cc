@@ -1,43 +1,31 @@
 #include <assert.h>
-#include <fcntl.h>
 #include <math.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "game.h"
+#include "log.h"
 #include "mcts.h"
 #include "nn.h"
 #include "tensor.h"
 
 using namespace hermes;
 
-/* === Configurations and Macros -------------------------------------------- */
+/* === --- Configurations and Macros ------------------------------------ === */
 
 #define BIN_DATA_FILE ".build/tensor_data.bin" /* Tensor data dump file */
 
+// Simulation iteration count.
+//
+// References:
+// - 1600 is quite strong but requires tons of compute. I never win.
+// -  400 might be reasonably good to play but faster.
+//
 #ifndef MCTS_ITER_CNT
-/* Simulation iteration count.
- * - 1600 is quite strong but requires tons of compute. I never win.
- * - 400 might be reasonably good to play but faster.
- */
 #define MCTS_ITER_CNT 1600
 #endif
 
-#define PANIC( msg )                 \
-        do {                         \
-                printf( "panic\n" ); \
-                printf( msg );       \
-                exit( -1 );          \
-        } while ( 0 )
-
-#define RESET_TENSOR( t )         \
-        do {                      \
-                free_tensor( t ); \
-                ( t ) = NULL;     \
-        } while ( 0 )
+/* === --- Policy ------------------------------------------------------- === */
 
 int
 policy_random_move( Game *g )
@@ -81,23 +69,23 @@ int
 policy_nn_move( Game *g, NN *nn )
 {
         Tensor *in;
-        convert_game_to_tensor_input( &in, g );
+        Valconvert_game_to_tensor_input( &in, g );
 
-        /* Call nn
-         *
-         * The output specification:
-         *
-         * - The output is a single tensor with ROWS*COLS value. Each is a
-         *   probability of the position to place next stone (even the position
-         *   is not legal move)
-         * - The index of each probability is same as COL_ROW_TO_IDX. Top left
-         *   corner is (col=0,row=0).
-         */
-        Tensor *out; /* Policy output. */
-        Tensor *value_out;
+        // Call nn
+        //
+        // The output specification:
+        //
+        // - The output is a single tensor with ROWS*COLS value. Each is a
+        //   probability of the position to place next stone (even the position
+        //   is not legal move)
+        // - The index of each probability is same as COL_ROW_TO_IDX. Top left
+        //   corner is (col=0,row=0).
+        //
+        Tensor *out;        // Policy output.
+        Tensor *value_out;  // Value output, not used.
         nn_forward( nn, in, &out, &value_out );
-        RESET_TENSOR( value_out );
-        RESET_TENSOR( in );
+        free_tensor( value_out );
+        free_tensor( in );
 
         assert( out->ele_total == ROWS * COLS );
 
@@ -117,7 +105,7 @@ policy_nn_move( Game *g, NN *nn )
                 PANIC( "is the board full???" );
         }
 
-        RESET_TENSOR( out );
+        free_tensor( out );
         return best_col;
 }
 
@@ -132,6 +120,8 @@ policy_nn_mcts_move( Game *g, NN *nn )
         return col;
 }
 
+/* === --- Play the Game ------------------------------------------------ === */
+
 void
 play_game( NN *nn )
 {
@@ -142,8 +132,6 @@ play_game( NN *nn )
                 int col, row;
 
                 if ( g->next_player == g->nn_player ) {
-                        // col = policy_random_move( g );
-                        // col = policy_nn_move( g, nn );
                         col = policy_nn_mcts_move( g, nn );
                 } else {
 #ifdef MCTS_SELF_PLAY
@@ -188,13 +176,13 @@ cleanup:
         game_free( g );
 }
 
-/* === Main ----------------------------------------------------------------- */
+/* === --- Main --------------------------------------------------------- === */
 
 int
 main( void )
 {
         srand( (unsigned)time( NULL ) );
-        NN *nn = nn_new( BIN_DATA_FILE );
+        NN *nn = nn_new( /*data_file=*/BIN_DATA_FILE );
         play_game( nn );
         nn_free( nn );
 }
