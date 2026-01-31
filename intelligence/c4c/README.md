@@ -5,7 +5,7 @@ This is a standalone C implementation of Connect Four, consisting of fewer than
 trained in Python using self-play guided by Monte Carlo Tree Search (MCTS).
 
 When a `BLAS` library is available—such as the `Accelerate` framework on
-macOs—the implementation automatically leverages it to improve performance.
+macOS—the implementation automatically leverages it to improve performance.
 
 ### Get Started
 
@@ -14,7 +14,7 @@ To play
 make RELEASE=1
 
 # If you have openblas installed on Linux, try this
-# On macOs BLAS is enabled by default.
+# On macOS BLAS is enabled by default.
 make RELEASE=1 BLAS=1
 
 # Advanced knobs
@@ -36,7 +36,7 @@ PyTorch-based version
 
 However, the MCTS agent invokes the `conv2d` operation excessively, resulting in
 a performance bottleneck. This behavior is anticipated, as `conv2d` and `matmul`
-(matrix multiplication) are among the most computationally intensive layers in
+(matrix multiplication) are among the most computationally intensive Ops in
 deep learning models.
 
 
@@ -62,7 +62,7 @@ for the algorithm).
 The `im2col` transformation incurs minimal
 overhead, while the matrix multiplication step (`matmul`) leverages the highly
 optimized `BLAS` routine `cblas_sgemm`. In local testing on macOs, this approach
-yielded a `50x`–60x performance improvement, benefiting from the `Accelerate`
+yielded a `50x`–`60x` performance improvement, benefiting from the `Accelerate`
 framework, which is enabled by default when macOs is detected.
 
 On Debian/Linux, I have tested `openblas` as follows
@@ -75,10 +75,6 @@ make RELEASE=1 BLAS=1
 On other system, once `openblas` or any `BLAS` library is installed, it should
 work as follows
 ```
-# ARCH
-sudo pacman -S blas-openblas
-CFLAGS=-I/usr/include/openblas make RELEASE=1 BLAS=1
-
 # macOS with old SDK
 export MACOSX_DEPLOYMENT_TARGET=13.3
 make RELEASE=1
