@@ -12,7 +12,7 @@ namespace taocp {
 namespace {
 
 void
-RunAlgoT( SGBGraph *g )
+RunAlgoT( std::vector<SGBNode> *vertices, std::vector<int> *component_ids )
 {
         // Only used for assignment and comparison.
         //
@@ -20,9 +20,10 @@ RunAlgoT( SGBGraph *g )
         // is handled. Otherwise, SENT->rep is operated on a invalid memory
         // slot.
         //
-        SGBNode *const SENT         = &g->vertices.data( )[g->vertices.size( )];
-        SGBNode *const START        = &g->vertices.data( )[0];
-        const size_t   NUM_VERTICES = g->vertices.size( );
+
+        SGBNode *const SENT         = &vertices->data( )[vertices->size( )];
+        SGBNode *const START        = &vertices->data( )[0];
+        const size_t   NUM_VERTICES = vertices->size( );
 
         // Aux vars used by the Algorithm
         size_t           p;     // Current LOW. <= NUM_VERTICES. See T3.
@@ -39,7 +40,7 @@ RunAlgoT( SGBGraph *g )
         SGBNode *u;
 
 T1:  // Initialize
-        for ( auto &v : g->vertices ) {
+        for ( auto &v : *vertices ) {
                 v.parent = NULL;
                 v.arc    = v.arcs.begin( );
         }
@@ -55,7 +56,7 @@ T2:  // Done?
         //
 
         do {
-                if ( w == START ) return;  // g->vertices is 0 based.
+                if ( w == START ) goto Exit;  // g->vertices is 0 based.
                 w--;
         } while ( w->parent != NULL );
 
@@ -79,9 +80,8 @@ T3:  // Begin to explore from v;
 
 T4:  // Done with v
 
-        // The arc must belong to v.
-        assert( std::any_of( v->arcs.begin( ), v->arcs.end( ),
-                             [=]( auto it ) { return it == *a; } ) );
+        // The arc a must belong to v or v.arcs.end()
+        assert( a >= v->arcs.begin( ) && a <= v->arcs.end( ) );
         if ( a == v->arcs.end( ) ) goto T7;
 
 T5:  // Visit next arc: v -> u
@@ -194,12 +194,29 @@ T9:  // Tree done?
         v = u;
         a = v->arc;
         goto T4;
+
+Exit:  // Exit routine
+
+        // Invariant
+        // -- All nodes are in some components.
+        assert( std::all_of(
+            vertices->begin( ), vertices->end( ),
+            [=]( auto &node ) { return node.rep >= NUM_VERTICES; } ) );
+
+        // Fill Component Ids
+        SGBNode *ptr   = &( vertices->data( )[0] );
+        size_t   total = vertices->size( );
+        component_ids->reserve( total );
+        for ( size_t i = 0; i < total; i++ ) {
+                component_ids->push_back( int( ptr[i].rep - NUM_VERTICES ) );
+        }
 };
 }  // namespace
 
 void
 SGBGraph::RunAlgoT( )
 {
-        taocp::RunAlgoT( this );
+        assert( this->num_vertices_expected == this->vertices.size( ) );
+        taocp::RunAlgoT( &this->vertices, &this->component_ids );
 };
 }  // namespace taocp
