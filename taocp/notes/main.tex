@@ -24,6 +24,10 @@
 % Enable section numbering
 \setcounter{secnumdepth}{3}
 
+% Make paragraph in bold font
+\let\tufteParagraph\paragraph
+\renewcommand{\paragraph}[1]{\tufteParagraph{\bf #1}}
+
 \maketitle% this prints the handout title, author, and date
 
 \section{Algorithm B - Basic Backtrack}
@@ -33,14 +37,15 @@
 \urldef{\codeAlgoBVecGo}\url{https://github.com/xiejw/z/tree/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/go}
 \urldef{\codeAlgoBVecRs}\url{https://github.com/xiejw/z/tree/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/rs}
 
-On page 30, Algorithm B\sidenote{The C++ code with {\tt goto} can be found at
-\codeAlgoB.} introduces a simple yet powerful backtracking scheme.  It is built
-on properties $(1)$ and $(2)$: namely, that $P_{l}$ holds whenever $P_{l+1}$
-holds. This monotonicity allows entire subtrees to be pruned during the search.
-A key characteristic of the algorithm is that, at each level, it systematically
-iterates over all values in the domain. While this exhaustive enumeration makes
-the algorithm conceptually simple and easy to reason about, it can result in a
-substantial amount of work during the search process.
+On Section 7.2.2 (Page 30 of Vol 4B), Algorithm B\sidenote{The C++ code with
+{\tt goto} can be found at \codeAlgoB.} introduces a simple yet powerful
+backtracking scheme.  It is built on properties $(1)$ and $(2)$: namely, that
+$P_{l}$ holds whenever $P_{l+1}$ holds. This monotonicity allows entire
+subtrees to be pruned during the search.  A key characteristic of the algorithm
+is that, at each level, it systematically iterates over all values in the
+domain. While this exhaustive enumeration makes the algorithm conceptually
+simple and easy to reason about, it can result in a substantial amount of work
+during the search process.
 
 To estimate runtime overhead effectively, memory access can serve as a reliable
 proxy. For improved code readability, a macro may be implemented to automate
@@ -55,7 +60,7 @@ the tracking of these access counts.
 Similarly, a macro can be defined to track memory write operations, ensuring
 consistent monitoring across the codebase.
 
-Optimizing the implementation to use registers\sidenote{The C++ code can be
+\paragraph{Optimization} Optimizing the implementation to use registers\sidenote{The C++ code can be
 found at \codeAlgoBVec.\vskip1.2em} instead of auxiliary data structures, such
 as the $\mathtt{A}$, $\mathtt{B}$, and $\mathtt{C}$ arrays, is an interesting
 direction that I explored. In theory, the memory access count, for $N=16$ queue
