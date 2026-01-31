@@ -31,14 +31,6 @@ struct SGBNode {
 };
 
 struct SGBGraph {
-        // === --- User Inputs --------------------------------------------- ===
-      public:
-        SGBGraph( size_t num_vertices ) : num_vertices_expected( num_vertices )
-        {
-                // Ensure the points are stable.
-                vertices.reserve( num_vertices );
-        }
-
         // === --- Internal Data Structures -------------------------------- ===
 
       private:
@@ -49,26 +41,28 @@ struct SGBGraph {
         // See RunAlgoT.
         std::vector<int> component_ids;
 
-        // === --- Public APIs --------------------------------------------- ===
-
+        // === --- User Inputs --------------------------------------------- ===
       public:
-        SGBNode *AppendVertex( )
+        // Ensure the points are stable.  So vertices is allocated.
+        SGBGraph( size_t num_vertices )
+            : vertices( num_vertices ), num_vertices_expected( num_vertices )
         {
-                assert( this->vertices.size( ) + 1 <=
-                        this->num_vertices_expected );
-                this->vertices.emplace_back( );
-                return &this->vertices.back( );
         }
 
-        // Run Algorithm T (V4F12A Strong Components) and then
-        // GetComponentIdsAfterAlgotT can be used.
+        // === --- Public APIs --------------------------------------------- ===
+      public:
+        /// Return the SGBNode at position i.
+        SGBNode *GetVertex( size_t i ) { return &this->vertices.at( i ); }
+
+        /// Run Algorithm T (V4F12A Strong Components) and then
+        /// GetComponentIdsAfterAlgotT can be used.
         void RunAlgoT( );
 
-        // Return the component ids corresponding to the vertices, one id for
-        // each vertex. The value domain for id is not defined. But it is
-        // guaranteed that
-        //
-        //     0<= id < vertices.size();
+        /// Return the component ids corresponding to the vertices, one id for
+        /// each vertex. The value domain for id is not defined. But it is
+        /// guaranteed that
+        ///
+        ///     0<= id < vertices.size();
         const std::vector<int> *GetComponentIdsAfterAlgoT( ) const
         {
                 return &component_ids;

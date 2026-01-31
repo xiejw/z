@@ -10,9 +10,6 @@ using namespace taocp;
 FORGE_TEST( test_single_node )
 {
         SGBGraph g{ 1 };
-        {
-                g.AppendVertex( );
-        }
 
         g.RunAlgoT( );
         auto ids = g.GetComponentIdsAfterAlgoT( );
@@ -27,8 +24,8 @@ FORGE_TEST( test_two_isolated_nodes )
 {
         SGBGraph g{ 2 };
         {
-                auto *v = g.AppendVertex( );
-                auto *u = g.AppendVertex( );
+                auto *v = g.GetVertex( 0 );
+                auto *u = g.GetVertex( 1 );
 
                 v->arcs.push_back( u );
         }
@@ -47,8 +44,8 @@ FORGE_TEST( test_two_connected_nodes )
 {
         SGBGraph g{ 2 };
         {
-                auto *v = g.AppendVertex( );
-                auto *u = g.AppendVertex( );
+                auto *v = g.GetVertex( 0 );
+                auto *u = g.GetVertex( 1 );
 
                 v->arcs.push_back( u );
                 u->arcs.push_back( v );
@@ -66,10 +63,10 @@ FORGE_TEST( test_two_components )
 {
         SGBGraph g{ 4 };
         {
-                auto *v = g.AppendVertex( );
-                auto *u = g.AppendVertex( );
-                auto *w = g.AppendVertex( );
-                auto *x = g.AppendVertex( );
+                auto *v = g.GetVertex( 0 );
+                auto *u = g.GetVertex( 1 );
+                auto *w = g.GetVertex( 2 );
+                auto *x = g.GetVertex( 3 );
 
                 // v <-> u <-> w
                 v->arcs.push_back( u );
