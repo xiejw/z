@@ -9,6 +9,10 @@ struct HamiltonianGraph {
         /// Number of vertices. IDs are 0, .. n-1.
         size_t n;
 
+        ///
+        size_t *ADJ;
+        size_t *NBR;
+
         /// Stores the solution. Length is n.
         size_t *EV;
         size_t *EU;
@@ -20,5 +24,8 @@ struct HamiltonianGraph {
       public:
         HamiltonianGraph( size_t n );
         ~HamiltonianGraph( );
+
+      public:
+        void RunAlgoH( );
 };
 }  // namespace taocp
