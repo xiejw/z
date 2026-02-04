@@ -13,32 +13,32 @@ MODS     += v4_7.4.1.2.algo_t_strong_components
 # MODS     += v4_sat
 
 compile:
-	@for m in $(MODS); do        \
-		make -C $$m compile; \
+	@set -e; for m in $(MODS); do        \
+		make -C $$m compile;         \
 		done
 
 test:
 ifdef ASAN
-	@for m in $(MODS); do        \
-		make -C $$m ASAN=1 test; \
+	@set -e; for m in $(MODS); do        \
+		make -C $$m ASAN=1 test;     \
 		done
 else
-	@for m in $(MODS); do        \
-		make -C $$m test;    \
+	@set -e; for m in $(MODS); do        \
+		make -C $$m test;            \
 		done
 endif
 
 fmt:
-	@for m in $(MODS); do        \
-		make -C $$m fmt; \
+	@set -e; for m in $(MODS); do        \
+		make -C $$m fmt;             \
 		done
 
 clean:
-	@for m in $(MODS); do        \
-		make -C $$m clean; \
+	@set -e; for m in $(MODS); do        \
+		make -C $$m clean;           \
 		done
 
 release:
-	@for m in $(MODS); do        \
-		make -C $$m release; \
+	@set -e; for m in $(MODS); do        \
+		make -C $$m release;         \
 		done

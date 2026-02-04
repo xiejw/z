@@ -35,7 +35,9 @@ struct SGBGraph {
 
       private:
         std::vector<SGBNode> vertices;
-        size_t               num_vertices_expected;
+#ifndef NDEBUG
+        size_t num_vertices_expected;
+#endif
 
       private:
         // See RunAlgoT.
@@ -45,7 +47,11 @@ struct SGBGraph {
       public:
         // Ensure the points are stable.  So vertices is allocated.
         SGBGraph( size_t num_vertices )
-            : vertices( num_vertices ), num_vertices_expected( num_vertices )
+            : vertices( num_vertices )
+#ifndef NDEBUG
+              ,
+              num_vertices_expected( num_vertices )
+#endif
         {
         }
 

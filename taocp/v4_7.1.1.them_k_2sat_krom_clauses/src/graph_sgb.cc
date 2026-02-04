@@ -4,9 +4,9 @@
 //
 #include "graph_sgb.h"
 
+#include <assert.h>
+#include <stdio.h>
 #include <algorithm>
-
-#include "assert.h"
 
 #define DEBUG 0
 #define DEBUG_PRINTF \
@@ -222,7 +222,7 @@ DebugCheckVertexInvariant( std::vector<SGBNode> *vertices )
 #ifdef NDEBUG
         (void)vertices;
         return;
-#endif
+#else
 
         for ( auto &n : *vertices ) {
                 DEBUG_PRINTF( "\nNode\n" );
@@ -250,6 +250,8 @@ DebugCheckVertexInvariant( std::vector<SGBNode> *vertices )
         arc_loop:
                 assert( found );
         }
+
+#endif
 }
 
 }  // namespace

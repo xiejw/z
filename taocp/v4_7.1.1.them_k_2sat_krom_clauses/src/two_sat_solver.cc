@@ -1,6 +1,7 @@
 #include "two_sat_solver.h"
 
 #include <assert.h>
+
 namespace taocp {
 
 TwoSatSolver::TwoSatSolver( size_t num_vars ) : n( num_vars ), g{ 2 * num_vars }
