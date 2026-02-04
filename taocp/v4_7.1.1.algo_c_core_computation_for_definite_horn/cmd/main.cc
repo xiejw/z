@@ -1,3 +1,5 @@
+// See horn.h
+//
 #include <stdio.h>
 
 #include "horn.h"
