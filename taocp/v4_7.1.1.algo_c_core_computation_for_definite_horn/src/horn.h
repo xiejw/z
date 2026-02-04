@@ -9,6 +9,12 @@
 // - Compures the core of definite horn function.
 // - Concludes whether horn function is satisfiable.
 //
+// Key idea:
+//
+//     Linealy flow information from conclucions (right hand side, the Core) to
+//     propositional variables (left hand side) and see whether there is
+//     solutions.
+//
 // === --- Definition of Horn Clause
 //
 // A Horn clause is a clause (a disjunction of literals) with at most one
