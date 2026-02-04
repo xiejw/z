@@ -2,6 +2,7 @@
 |Algorithm List|
 | :--- |
 | V4 7.1.1C|
+| V4 7.1.1 Theorem K|
 
 Horn functions (V4 7.1.1C) offer an interesting approach to logic by first
 solving the definite case via a specialized waterfall algorithm, followed by an
@@ -9,6 +10,10 @@ elegant general-case solution outlined in Exercise 48. Because the Horn function
 serves as a foundational logic deduction framework ($A \land B \land \dots
 \Rightarrow Z$), it remains highly practical for various real-world
 applications, (e.g. Consistency in Section 7.2.2.3-(88)).
+
+2SAT is an AND of Krom clauses. As a quite special case, its satisfiability can
+be concluded with almost linear algorithm due to V4, 7.1.1 Theorem K and
+Exercise 54 (Page 86).
 
 ## Backtrack Algorithm
 

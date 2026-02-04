@@ -76,6 +76,7 @@ TwoSatSolver::CheckSatisfiability( )
                 }
         }
 
+        // Exercise 54 (Page 86).
         for ( size_t component_id = 0; component_id < ids->size( );
               component_id++ ) {
                 const size_t SENT           = 2 * this->n;
