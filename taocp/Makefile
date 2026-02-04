@@ -1,8 +1,14 @@
 MODS     += v4_7.1.1.algo_c_core_computation_for_definite_horn
+MODS     += v4_7.1.1.them_k_2sat_krom_clauses
+
 MODS     += v4_7.2.2.algo_b_basic_backtrack
 MODS     += v4_7.2.2.algo_b_basic_backtrack_bit_vec
 MODS     += v4_7.2.2.algo_w_walker_backtrack
+
 MODS     += v4_7.2.2.4.algo_h_all_hamiltonian_cycles
+
+MODS     += v4_7.4.1.2.algo_t_strong_components
+
 # MODS     += v4_dlink
 # MODS     += v4_sat
 
