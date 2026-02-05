@@ -1,0 +1,25 @@
+\usepackage{graphicx} % allow embedded images
+  \setkeys{Gin}{width=\linewidth,totalheight=\textheight,keepaspectratio}
+  \graphicspath{{graphics/}} % set of paths to search for images
+\usepackage{amsmath}  % extended mathematics
+\usepackage{booktabs} % book-quality tables
+\usepackage{units}    % non-stacked fractions and better unit spacing
+\usepackage{multicol} % multiple column layout facilities
+\usepackage{lipsum}   % filler text
+\usepackage{fancyvrb} % extended verbatim environments
+  \fvset{fontsize=\normalsize}% default font size for fancy-verbatim environments
+
+% Fully justify the main text
+\usepackage{ragged2e}
+\AtBeginDocument{\justifying}
+\begin{document}
+
+% Enable section numbering
+\setcounter{secnumdepth}{3}
+
+% Make paragraph in bold font
+\let\tufteParagraph\paragraph
+\renewcommand{\paragraph}[1]{\tufteParagraph{\bf #1}}
+
+% Some common skips used in sidenote to avoid notes are too close to each other.
+\newcommand{\sidenoteskip}{\vskip1.2em{}}

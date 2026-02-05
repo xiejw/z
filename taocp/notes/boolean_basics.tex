@@ -1,0 +1,14 @@
+\section{Boolean Basics}
+
+\urldef{\codeAlgoCHorn}\url{https://github.com/xiejw/z/blob/9a1c1e49a995da6cae7bb3821de3899e94e6f020/taocp/v4_7.1.1.algo_c_core_computation_for_definite_horn/src/horn.cc#L60-L106}
+\urldef{\codeTheoKKrom}\url{https://github.com/xiejw/z/blob/9a1c1e49a995da6cae7bb3821de3899e94e6f020/taocp/v4_7.1.1.theo_k_2sat_krom_clauses/src/two_sat_solver.cc#L31-L73}
+
+Section 7.1.1 examines two specialized functions: Horn\sidenote{See code at
+\codeAlgoCHorn.\sidenoteskip} and Krom\sidenote{See code at \codeTheoKKrom.}.
+Due to their unique structures, the satisfiability of both functions can be
+determined using linear-time algorithms. A closer analysis reveals the inherent
+beauty of these approaches; by utilizing elegant data structures—such as linked
+lists for pending variable assertions and strongly connected component (SCC)
+graphs for 2-SAT relationships—the deduction proceeds through a series of
+graceful logical steps, leveraging precise information to reach a definitive
+conclusion.

@@ -1,89 +1,14 @@
 \documentclass{tufte-handout}
 
+\input{format}
+
 \title{Reading Notes - Algorithm Backtracking%
   \thanks{This is the notes for TAOCP Vol 4.}}
-
 \author{Jianwei}
+\maketitle
 
-\usepackage{graphicx} % allow embedded images
-  \setkeys{Gin}{width=\linewidth,totalheight=\textheight,keepaspectratio}
-  \graphicspath{{graphics/}} % set of paths to search for images
-\usepackage{amsmath}  % extended mathematics
-\usepackage{booktabs} % book-quality tables
-\usepackage{units}    % non-stacked fractions and better unit spacing
-\usepackage{multicol} % multiple column layout facilities
-\usepackage{lipsum}   % filler text
-\usepackage{fancyvrb} % extended verbatim environments
-  \fvset{fontsize=\normalsize}% default font size for fancy-verbatim environments
-
-% Fully justify the main text
-\usepackage{ragged2e}
-\AtBeginDocument{\justifying}
-\begin{document}
-
-% Enable section numbering
-\setcounter{secnumdepth}{3}
-
-% Make paragraph in bold font
-\let\tufteParagraph\paragraph
-\renewcommand{\paragraph}[1]{\tufteParagraph{\bf #1}}
-
-\maketitle% this prints the handout title, author, and date
-
-\section{Algorithm B - Basic Backtrack}
-
-\urldef{\codeAlgoB}\url{https://github.com/xiejw/z/blob/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack/cmd/main.cc#L44-L103}
-\urldef{\codeAlgoBVec}\url{https://github.com/xiejw/z/blob/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/cmd/main.cc#L58-L121}
-\urldef{\codeAlgoBVecGo}\url{https://github.com/xiejw/z/tree/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/go}
-\urldef{\codeAlgoBVecRs}\url{https://github.com/xiejw/z/tree/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/rs}
-
-On Section 7.2.2 (Page 30 of Vol 4B), Algorithm B\sidenote{The C++ code with
-{\tt goto} can be found at \codeAlgoB.} introduces a simple yet powerful
-backtracking scheme.  It is built on properties $(1)$ and $(2)$: namely, that
-$P_{l}$ holds whenever $P_{l+1}$ holds. This monotonicity allows entire
-subtrees to be pruned during the search.  A key characteristic of the algorithm
-is that, at each level, it systematically iterates over all values in the
-domain. While this exhaustive enumeration makes the algorithm conceptually
-simple and easy to reason about, it can result in a substantial amount of work
-during the search process.
-
-To estimate runtime overhead effectively, memory access can serve as a reliable
-proxy. For improved code readability, a macro may be implemented to automate
-the tracking of these access counts.
-\begin{verbatim}
-#ifdef COUNTER
-#define MEM_READ(p, i) (counter++, p[i])
-#else
-#define MEM_READ(p, i) p[i]
-#endif
-\end{verbatim}
-Similarly, a macro can be defined to track memory write operations, ensuring
-consistent monitoring across the codebase.
-
-\paragraph{Optimization} Optimizing the implementation to use registers\sidenote{The C++ code can be
-found at \codeAlgoBVec.\vskip1.2em} instead of auxiliary data structures, such
-as the $\mathtt{A}$, $\mathtt{B}$, and $\mathtt{C}$ arrays, is an interesting
-direction that I explored. In theory, the memory access count, for $N=16$ queue
-problem, should reduce from 34 billion mems to 9 billion mems; however, I did
-not find it to be sufficiently fast: 40 seconds for memory version vs 33
-seconds register version\sidenote{Tested on Apple Silicon M4 Max with
-\texttt{clang++17} and \texttt{CXXFLAGS=}\texttt{-DNDEBUG -O3 -march=native
--flto}}.  My hypothesis is that all data already resides within cache lines,
-making the cost of memory reads and writes negligible.
-
-In addition to C++, I implemented the register-based bit-vector version in
-Go\sidenote{See Go here: \codeAlgoBVecGo.\vskip1.2em}, and Rust\sidenote{See
-Rust here: \codeAlgoBVecRs.}. For Rust, I explored unsafe implementations,
-disabled bounds checking, and enabled aggressive inlining and native
-optimizations. The measured wall-clock runtimes are 33 seconds for C++, 47
-seconds for Go, and 44 seconds for Rust.  Implementing the algorithm in Rust
-presented unique challenges due to the language's lack of a {\tt goto}
-statement. This necessitated a shift toward a structured programming model,
-leveraging recursive function calls in conjunction with iterative loops. In the
-original version, the $\mathtt{X}$ array functions as a set of lightweight
-stack frames, effectively managing state in a manner analogous to recursive
-function calls.
-
+\input{boolean_basics}
+\input{basic_backtrack}
 
 \end{document}
 
