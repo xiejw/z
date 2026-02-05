@@ -11,9 +11,11 @@ serves as a foundational logic deduction framework ($A \land B \land \dots
 \Rightarrow Z$), it remains highly practical for various real-world
 applications, (e.g. Consistency in Section 7.2.2.3-(88)).
 
-2SAT is an AND of Krom clauses. As a quite special case, its satisfiability can
-be concluded with almost linear algorithm due to V4, 7.1.1 Theorem K and
-Exercise 54 (Page 86).
+2-SAT is a conjunction of Krom clauses. As a special case, its satisfiability
+can be determined in almost linear time, as shown by Theorem K in Section V4,
+7.1.1 and Exercise 54 (p. 86). This provides an excellent example of how
+graph-theoretic concepts—specifically strongly connected components—can be
+applied to solve challenging problems with linear-time complexity.
 
 ## Backtrack Algorithm
 

@@ -11,7 +11,7 @@ FORGE_TEST( test_single_node_sat )
         // a || C(a)          C(a) -> C(a)
         TwoSatSolver s{ 1 };
         const size_t a = 0;
-        s.AddKromClause( a, s.GetCompVarId( a ) );
+        s.AddKromClause( a, s.GetComplementId( a ) );
         bool sat = s.CheckSatisfiability( );
 
         EXPECT_TRUE( sat, "true" );
@@ -26,7 +26,7 @@ FORGE_TEST( test_single_node_constradict )
         TwoSatSolver s{ 1 };
         const size_t a = 0;
         s.AddKromClause( a, a );
-        s.AddKromClause( s.GetCompVarId( a ), s.GetCompVarId( a ) );
+        s.AddKromClause( s.GetComplementId( a ), s.GetComplementId( a ) );
         bool sat = s.CheckSatisfiability( );
 
         EXPECT_TRUE( !sat, "not sat" );
@@ -41,8 +41,8 @@ FORGE_TEST( test_two_nodes )
         TwoSatSolver s{ 2 };
         const size_t a = 0;
         const size_t b = 1;
-        s.AddKromClause( s.GetCompVarId( a ), s.GetCompVarId( b ) );
-        s.AddKromClause( b, s.GetCompVarId( a ) );
+        s.AddKromClause( s.GetComplementId( a ), s.GetComplementId( b ) );
+        s.AddKromClause( b, s.GetComplementId( a ) );
         bool sat = s.CheckSatisfiability( );
 
         EXPECT_TRUE( sat, "true" );
@@ -62,22 +62,22 @@ FORGE_TEST( test_comedians )
         const size_t y = 5;
         const size_t z = 6;
 
-        s.AddKromClause( s.GetCompVarId( t ), s.GetCompVarId( w ) );
-        s.AddKromClause( s.GetCompVarId( u ), s.GetCompVarId( z ) );
-        s.AddKromClause( u, s.GetCompVarId( y ) );
+        s.AddKromClause( s.GetComplementId( t ), s.GetComplementId( w ) );
+        s.AddKromClause( s.GetComplementId( u ), s.GetComplementId( z ) );
+        s.AddKromClause( u, s.GetComplementId( y ) );
         s.AddKromClause( u, z );
-        s.AddKromClause( s.GetCompVarId( y ), z );
-        s.AddKromClause( t, s.GetCompVarId( x ) );
+        s.AddKromClause( s.GetComplementId( y ), z );
+        s.AddKromClause( t, s.GetComplementId( x ) );
         s.AddKromClause( t, z );
-        s.AddKromClause( s.GetCompVarId( x ), z );
-        s.AddKromClause( s.GetCompVarId( t ), s.GetCompVarId( z ) );
-        s.AddKromClause( s.GetCompVarId( v ), y );
-        s.AddKromClause( v, s.GetCompVarId( w ) );
-        s.AddKromClause( v, s.GetCompVarId( y ) );
-        s.AddKromClause( s.GetCompVarId( w ), s.GetCompVarId( y ) );
+        s.AddKromClause( s.GetComplementId( x ), z );
+        s.AddKromClause( s.GetComplementId( t ), s.GetComplementId( z ) );
+        s.AddKromClause( s.GetComplementId( v ), y );
+        s.AddKromClause( v, s.GetComplementId( w ) );
+        s.AddKromClause( v, s.GetComplementId( y ) );
+        s.AddKromClause( s.GetComplementId( w ), s.GetComplementId( y ) );
         s.AddKromClause( u, x );
-        s.AddKromClause( s.GetCompVarId( u ), v );
-        s.AddKromClause( s.GetCompVarId( v ), s.GetCompVarId( x ) );
+        s.AddKromClause( s.GetComplementId( u ), v );
+        s.AddKromClause( s.GetComplementId( v ), s.GetComplementId( x ) );
 
         bool sat = s.CheckSatisfiability( );
 
