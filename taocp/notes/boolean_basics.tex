@@ -2,6 +2,7 @@
 
 \urldef{\codeAlgoCHorn}\url{https://github.com/xiejw/z/blob/9a1c1e49a995da6cae7bb3821de3899e94e6f020/taocp/v4_7.1.1.algo_c_core_computation_for_definite_horn/src/horn.cc#L60-L106}
 \urldef{\codeTheoKKrom}\url{https://github.com/xiejw/z/blob/9a1c1e49a995da6cae7bb3821de3899e94e6f020/taocp/v4_7.1.1.theo_k_2sat_krom_clauses/src/two_sat_solver.cc#L31-L73}
+\urldef{\codeTheoKKromAlgoT}\url{https://github.com/xiejw/z/blob/9a1c1e49a995da6cae7bb3821de3899e94e6f020/taocp/v4_7.1.1.theo_k_2sat_krom_clauses/src/graph_sgb.cc#L161-L184}
 
 Section 7.1.1 examines two specialized functions: Horn\sidenote{See code at
 \codeAlgoCHorn.\sidenoteskip} and Krom\sidenote{See code at \codeTheoKKrom.}.
@@ -12,3 +13,16 @@ lists for pending variable assertions and strongly connected component (SCC)
 graphs for 2-SAT relationships—the deduction proceeds through a series of
 graceful logical steps, leveraging precise information to reach a definitive
 conclusion.
+
+\paragraph{Optimization}
+The implementation for the Krom function is structured in two distinct stages:
+first, it invokes Algorithm T (Section 7.4.1.2) to identify all strongly
+connected components; this is followed by an efficient verification procedure—as
+outlined in Exercise 54—to determine satisfiability. A key optimization involves
+checking whether a variable and its complement coexist within the same
+component. Specifically, within step T8\sidenote{See \texttt{T8} at
+\codeTheoKKromAlgoT.}, as each new strongly connected component is identified,
+the initial node is recorded as $u_1$ (per Exercise 54, page 86), allowing for
+an in-place validation of all nodes within that specific component.
+
+
