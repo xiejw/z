@@ -39,11 +39,14 @@ The key to designing an effective backtracking algorithm lies in three main aspe
 
 ## Components and Traversal
 
+|Algorithm List|
+| :--- |
+| V4 7.4.1.2.T |
+
 In Pre-Fascicle 12A, the elegant strongly connected components algorithm is
 examined in detail, including its application to 2-SAT (Boolean satisfiability).
 It perfectly exemplifies an algorithm that achieves "intelligence" not through
 unnecessary complexity, but through the strategic placement of simple data.
-
 
 ## TODO
 
