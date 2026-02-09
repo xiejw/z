@@ -4,6 +4,7 @@
 \urldef{\codeAlgoBVec}\url{https://github.com/xiejw/z/blob/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/cmd/main.cc#L58-L121}
 \urldef{\codeAlgoBVecGo}\url{https://github.com/xiejw/z/tree/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/go}
 \urldef{\codeAlgoBVecRs}\url{https://github.com/xiejw/z/tree/47370b796e4e24f6f80f883fc1bf3df05fc58446/taocp/v4_algo_b_basic_backtrack_bit_vec/rs}
+\urldef{\codeAlgoWaker}\url{https://github.com/xiejw/z/blob/73e57f6dff96450fcf66c088c3d55bbc5f7dd7e4/taocp/v4_7.2.2.algo_w_walker_backtrack/cmd/main.cc#L231-L234}
 
 On Section 7.2.2 (Page 30 of Vol 4B), Algorithm B\sidenote{The C++ code with
 {\tt goto} can be found at \codeAlgoB.} introduces a simple yet powerful
@@ -53,3 +54,52 @@ original version, the $\mathtt{X}$ array functions as a set of lightweight
 stack frames, effectively managing state in a manner analogous to recursive
 function calls.
 
+\paragraph{Walker's Backtrack}
+
+Initially, it was surprising that Walker's method (Algorithm 7.2.2W, The Art of
+Computer Programming, Vol. 4A) would be recommended, given its higher memory
+access count. On the surface, both algorithms traverse same number of
+nodes in the branching tree. In fact, basic backtracking—leveraging
+register-stored states as seen in Algorithm B*—appears more efficient due to
+its significantly lower memory overhead.
+
+However, post-optimization benchmarks reveal a stark contrast: Walker's
+Backtrack completed the task in 4.7 seconds, while Basic Backtrack required 33
+seconds. Deep profiling explains this disparity: although node counts are
+comparable, Algorithm 7.2.2W employs aggressive pruning heuristics. This allows it
+to trigger backtrack branches only 400 million times, compared to the
+staggering 16.8 trillion backtrack operations executed by the basic backtrack
+7.2.2B* algorithm.
+
+\begin{table}[ht]
+  \centering
+  \caption{Backtrack for $N=16$ Queues}
+  \begin{tabular}{|l|c|r|}
+    \hline
+    \textbf{Profiling} & \textbf{Basic Backtrack} & \textbf{Walker's Backtrack} \\
+    \hline
+    $\#$ of Mems           & \textbf{2'282'380'604}  & 6'952'497'635 \\
+    $\#$ of Nodes          & 1'141'190'302           & 1'141'190'302 \\
+    $\#$ of Mems per Node  &             \textbf{2}  &          6.09 \\
+    $\#$ of $B_3^*\rightarrow{}B_4^*$ or $W_3\rightarrow{}W_4$
+                           & 16'881'494'354    & \textbf{400'742'864} \\
+    Wall time              & 33 seconds        & \textbf{4.7} seconds \\
+    \hline
+  \end{tabular}
+\end{table}
+
+Furthermore, by meticulously aligning my optimization strategy with the memory
+access counts reported in TAOCP, I was able to significantly reduce memory
+overhead. By refactoring the logic to carry state within registers across label
+jumps and implementing strategic early-exit conditions, I eliminated a
+substantial volume of redundant memory accesses. These refinements proved so
+effective that the resulting execution speeds actually surpassed the benchmark
+results documented in the text.
+
+The efficiency gains stem from minimizing redundant data movement. Instead of a
+monolithic `load-then-check' approach, the optimized logic performs a
+lightweight check of the backtrack conditions using minimal state. This
+early-jump mechanism\sidenote{See the simple early-jump at \codeAlgoWaker.}
+bypasses the heavy memory-load cycle whenever a branch can be pruned, allowing
+the implementation to outperform standard benchmarks by avoiding the primary
+bottleneck of state-restoration overhead.
