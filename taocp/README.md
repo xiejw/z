@@ -37,6 +37,14 @@ The key to designing an effective backtracking algorithm lies in three main aspe
 | V4 7.2.2B Basic backtrack+Bit vector  | 2'282'380'604  | 33 secs|
 | V4 7.2.2W Walker's backtrack  | 6'893'407'587  | 4.7 secs|
 
+## Components and Traversal
+
+In Pre-Fascicle 12A, the elegant strongly connected components algorithm is
+examined in detail, including its application to 2-SAT (Boolean satisfiability).
+It perfectly exemplifies an algorithm that achieves "intelligence" not through
+unnecessary complexity, but through the strategic placement of simple data.
+
+
 ## TODO
 
 - Focus on Volume 4A, 4B, etc

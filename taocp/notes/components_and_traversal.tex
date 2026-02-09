@@ -1,0 +1,29 @@
+\section{Components and Traversal}
+
+\urldef{\wikipediaStrongConnectedComponents}\url{https://en.wikipedia.org/wiki/Tarjan%27s_strongly_connected_components_algorithm}
+\urldef{\codeAlgoTStrongConnectedComponents}\url{https://github.com/xiejw/z/blob/7dcea1ad9d450bff76aa87ec102bf6d7140a1134/taocp/v4_7.4.1.2.algo_t_strong_components/src/graph_sgb.cc#L15-L214}
+
+There is a distinct beauty in Algorithm 7.4.1.2T; it avoids the heavy-handedness
+of global scans in favor of a singular, elegant pass. By allowing the
+\texttt{LOW} value to cascade through the graph's hierarchy, the algorithm
+listens to the local state of each vertex to pinpoint the exact moment a
+component is born. It exemplifies the brilliance of an algorithm that makes
+`smart' decisions not through complexity, but through the perfect placement of
+simple information.
+
+\paragraph{Iterative DFS}
+Upon closer inspection, Algorithm T follows an iterative Depth-First Search
+(DFS) structure characterized by precise stack management and explicit control
+flow jumps. This design ensures that all memory allocations, stores, and loads
+remain transparent. However, these advantages come with a trade-off: the
+algorithm requires rigorous engineering to maintain critical invariants. I have
+documented these invariants extensively within the codebase\sidenote{See code at
+\codeAlgoTStrongConnectedComponents.} to ensure clarity and maintainability.
+
+\paragraph{Recursive DFS}
+In contrast, it is more common to conceptualize and implement this process using
+recursive function calls, as seen in the standard Wikipedia
+implementation\sidenote{See psedu code at \wikipediaStrongConnectedComponents.}.
+However, this approach carries the risk of stack overflow when processing large
+graphs and tends to obscure the inherent overhead of frequent function calls.
+
