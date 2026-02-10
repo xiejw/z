@@ -1,9 +1,17 @@
+// forge:v1
 #include "dlink.h"
 
 #include <assert.h>
 #include <stdio.h>
 
-/* === --- Data Structures -------------------------------------------------- */
+
+/*
+
+   namespace taocp {
+
+   }
+
+// === --- Data Structures --------------------------------------------------
 
 struct dlink_node {
         size_t id;
@@ -18,17 +26,8 @@ struct dlink_node {
         void *data;  // unowned.
 };
 
-// The dancing link table used to solve the problem.
-struct dlink_tbl {
-#ifndef NDEBUG
-        size_t num_items;
-#endif
-        size_t             num_nodes_total; /* include items and system nodes */
-        size_t             num_nodes_added;
-        struct dlink_node *nodes;
-};
 
-/* === --- Private helper utils --------------------------------------------- */
+// === --- Private helper utils ---------------------------------------------
 
 #define PANIC( )                     \
         do {                         \
@@ -36,7 +35,7 @@ struct dlink_tbl {
                 exit( -1 );          \
         } while ( 0 )
 
-/* fill a dlink node to initialize it. */
+// fill a dlink node to initialize it.
 static void
 dlink_fill_node( struct dlink_node *node, size_t id )
 {
@@ -48,7 +47,7 @@ dlink_fill_node( struct dlink_node *node, size_t id )
         node->c  = 0;
 }
 
-/* Link the `id` into table after node `end` (horizantal double link) */
+// Link the `id` into table after node `end` (horizantal double link)
 static void
 dlink_link_lr( struct dlink_node *h, size_t end, size_t id )
 {
@@ -59,7 +58,7 @@ dlink_link_lr( struct dlink_node *h, size_t end, size_t id )
         h[p->r].l            = id;
 }
 
-/* Link the `id` with item column `item_id` (vertical double link).  */
+// Link the `id` with item column `item_id` (vertical double link).
 static void
 dlink_link_ud( struct dlink_node *h, size_t item_id, size_t id )
 {
@@ -76,7 +75,7 @@ dlink_link_ud( struct dlink_node *h, size_t item_id, size_t id )
         p->u          = id_end;
 }
 
-/* Covers a item in the table and unlink all options linked with this item. */
+// Covers a item in the table and unlink all options linked with this item.
 static void
 dlink_cover_item_impl( struct dlink_node *h, size_t item_id )
 {
@@ -91,7 +90,7 @@ dlink_cover_item_impl( struct dlink_node *h, size_t item_id )
         }
 }
 
-/* Undo dlink_cover_item_impl */
+// Undo dlink_cover_item_impl
 static void
 dlink_uncover_item_impl( struct dlink_node *h, size_t item_id )
 {
@@ -139,12 +138,12 @@ dlink_search_impl( struct dlink_tbl *p, size_t *sols, size_t *num_sol,
         return ENOTEXIST;
 }
 
-/* === --- Implementation --------------------------------------------------- */
+// === --- Implementation ---------------------------------------------------
 
 struct dlink_tbl *
 dlink_new( size_t n_items, size_t n_opt_nodes )
 {
-        /* One time allocate all memories. */
+        // One time allocate all memories.
         struct dlink_tbl *p = malloc( sizeof( *p ) );
         assert( p != NULL );
         size_t total_reserved_nodes_count = 1 + n_items + n_opt_nodes;
@@ -159,8 +158,8 @@ dlink_new( size_t n_items, size_t n_opt_nodes )
         assert( nodes != NULL );
         p->nodes = nodes;
 
-        /* One time fill all column headers. */
-        dlink_fill_node( &nodes[0], /*id=*/0 );
+        // One time fill all column headers.
+        dlink_fill_node( &nodes[0], 0 );
         for ( size_t i = 1; i <= n_items; i++ ) {
                 dlink_fill_node( &nodes[i], i );
                 dlink_link_lr( nodes, i - 1, i );
@@ -229,3 +228,4 @@ dlink_search( struct dlink_tbl *p, size_t *sols, size_t *num_sol )
         if ( OK == dlink_search_impl( p, sols, num_sol, 0 ) ) return OK;
         return ENOTEXIST;
 }
+*/

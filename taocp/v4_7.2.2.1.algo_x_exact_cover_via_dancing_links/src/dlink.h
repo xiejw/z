@@ -1,12 +1,25 @@
-#ifndef ADT_DLINK_H_
-#define ADT_DLINK_H_
+// vim: ft=cpp
+// forge:v1
+//
+// See README.md for data structure.
+#pragma once
 
 #include <stdlib.h>
 
-#include <zion/zion.h>
+// === --- APIs ------------------------------------------------------------ ===
+namespace taocp {
+struct DLinkTable {
+      private:
+        size_t n_items;
+        size_t n_options;
+        size_t n_option_nodes;
 
-// === --- APIs ----------------------------------------------------------------
+      public:
+        DLinkTable( size_t n_items, size_t n_options, size_t n_option_nodes );
+};
+}  // namespace taocp
 
+/*
 // Forward declaration.
 struct dlink_tbl;
 
@@ -50,4 +63,4 @@ error_t dlink_search( struct dlink_tbl *p, size_t *sol, _OUT_ size_t *num_sol );
 // Typically, node_id is obtained from the sol array filled by dlink_search.
 void *dlink_get_node_data( struct dlink_tbl *p, size_t node_id );
 
-#endif /* ADT_DLINK_H_ */
+ */
