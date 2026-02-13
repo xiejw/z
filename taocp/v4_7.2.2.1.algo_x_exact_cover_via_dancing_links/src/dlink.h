@@ -4,37 +4,51 @@
 // See README.md for data structure.
 #pragma once
 
+#include <vector>
+
 #include <stdlib.h>
 
 // === --- APIs ------------------------------------------------------------ ===
 namespace taocp {
+struct DLinkNode;
+
 struct DLinkTable {
       private:
         size_t n_items;
         size_t n_options;
         size_t n_option_nodes;
 
+        // Raw mem used by the algorithm.
+        std::vector<DLinkNode> mem;
+
+        // The pointer to the horizontal item list. The memory is backed by the
+        // mem.
+        DLinkNode *item_list;
+        size_t     item_list_size;
+
+        // The pointer to the dancing link table, including the vertical
+        // headers, spacers and options. The memory is backed by the mem.
+        DLinkNode *table;
+        size_t     table_size;
+
       public:
+        // Creates a new dancing link table with all necessary memory
+        // allocations.
+        //
+        // User must specify the number of items (n_items), number of options
+        // (n_options), and number of nodes in all options (n_option_nodes)
+        // ahead of time. They cannot be changed.
+        //
+        // The number of spacers will be deduced.
         DLinkTable( size_t n_items, size_t n_options, size_t n_option_nodes );
+
+      public:
+        DLinkNode *GetHorizontalItem( size_t i );
+        DLinkNode *GetTableItem( size_t i );
 };
 }  // namespace taocp
 
 /*
-// Forward declaration.
-struct dlink_tbl;
-
-// Creates a new dancing link (dlink) table with all necessary memory
-// allocations.
-//
-// User must specify the number of items (n_items) and number of nodes in all
-// options (n_opt_nodes) ahead of time. They cannot be changed.
-//
-// Memory and Initialization:
-// - One time allocation to reserve in total 1 + n_items + n_opt_nodes
-//   nodes in the dlink table.
-// - All item nodes are linked as the horizontal link list.
-struct dlink_tbl *dlink_new( size_t n_items, size_t n_opt_nodes );
-void              dlink_free( struct dlink_tbl * );
 
 // Cover all nodes in a column for item c. Also unlink nodes from their columns
 // belonging to the same option.

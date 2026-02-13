@@ -4,4 +4,6 @@ MODS    += ${BUILD_OBJS}/dlink.o
 
 include mk.tpl
 
+CXXFLAGS += -Wno-unused-private-field
+
 test: run
