@@ -21,3 +21,5 @@ ${DLINK_TEST}: ${DEPS} ${BUILD}/cmd_dlink_test.o | ${BUILD}
 	${CXX} ${LDFLAGS} -o $@ $^
 
 CXXFLAGS += -Wno-unused-private-field
+CXXFLAGS += -Wno-unused-variable
+CXXFLAGS += -Wno-unused-parameter

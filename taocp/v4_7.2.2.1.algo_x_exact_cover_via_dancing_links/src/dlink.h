@@ -24,7 +24,7 @@ struct DLinkNode {
                 // Count of the vertical col. Used by vertical header.
                 size_t len;
                 // Item Id of the vertical col. Used by option node.
-                size_t top;
+                ssize_t top;
         };
 };
 
@@ -51,9 +51,6 @@ struct DLinkTable {
       public:
         DLinkItem *GetHorizontalItem( size_t i );
 
-      private:
-        DLinkNode *GetTableItem( size_t i );
-
         // To append options with associated nodes, a callback function is
         // provided to fill all nodes in one state machine.
         //
@@ -65,10 +62,13 @@ struct DLinkTable {
         // For each invocation of callback fn, the option_node_size and
         // option_node_top_ids must be set so AppendOptions can fill the table.
         //
-        void AppendOptions( void *( *fn )( void    *user_data,
-                                           size_t  *option_node_size,
-                                           size_t **option_node_top_ids ),
+        void AppendOptions( void ( *fn )( void    *user_data,
+                                          size_t  *option_node_size,
+                                          size_t **option_node_top_ids ),
                             void *user_data );
+
+      private:
+        DLinkNode *GetTableItem( size_t i );
 };
 }  // namespace taocp
 

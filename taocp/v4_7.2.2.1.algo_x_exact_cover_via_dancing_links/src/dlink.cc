@@ -8,6 +8,24 @@ namespace taocp {
 // === --- Data Structures ------------------------------------------------- ===
 
 namespace {
+
+// Link the `id` with item `top_id` (vertical double link).
+void
+LinkUD( DLinkNode *h, size_t top_id, size_t id )
+{
+        DLinkNode *t = &h[top_id];
+        DLinkNode *p = &h[id];
+
+        p->top = ssize_t( top_id );
+        t->len += 1;
+
+        size_t id_end = t->u;
+        t->u          = id;
+        h[id_end].d   = id;
+        p->d          = top_id;
+        p->u          = id_end;
+}
+
 // // Fill a DLinkNode to initialize it for horizontal
 // void
 // DLinkNodeFill( DLinkNode *node, size_t id )
@@ -30,7 +48,7 @@ namespace {
 //      h[end].r             = id;
 //      h[p->r].l            = id;
 // }
-}
+}  // namespace
 
 DLinkTable::DLinkTable( size_t n_items, size_t n_options,
                         size_t n_option_nodes )
@@ -44,15 +62,22 @@ DLinkTable::DLinkTable( size_t n_items, size_t n_options,
              // option nodes
              n_option_nodes )  // vertical headers
 {
+        assert( n_items >= 1 );
+        assert( n_options >= 1 );
+        assert( n_option_nodes >= 1 );
+
         // Link the horizontal item list.
-        auto *item_list      = this->item_list.data( );
-        item_list[0].l       = n_items;  // Same as this->item_list_size - 1;
-        item_list[0].r       = 1;
-        item_list[n_items].l = n_items - 1;
-        item_list[n_items].r = 0;
+        auto *item_list       = this->item_list.data( );
+        item_list[0].id       = 0;
+        item_list[0].l        = n_items;  // Same as this->item_list_size - 1;
+        item_list[0].r        = 1;
+        item_list[n_items].id = n_items;
+        item_list[n_items].l  = n_items - 1;
+        item_list[n_items].r  = 0;
         for ( size_t i = 1; i < n_items; i++ ) {
-                item_list[i].l = i - 1;
-                item_list[i].r = i + 1;
+                item_list[i].id = i;
+                item_list[i].l  = i - 1;
+                item_list[i].r  = i + 1;
         }
 
         // Link the vertical headers.
@@ -77,6 +102,61 @@ DLinkTable::GetTableItem( size_t i )
         assert( i <= this->table.size( ) );
         return &this->table[i];
 }
+
+void
+DLinkTable::AppendOptions( void ( *fn )( void    *user_data,
+                                         size_t  *option_node_size,
+                                         size_t **option_node_top_ids ),
+                           void *user_data )
+{
+        DLinkNode *table = this->table.data( );
+
+        size_t  option_node_size;
+        size_t *option_node_top_ids;
+
+        // Spacers start with position at 1 + num_items;
+        size_t     spacer_count = 0;
+        size_t     spacer_id    = 1 + n_items;
+        DLinkNode *last_spacer  = &table[spacer_id];
+        last_spacer->top        = -1 * ssize_t( spacer_count );
+
+        size_t current_id = spacer_id + 1;
+
+        while ( true ) {
+                if ( current_id >= this->table.size( ) ) {
+                        assert( current_id == this->table.size( ) );
+                        break;  // End of filling options;
+                }
+
+                // Get next row of option nodes.
+                fn( user_data, &option_node_size, &option_node_top_ids );
+
+                // Validate size
+                assert( option_node_size >= 1 );
+                assert( current_id + option_node_size + /*spacer*/ 1 <=
+                            this->table.size( ) &&
+                        "overflow table size" );
+
+                // Fill option nodes
+                for ( size_t x = 0; x < option_node_size; x++ ) {
+                        size_t top_id = option_node_top_ids[x];
+                        LinkUD( table, top_id, current_id + x );
+                }
+
+                // Update last spacer
+                last_spacer->d = current_id + option_node_size - 1;
+
+                // Move to new spacer.
+                last_spacer += option_node_size + 1;
+                spacer_count++;
+                last_spacer->top = -1 * ssize_t( spacer_count );
+                last_spacer->u   = current_id;
+
+                // Update current_id
+                current_id += /*spacer */ 1 + option_node_size;
+        }
+}
+
 }  // namespace taocp
 
 /*
@@ -86,22 +166,6 @@ DLinkTable::GetTableItem( size_t i )
 
 
 
-// Link the `id` with item column `item_id` (vertical double link).
-static void
-dlink_link_ud( struct dlink_node *h, size_t item_id, size_t id )
-{
-     struct dlink_node *c = &h[item_id];
-     struct dlink_node *p = &h[id];
-
-     p->c = item_id;
-     c->s += 1;
-
-     size_t id_end = c->u;
-     c->u          = id;
-     h[id_end].d   = id;
-     p->d          = item_id;
-     p->u          = id_end;
-}
 
 // Covers a item in the table and unlink all options linked with this item.
 static void
