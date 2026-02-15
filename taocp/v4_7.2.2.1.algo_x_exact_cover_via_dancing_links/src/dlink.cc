@@ -6,24 +6,6 @@
 namespace taocp {
 
 // === --- Data Structures ------------------------------------------------- ===
-struct DLinkNode {
-        union {
-                size_t l;  // LLINK. Used by horizontal item list.
-                size_t u;  // ULINK. Used by table.
-        };
-        union {
-                size_t r;  // RLINK. Used by horizontal item list.
-                size_t d;  // DLINK. Used by table.
-        };
-        union {
-                // Unowned user data. Used by horizontal item list.
-                void *data;
-                // Count of the vertical col. Used by vertical header.
-                size_t len;
-                // Item Id of the vertical col. Used by option node.
-                size_t top;
-        };
-};
 
 namespace {
 // // Fill a DLinkNode to initialize it for horizontal
@@ -55,24 +37,15 @@ DLinkTable::DLinkTable( size_t n_items, size_t n_options,
     : n_items( n_items ),
       n_options( n_options ),
       n_option_nodes( n_option_nodes ),
-      mem(  // horizontal list
-          1 + n_items +
-          // vertical headers
-          1 + n_items +
-          // spacer nodes
-          1 + n_options +
-          // option nodes
-          n_option_nodes )
+      item_list( 1 + n_items ),  // horizontal list
+      table( 1 + n_items +
+             // spacer nodes
+             1 + n_options +
+             // option nodes
+             n_option_nodes )  // vertical headers
 {
-        // Set up all memory pointers.
-        this->item_list      = this->mem.data( );
-        this->item_list_size = 1 + n_items;
-        this->table          = this->mem.data( ) + this->item_list_size;
-        this->table_size     = 1 + n_items + n_options + n_option_nodes;
-        assert( this->item_list_size + this->table_size == this->mem.size( ) );
-
         // Link the horizontal item list.
-        auto *item_list      = this->item_list;
+        auto *item_list      = this->item_list.data( );
         item_list[0].l       = n_items;  // Same as this->item_list_size - 1;
         item_list[0].r       = 1;
         item_list[n_items].l = n_items - 1;
@@ -84,24 +57,24 @@ DLinkTable::DLinkTable( size_t n_items, size_t n_options,
 
         // Link the vertical headers.
         for ( size_t i = 1; i <= n_items; i++ ) {
-                auto *n = this->table + i;
+                auto *n = &this->table[i];
                 n->len  = 0;
                 n->u    = i;
                 n->d    = i;
         }
 }
 
-DLinkNode *
+DLinkItem *
 DLinkTable::GetHorizontalItem( size_t i )
 {
-        assert( i <= this->item_list_size );
+        assert( i <= this->item_list.size( ) );
         return &this->item_list[i];
 }
 
 DLinkNode *
 DLinkTable::GetTableItem( size_t i )
 {
-        assert( i <= this->table_size );
+        assert( i <= this->table.size( ) );
         return &this->table[i];
 }
 }  // namespace taocp

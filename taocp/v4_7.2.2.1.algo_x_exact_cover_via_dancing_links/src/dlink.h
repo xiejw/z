@@ -10,7 +10,23 @@
 
 // === --- APIs ------------------------------------------------------------ ===
 namespace taocp {
-struct DLinkNode;
+
+struct DLinkItem {
+        size_t id;
+        size_t l;  // LLINK.
+        size_t r;  // RLINK.
+};
+
+struct DLinkNode {
+        size_t u;  // ULINK.
+        size_t d;  // DLINK.
+        union {
+                // Count of the vertical col. Used by vertical header.
+                size_t len;
+                // Item Id of the vertical col. Used by option node.
+                size_t top;
+        };
+};
 
 struct DLinkTable {
       private:
@@ -18,18 +34,8 @@ struct DLinkTable {
         size_t n_options;
         size_t n_option_nodes;
 
-        // Raw mem used by the algorithm.
-        std::vector<DLinkNode> mem;
-
-        // The pointer to the horizontal item list. The memory is backed by the
-        // mem.
-        DLinkNode *item_list;
-        size_t     item_list_size;
-
-        // The pointer to the dancing link table, including the vertical
-        // headers, spacers and options. The memory is backed by the mem.
-        DLinkNode *table;
-        size_t     table_size;
+        std::vector<DLinkItem> item_list;
+        std::vector<DLinkNode> table;
 
       public:
         // Creates a new dancing link table with all necessary memory
@@ -43,8 +49,26 @@ struct DLinkTable {
         DLinkTable( size_t n_items, size_t n_options, size_t n_option_nodes );
 
       public:
-        DLinkNode *GetHorizontalItem( size_t i );
+        DLinkItem *GetHorizontalItem( size_t i );
+
+      private:
         DLinkNode *GetTableItem( size_t i );
+
+        // To append options with associated nodes, a callback function is
+        // provided to fill all nodes in one state machine.
+        //
+        // AppendOptions will call fn one option each time and stop once the
+        // whole table is filled (n_options reached).  Spacers will be inserted
+        // automatically.  Callback fn must ensure n_option_nodes, provided in
+        // the constructor, are respected.
+        //
+        // For each invocation of callback fn, the option_node_size and
+        // option_node_top_ids must be set so AppendOptions can fill the table.
+        //
+        void AppendOptions( void *( *fn )( void    *user_data,
+                                           size_t  *option_node_size,
+                                           size_t **option_node_top_ids ),
+                            void *user_data );
 };
 }  // namespace taocp
 
