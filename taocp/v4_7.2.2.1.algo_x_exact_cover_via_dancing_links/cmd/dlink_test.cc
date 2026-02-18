@@ -44,7 +44,7 @@ main( void )
 
         OptionState state{
             0,
-            { "r0", "r1", "r2", "r3", "r4", "r5" },
+            { "r1", "r2", "r3", "r4", "r5", "r6" },
             {
               /* row 0 */ { 3, 5, 6 },
               /* row 1 */ { 1, 4, 7 },
@@ -68,7 +68,7 @@ main( void )
         size_t sols[6 + 1] = { };  // At most 6. +1 for SENT
         size_t sols_size   = 0;
 
-        tbl.SearchSolution(
+        tbl.SearchSolutions(
             []( void *user_data, size_t solution_size,
                 size_t *solution ) -> bool {
                     *( (size_t *)user_data ) = solution_size;
@@ -85,6 +85,11 @@ main( void )
         EXPECT_TRUE( 1 == sols[0], "sol 0" );
         EXPECT_TRUE( 4 == sols[1], "sol 1" );
         EXPECT_TRUE( 5 == sols[2], "sol 2" );
+
+        // Solution is 1 based. -1 to make it 0-based.
+        EXPECT_TRUE( 0 == strcmp( "r1", state.names[sols[0] - 1] ), "name 0" );
+        EXPECT_TRUE( 0 == strcmp( "r4", state.names[sols[1] - 1] ), "name 1" );
+        EXPECT_TRUE( 0 == strcmp( "r5", state.names[sols[2] - 1] ), "name 2" );
 
         printf( "Test passed.\n" );
 }

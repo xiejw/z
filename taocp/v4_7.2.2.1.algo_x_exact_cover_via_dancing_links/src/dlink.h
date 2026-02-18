@@ -79,19 +79,34 @@ struct DLinkTable {
         /// returns true, then the searching process stops immediately.
         /// Otherwise, continues.
         ///
-        /// Each invocation of visit_fn is called with a solution array, with
-        /// the size S of of it, so
+        /// Users pass the visit_fn, along with the buffer to fill the
+        /// solution.  The number of solution is upper bounded by the number of
+        /// items. But that upper bound could be too large, and the users might
+        /// know the bound more precisely and save memory spaces. To suppor
+        /// that, users can provide a smaller buffer and hint the maximum size
+        /// to set the solution. This function will copy at most
+        /// max_solution_size to the buffer and stop even this could be partial
+        /// solution. To detect this partial case, the buffer could be allocate
+        /// +1 size, set a SENT value, and increase the max_solution_size +1 as
+        /// well. Then check whether that SENT has been modified.
         ///
-        ///     solution[0...S] is the valid solution.
+        /// Also note users own the buffer and need to ensure it is big enough
+        /// to hold max_solution_size data.
         ///
-        /// Pass in.
+        /// Each invocation of visit_fn is called with a solution buffer,
+        /// provided by users, with and the number of filled results in the
+        /// buffer, solution_size.
         ///
-        /// This api is really bad.
-        void SearchSolution( bool ( *visit_fn )( void   *user_data,
-                                                 size_t  solution_size,
-                                                 size_t *solution ),
-                             void *user_data, size_t max_solution_size,
-                             size_t *solution );
+        ///     solution[0...solution_size] is the valid (partial) solution
+        ///
+        /// The solution array is unsorted. Each element's domain is [1,
+        /// n_options], i.e., the 1-based option ID.
+        ///
+        void SearchSolutions( bool ( *visit_fn )( void   *user_data,
+                                                  size_t  solution_size,
+                                                  size_t *solution ),
+                              void *user_data, size_t max_solution_size,
+                              size_t *solution );
 
       private:
         DLinkNode *GetTableItem( size_t i );

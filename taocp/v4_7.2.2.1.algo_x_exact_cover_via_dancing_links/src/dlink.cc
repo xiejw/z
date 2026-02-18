@@ -140,10 +140,10 @@ VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
 
 // Algorithm X: Volume 4B, Page 69
 void
-SearchSolution( size_t n_items, DLinkItem *items, DLinkNode *nodes, size_t *X,
-                bool ( *visit_fn )( void *user_data, size_t solution_size,
-                                    size_t *solution ),
-                void *user_data, size_t max_solution_size, size_t *solution )
+SearchSolutions( size_t n_items, DLinkItem *items, DLinkNode *nodes, size_t *X,
+                 bool ( *visit_fn )( void *user_data, size_t solution_size,
+                                     size_t *solution ),
+                 void *user_data, size_t max_solution_size, size_t *solution )
 {
         size_t i;
         size_t l;
@@ -338,17 +338,17 @@ DLinkTable::AppendOptions( void ( *fn )( void    *user_data,
 }
 
 void
-DLinkTable::SearchSolution( bool ( *visit_fn )( void   *user_data,
-                                                size_t  solution_size,
-                                                size_t *solution ),
-                            void *user_data, size_t max_solution_size,
-                            size_t *solution )
+DLinkTable::SearchSolutions( bool ( *visit_fn )( void   *user_data,
+                                                 size_t  solution_size,
+                                                 size_t *solution ),
+                             void *user_data, size_t max_solution_size,
+                             size_t *solution )
 {
         std::vector<size_t> X( this->n_items );  // At most n_items.
 
-        ::taocp::SearchSolution( this->n_items, this->item_list.data( ),
-                                 this->table.data( ), X.data( ), visit_fn,
-                                 user_data, max_solution_size, solution );
+        ::taocp::SearchSolutions( this->n_items, this->item_list.data( ),
+                                  this->table.data( ), X.data( ), visit_fn,
+                                  user_data, max_solution_size, solution );
 }
 
 }  // namespace taocp
