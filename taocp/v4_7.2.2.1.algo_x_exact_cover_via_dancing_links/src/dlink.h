@@ -11,12 +11,18 @@
 // === --- APIs ------------------------------------------------------------ ===
 namespace taocp {
 
+/// Node in the horizontal item list.
+///
+/// See Volume 4B, Page 68.
 struct DLinkItem {
         size_t id;
         size_t l;  // LLINK.
         size_t r;  // RLINK.
 };
 
+/// Node in the table.
+///
+/// See Volume 4B, Page 68.
 struct DLinkNode {
         size_t u;  // ULINK.
         size_t d;  // DLINK.
@@ -66,6 +72,26 @@ struct DLinkTable {
                                           size_t  *option_node_size,
                                           size_t **option_node_top_ids ),
                             void *user_data );
+
+        /// Search all solutions.
+        ///
+        /// The visit_fn is called for all solutions found. If the visit_fn
+        /// returns true, then the searching process stops immediately.
+        /// Otherwise, continues.
+        ///
+        /// Each invocation of visit_fn is called with a solution array, with
+        /// the size S of of it, so
+        ///
+        ///     solution[0...S] is the valid solution.
+        ///
+        /// Pass in.
+        ///
+        /// This api is really bad.
+        void SearchSolution( bool ( *visit_fn )( void   *user_data,
+                                                 size_t  solution_size,
+                                                 size_t *solution ),
+                             void *user_data, size_t max_solution_size,
+                             size_t *solution );
 
       private:
         DLinkNode *GetTableItem( size_t i );

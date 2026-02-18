@@ -26,28 +26,188 @@ LinkUD( DLinkNode *h, size_t top_id, size_t id )
         p->u          = id_end;
 }
 
-// // Fill a DLinkNode to initialize it for horizontal
-// void
-// DLinkNodeFill( DLinkNode *node, size_t id )
-// {
-//      node->id = id;
-//      node->l  = id;
-//      node->r  = id;
-//      node->u  = id;
-//      node->d  = id;
-//      node->c  = 0;
-// }
-//
-// // Link the `id` into table after node `end` (horizontal double link)
-// static void
-// dlink_link_lr( struct dlink_node *h, size_t end, size_t id )
-// {
-//      struct dlink_node *p = &h[id];
-//      p->l                 = end;
-//      p->r                 = h[end].r;
-//      h[end].r             = id;
-//      h[p->r].l            = id;
-// }
+/// (13) on Volume 4B, Page 69
+void
+HideNode( DLinkNode *nodes, size_t p )
+{
+        size_t q = p + 1;
+        while ( q != p ) {
+                DLinkNode *n = &nodes[q];
+                ssize_t    x = n->top;
+                size_t     u = n->u;
+                size_t     d = n->d;
+                if ( x <= 0 ) {  // A spacer
+                        q = u;
+                } else {
+                        nodes[u].d = d;
+                        nodes[d].u = u;
+                        nodes[x].len--;
+                        q++;
+                }
+        }
+}
+
+/// Covers a item in the table and unlink all options linked with this item.
+///
+/// (12) on Volume 4B, Page 68
+void
+CoverItem( DLinkItem *items, size_t item_id, DLinkNode *nodes )
+{
+        for ( size_t p = nodes[item_id].d; p != item_id; p = nodes[p].d ) {
+                HideNode( nodes, p );
+        }
+
+        size_t l   = items[item_id].l;
+        size_t r   = items[item_id].r;
+        items[l].r = r;
+        items[r].l = l;
+}
+
+/// (15) on Volume 4B, Page 69
+void
+UnhideNode( DLinkNode *nodes, size_t p )
+{
+        size_t q = p - 1;
+        while ( q != p ) {
+                DLinkNode *n = &nodes[q];
+                ssize_t    x = n->top;
+                size_t     u = n->u;
+                size_t     d = n->d;
+                if ( x <= 0 ) {  // A spacer
+                        q = d;
+                } else {
+                        nodes[u].d = q;
+                        nodes[d].u = q;
+                        nodes[x].len++;
+                        q--;
+                }
+        }
+}
+
+/// Uncovers a item in the table and link all options linked with this item.
+///
+/// (14) on Volume 4B, Page 69
+void
+UncoverItem( DLinkItem *items, size_t item_id, DLinkNode *nodes )
+{
+        size_t l   = items[item_id].l;
+        size_t r   = items[item_id].r;
+        items[l].r = item_id;
+        items[r].l = item_id;
+
+        for ( size_t p = nodes[item_id].u; p != item_id; p = nodes[p].u ) {
+                UnhideNode( nodes, p );
+        }
+}
+
+bool
+VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
+               bool ( *visit_fn )( void *user_data, size_t solution_size,
+                                   size_t *solution ),
+               void *user_data, size_t max_solution_size, size_t *solution )
+{
+        (void)n_items;
+
+        if ( l == 0 ) {  // Special case
+                return visit_fn( user_data, 0, solution );
+        }
+
+        // Translate result
+        for ( size_t x = 0; x < l; x++ ) {
+                if ( x >= max_solution_size ) {  // Out of boundary.
+                        return visit_fn( user_data, max_solution_size,
+                                         solution );
+                }
+
+                size_t id = X[x];
+                assert( id > n_items );
+                solution[x] = size_t( nodes[id].top );
+        }
+
+        return visit_fn( user_data, l, solution );
+}
+
+// Algorithm X: Volume 4B, Page 69
+void
+SearchSolution( size_t n_items, DLinkItem *items, DLinkNode *nodes, size_t *X,
+                bool ( *visit_fn )( void *user_data, size_t solution_size,
+                                    size_t *solution ),
+                void *user_data, size_t max_solution_size, size_t *solution )
+{
+        size_t i;
+        size_t l;
+X1:  // Initialize.
+        l = 0;
+
+X2:  // Enter level l.
+        if ( items[0].r == 0 ) {
+                if ( VisitSolution( n_items, nodes, X, l, visit_fn, user_data,
+                                    max_solution_size, solution ) ) {
+                        // Early Terminate
+                        return;
+                }
+                goto X8;
+        }
+
+X3:  // Choose i
+        // TODO: MEV heuristic. Exercise 9.
+        i = items[0].r;
+
+X4:  // Cover i
+        CoverItem( items, i, nodes );
+        X[l] = nodes[i].d;
+
+X5:  // Try x_l
+        if ( X[l] == i ) goto X7;
+
+        // Cover all items in Option that contains x_l
+        {
+                size_t x_l = X[l];
+                size_t p   = x_l + 1;
+                while ( p != x_l ) {
+                        ssize_t j = nodes[p].top;
+                        if ( j <= 0 ) {
+                                p = nodes[p].u;  // A spacer
+                        } else {
+                                CoverItem( items, size_t( j ), nodes );
+                                p++;
+                        }
+                }
+        }
+
+        l++;
+        goto X2;
+
+X6:  // Try again.
+
+        // Undo X5
+        {
+                size_t x_l = X[l];
+                size_t p   = x_l - 1;
+                while ( p != x_l ) {
+                        ssize_t j = nodes[p].top;
+                        if ( j <= 0 ) {
+                                p = nodes[p].d;  // A spacer
+                        } else {
+                                UncoverItem( items, size_t( j ), nodes );
+                                p--;
+                        }
+                }
+        }
+
+        i    = size_t( nodes[X[l]].top );
+        X[l] = nodes[X[l]].d;
+
+X7:  // Backtrack
+
+        UncoverItem( items, i, nodes );
+
+X8:  // Leave level l
+        if ( l == 0 ) return;
+        l--;
+        goto X6;
+}
+
 }  // namespace
 
 DLinkTable::DLinkTable( size_t n_items, size_t n_options,
@@ -157,141 +317,18 @@ DLinkTable::AppendOptions( void ( *fn )( void    *user_data,
         }
 }
 
+void
+DLinkTable::SearchSolution( bool ( *visit_fn )( void   *user_data,
+                                                size_t  solution_size,
+                                                size_t *solution ),
+                            void *user_data, size_t max_solution_size,
+                            size_t *solution )
+{
+        std::vector<size_t> X( this->n_items );  // At most n_items.
+
+        ::taocp::SearchSolution( this->n_items, this->item_list.data( ),
+                                 this->table.data( ), X.data( ), visit_fn,
+                                 user_data, max_solution_size, solution );
+}
+
 }  // namespace taocp
-
-/*
-
-
-// === --- Private helper utils ---------------------------------------------
-
-
-
-
-// Covers a item in the table and unlink all options linked with this item.
-static void
-dlink_cover_item_impl( struct dlink_node *h, size_t item_id )
-{
-     h[h[item_id].r].l = h[item_id].l;
-     h[h[item_id].l].r = h[item_id].r;
-     for ( size_t i = h[item_id].d; i != item_id; i = h[i].d ) {
-             for ( size_t j = h[i].r; j != i; j = h[j].r ) {
-                     h[h[j].d].u = h[j].u;
-                     h[h[j].u].d = h[j].d;
-                     ( h[h[j].c].s )--;
-             }
-     }
-}
-
-// Undo dlink_cover_item_impl
-static void
-dlink_uncover_item_impl( struct dlink_node *h, size_t item_id )
-{
-     for ( size_t i = h[item_id].u; i != item_id; i = h[i].u ) {
-             for ( size_t j = h[i].l; j != i; j = h[j].l ) {
-                     ( h[h[j].c].s )++;
-                     h[h[j].d].u = j;
-                     h[h[j].u].d = j;
-             }
-     }
-     h[h[item_id].r].l = item_id;
-     h[h[item_id].l].r = item_id;
-}
-
-static error_t
-dlink_search_impl( struct dlink_tbl *p, size_t *sols, size_t *num_sol,
-                size_t k )
-{
-     struct dlink_node *h = p->nodes;
-
-     if ( h[0].r == 0 ) {
-             *num_sol = k;
-             return OK;
-     }
-
-     size_t c = h[0].r;
-     if ( h[c].s == 0 ) {
-             return ENOTEXIST;
-     }
-
-     dlink_cover_item_impl( h, c );
-     for ( size_t r = h[c].d; r != c; r = h[r].d ) {
-             sols[k] = r;
-             for ( size_t j = h[r].r; j != r; j = h[j].r ) {
-                     dlink_cover_item_impl( h, h[j].c );
-             }
-             if ( dlink_search_impl( p, sols, num_sol, k + 1 ) == OK )
-                     return OK;
-
-             for ( size_t j = h[r].l; j != r; j = h[j].l ) {
-                     dlink_uncover_item_impl( h, h[j].c );
-             }
-     }
-     dlink_uncover_item_impl( h, c );
-     return ENOTEXIST;
-}
-
-// === --- Implementation ---------------------------------------------------
-
-
-void
-dlink_free( struct dlink_tbl *p )
-{
-     if ( p == NULL ) return;
-     free( p->nodes );
-     free( p );
-}
-
-void
-dlink_cover_item( struct dlink_tbl *p, size_t c )
-{
-     dlink_cover_item_impl( p->nodes, c );
-}
-
-void
-dlink_append_opt( struct dlink_tbl *p, size_t num_ids, size_t *item_ids,
-               void *priv_data )
-{
-     struct dlink_node *nodes     = p->nodes;
-     size_t             offset_id = p->num_nodes_added;
-
-     if ( offset_id + num_ids > p->num_nodes_total ) {
-             printf(
-                 "Reserved space is not enough for dancing link table: "
-                 "reserved "
-                 "with %zu, used %zu, needed %zu more.\n",
-                 p->num_nodes_total, offset_id, num_ids );
-             PANIC( );
-     }
-
-     for ( size_t i = 0; i < num_ids; i++ ) {
-#ifndef NDEBUG
-             assert( item_ids[i] > 0 && item_ids[i] <= p->num_items );
-#endif
-             size_t id = offset_id + i;
-             dlink_fill_node( &nodes[id], id );
-             dlink_link_ud( nodes, item_ids[i], id );
-             nodes[id].data = priv_data;
-             if ( i != 0 ) {
-                     dlink_link_lr( nodes, id - 1, id );
-             }
-     }
-
-     p->num_nodes_added += num_ids;
-}
-
-void *
-dlink_get_node_data( struct dlink_tbl *p, size_t id )
-{
-#ifndef NDEBUG
-     assert( id > p->num_items );
-#endif
-     return p->nodes[id].data;
-}
-
-error_t
-dlink_search( struct dlink_tbl *p, size_t *sols, size_t *num_sol )
-{
-     if ( OK == dlink_search_impl( p, sols, num_sol, 0 ) ) return OK;
-     return ENOTEXIST;
-}
-*/

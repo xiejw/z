@@ -12,6 +12,8 @@ DLINK_TEST = ${BUILD}/dlink_test
 
 include mk.tpl
 
+CXXFLAGS += -Wno-unused-label
+
 compile: ${DLINK_TEST}
 
 test: ${DLINK_TEST}

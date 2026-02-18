@@ -1,5 +1,8 @@
 #include "dlink.h"
 
+#include "test_macros.h"
+
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -33,7 +36,7 @@ main( void )
 
         struct OptionState {
                 size_t      row_id;
-                const char *names[6];
+                const char *names[6];       // Record the name.
                 size_t      top_ids[6][3];  // At most 3 in each row.
         };
 
@@ -61,6 +64,21 @@ main( void )
                     state->row_id++;
             },
             /*user_data=*/&state );
+
+        size_t sols[6 + 1] = { };  // At most 6. +1 for SENT
+        size_t sols_size   = 0;
+
+        tbl.SearchSolution(
+            []( void *user_data, size_t solution_size,
+                size_t *solution ) -> bool {
+                    *( (size_t *)user_data ) = solution_size;
+                    assert( solution[6] == 0 );
+                    return true;
+            },
+            &sols_size, 7, sols );
+
+        EXPECT_TRUE( sols_size == 3, "sols size" );
+        assert( sols[0] != 0 );  // At least one solution
 
         /*
 

@@ -2,9 +2,13 @@
 
 ### Dancing Links
 
-Dancing link is an advanced data structure for backtrack algorithms.  It is
-very efficient for _undo_ operations. One example for its use cases is solving
-Exact Cover Problems.
+Dancing link is an advanced data structure for backtrack algorithms.  It is very
+efficient for _undo_ operations. One example for its use cases is solving Exact
+Cover Problems.
+
+|Algorithm List| Page |
+| :--- | :---|
+| V4 7.2.2.1X Exact Cover via Dancing Links| Page 69 |
 
 Reference Books and Papers
 - [Volume 4B](https://www.amazon.com/Art-Computer-Programming-Combinatorial-Information/dp/0201038064).
