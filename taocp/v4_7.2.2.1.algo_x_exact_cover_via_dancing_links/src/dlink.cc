@@ -3,6 +3,10 @@
 
 #include <assert.h>
 
+#define DEBUG 0
+#define DEBUG_PRINT \
+        if ( DEBUG ) printf
+
 namespace taocp {
 
 // === --- Data Structures ------------------------------------------------- ===
@@ -121,7 +125,14 @@ VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
 
                 size_t id = X[x];
                 assert( id > n_items );
-                solution[x] = size_t( nodes[id].top );
+
+                // Scan the spacers to get the option ID.
+                size_t p = id - 1;
+                while ( nodes[p].top > 0 ) {
+                        p--;
+                }
+                solution[x] = size_t( -1 * ( nodes[p].top ) ) + 1;
+                DEBUG_PRINT( "Sol[%d] = %d\n", (int)x, (int)solution[x] );
         }
 
         return visit_fn( user_data, l, solution );
@@ -140,6 +151,10 @@ X1:  // Initialize.
         l = 0;
 
 X2:  // Enter level l.
+
+        DEBUG_PRINT( "enter level = %d items.r %d\n", int( l ),
+                     int( items[0].r ) );
+
         if ( items[0].r == 0 ) {
                 if ( VisitSolution( n_items, nodes, X, l, visit_fn, user_data,
                                     max_solution_size, solution ) ) {
@@ -197,13 +212,18 @@ X6:  // Try again.
 
         i    = size_t( nodes[X[l]].top );
         X[l] = nodes[X[l]].d;
+        goto X5;
 
 X7:  // Backtrack
 
         UncoverItem( items, i, nodes );
 
 X8:  // Leave level l
-        if ( l == 0 ) return;
+        DEBUG_PRINT( "leave level = %d\n", int( l ) );
+
+        if ( l == 0 ) {
+                return;
+        }
         l--;
         goto X6;
 }

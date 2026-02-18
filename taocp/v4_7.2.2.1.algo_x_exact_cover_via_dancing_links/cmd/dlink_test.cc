@@ -80,31 +80,11 @@ main( void )
         EXPECT_TRUE( sols_size == 3, "sols size" );
         assert( sols[0] != 0 );  // At least one solution
 
-        /*
+        std::sort( sols, sols + sols_size );
 
+        EXPECT_TRUE( 1 == sols[0], "sol 0" );
+        EXPECT_TRUE( 4 == sols[1], "sol 1" );
+        EXPECT_TRUE( 5 == sols[2], "sol 2" );
 
-              size_t  sols[6]; // At most 6. /
-              size_t  num_sols;
-              error_t rc = dlink_search( tbl, sols, &num_sols );
-              EXPECT_TRUE( rc == OK, "found sol" );
-              EXPECT_TRUE( 3 == num_sols, "found sol" );
-
-              // Check header ids.
-              EXPECT_TRUE( 17 == sols[0], "sol 0" );
-              EXPECT_TRUE( 19 == sols[1], "sol 1" );
-              EXPECT_TRUE( 8 == sols[2], "sol 2" );
-
-              // Check option data.
-              EXPECT_TRUE(
-                  0 == strcmp( "r4", (char *)dlink_get_node_data( tbl,
-           sols[0] )
-           ), "sol 0" ); EXPECT_TRUE( 0 == strcmp( "r5", (char
-           *)dlink_get_node_data( tbl, sols[1] ) ), "sol 1" ); EXPECT_TRUE(
-           0 == strcmp( "r1", (char *)dlink_get_node_data( tbl, sols[2] ) ),
-           "sol 2"
-           );
-
-              dlink_free( tbl );
-              */
         printf( "Test passed.\n" );
 }
