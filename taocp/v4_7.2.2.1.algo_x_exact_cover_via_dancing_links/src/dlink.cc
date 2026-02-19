@@ -2,6 +2,7 @@
 #include "dlink.h"
 
 #include <assert.h>
+#include <stdio.h>
 
 #define DEBUG 0
 #define DEBUG_PRINT \
