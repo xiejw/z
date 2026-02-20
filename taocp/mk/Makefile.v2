@@ -1,18 +1,38 @@
 # vim: ft=make
-# forge:v1
+# forge:v2
 #
-# Version 1 of common Makefile used in this project
+# Version 2 of common Makefile used in this project
 #
-# Opinioned about the structure of code bases
 #
-#   cmd/   # All binary main files
-#   src/   # All dependendcies
+# === --- Opinioned about the Structure of Code Bases
 #
-# Call side defines MODS only
+#     cmd/   # All binary main files
+#     src/   # All dependendcies
+#
+# === --- Opinioned about Knobs
+#
+# Call side defines MODS for all dependendcies and MAIN_OUT of main binary.
+#
+#     MODS    += ${BUILD_OBJS}/log.o
+#     MODS    += ${BUILD_OBJS}/dlink.o
+#
+#     MAIN_OUT = main
+#     include mk.tpl
+#
+# === --- Templates for tests
+#
+# Use template to define test
+#
+#     $(eval $(call TEST_template,${MAIN_OUT}))
+#
+# Or define a new binary for test
+#
+#     TEST_OUT = dlink_test
+#     $(eval $(call CMD_template,${TEST_OUT}))
+#     $(eval $(call TEST_template,${TEST_OUT}))
 #
 BUILD       = .build
 BUILD_OBJS  = ${BUILD}/objs
-MAIN_OUT    = a.out
 
 UNAME_S    := $(shell uname -s)
 
@@ -47,15 +67,36 @@ endif
 run: compile
 	${BUILD}/${MAIN_OUT}
 
-compile: ${BUILD}/${MAIN_OUT}
-
 release: clean
 	make RELEASE=1 compile
 
+# === --- Templates -------------------------------------------------------- ===
+#
+# === --- Defines a template for cmd
+
+define CMD_template
+
+compile: $${BUILD}/$(1)
+
+$${BUILD}/$(1): $${MODS} $${BUILD}/cmd_$(1).o | $${BUILD}
+	$${CXX} $${LDFLAGS} -o $$@ $$^
+
+endef
+
+# === --- Defines a template for test
+
+define TEST_template
+
+test_$(1): compile $${BUILD}/$(1)
+	$${BUILD}/$(1)
+
+test: test_$(1)
+
+endef
+
 # === --- Rules ------------------------------------------------------------ ===
 
-${BUILD}/${MAIN_OUT}: ${MODS} | ${BUILD}
-	${CXX} ${LDFLAGS} -o ${BUILD}/${MAIN_OUT} ${MODS}
+$(eval $(call CMD_template,${MAIN_OUT}))
 
 ${BUILD}/cmd_%.o:  cmd/%.cc ${SRC_DEPS} | ${BUILD}
 	${CXX} ${CXXFLAGS} -o ${shell printf "%-30s" $@} -c $<
