@@ -37,7 +37,6 @@ struct DLinkTable {
       private:
         size_t n_items;
         size_t n_options;
-        size_t n_option_nodes;
 
         std::vector<DLinkItem> item_list;
         std::vector<DLinkNode> table;

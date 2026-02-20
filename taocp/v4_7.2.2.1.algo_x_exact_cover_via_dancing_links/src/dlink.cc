@@ -8,6 +8,8 @@
 #define DEBUG_PRINT \
         if ( DEBUG ) printf
 
+#define MAYBE_UNUSED( x ) (void)( x )
+
 namespace taocp {
 
 // === --- Data Structures ------------------------------------------------- ===
@@ -122,12 +124,14 @@ UncoverItem( DLinkItem *items, size_t item_id, DLinkNode *nodes )
 // We would avoid (1), and now use (2). (3) can be used later.
 //
 bool
-VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
+VisitSolution( size_t n_items, size_t n_options, DLinkNode *nodes, size_t *X,
+               size_t l,
                bool ( *visit_fn )( void *user_data, size_t solution_size,
                                    size_t *solution ),
                void *user_data, size_t max_solution_size, size_t *solution )
 {
-        (void)n_items;
+        MAYBE_UNUSED( n_items );
+        MAYBE_UNUSED( n_options );
 
         if ( l == 0 ) {  // Special case
                 return visit_fn( user_data, 0, solution );
@@ -150,7 +154,9 @@ VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
                         assert( p > n_items );
                 } while ( nodes[p].top > 0 );
 
-                solution[x] = size_t( -1 * ( nodes[p].top ) );
+                size_t option_id = size_t( -1 * ( nodes[p].top ) );
+                assert( option_id < n_options );
+                solution[x] = option_id;
                 DEBUG_PRINT( "Sol[%d] = %d\n", (int)x, (int)solution[x] );
         }
 
@@ -159,7 +165,8 @@ VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
 
 // Algorithm X: Volume 4B, Page 69
 void
-SearchSolutions( size_t n_items, DLinkItem *items, DLinkNode *nodes, size_t *X,
+SearchSolutions( size_t n_items, size_t n_options, DLinkItem *items,
+                 DLinkNode *nodes, size_t *X,
                  bool ( *visit_fn )( void *user_data, size_t solution_size,
                                      size_t *solution ),
                  void *user_data, size_t max_solution_size, size_t *solution )
@@ -175,8 +182,8 @@ X2:  // Enter level l.
                      int( items[0].r ) );
 
         if ( items[0].r == 0 ) {
-                if ( VisitSolution( n_items, nodes, X, l, visit_fn, user_data,
-                                    max_solution_size, solution ) ) {
+                if ( VisitSolution( n_items, n_options, nodes, X, l, visit_fn,
+                                    user_data, max_solution_size, solution ) ) {
                         // Early Terminate
                         return;
                 }
@@ -253,7 +260,6 @@ DLinkTable::DLinkTable( size_t n_items, size_t n_options,
                         size_t n_option_nodes )
     : n_items( n_items ),
       n_options( n_options ),
-      n_option_nodes( n_option_nodes ),
       item_list( 1 + n_items ),  // horizontal list
       table( 1 + n_items +
              // spacer nodes
@@ -351,9 +357,10 @@ DLinkTable::SearchSolutions( bool ( *visit_fn )( void   *user_data,
 {
         std::vector<size_t> X( this->n_items );  // At most n_items.
 
-        ::taocp::SearchSolutions( this->n_items, this->item_list.data( ),
-                                  this->table.data( ), X.data( ), visit_fn,
-                                  user_data, max_solution_size, solution );
+        ::taocp::SearchSolutions( this->n_items, this->n_options,
+                                  this->item_list.data( ), this->table.data( ),
+                                  X.data( ), visit_fn, user_data,
+                                  max_solution_size, solution );
 }
 
 }  // namespace taocp
