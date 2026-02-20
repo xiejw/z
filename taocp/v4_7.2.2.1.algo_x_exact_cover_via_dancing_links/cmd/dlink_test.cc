@@ -67,6 +67,7 @@ FORGE_TEST( matrix_cover )
             []( void *user_data, size_t solution_size,
                 size_t *solution ) -> bool {
                     *( (size_t *)user_data ) = solution_size;
+                    (void)solution;  // Avoid warning in release mode.
                     assert( solution[6] == 0 );
                     return true;
             },
