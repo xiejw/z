@@ -105,6 +105,22 @@ UncoverItem( DLinkItem *items, size_t item_id, DLinkNode *nodes )
         }
 }
 
+// Visit a solution and call the user passed-in visit_fn.
+//
+// NOTE: The X array recods the node in the DLinkTable. We need to deduce the
+// 0-based Option ID and then set Option ID in the solution buffer. To do so,
+// there are two approaches
+//
+// 1. Store the Option ID in each node of the DLinkTable. Then the access is
+//    O(1) but it takes n_option_nodes spaces
+// 2. Avoid this memory cost but linearly scan the spacer (top <= 0). Spacer
+//    has the Option ID stored in the top.
+// 3. We could internally maintain a small Option ID array to store the spacer
+//    ID in the table. Then a binary search could find the Option ID very
+//    quickly. Space cost is O(n_options), and time cost is O(log(n_options)).
+//
+// We would avoid (1), and now use (2). (3) can be used later.
+//
 bool
 VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
                bool ( *visit_fn )( void *user_data, size_t solution_size,
@@ -119,7 +135,7 @@ VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
 
         // Translate result
         for ( size_t x = 0; x < l; x++ ) {
-                if ( x >= max_solution_size ) {  // Out of boundary.
+                if ( x >= max_solution_size ) {  // Partial solution case.
                         return visit_fn( user_data, max_solution_size,
                                          solution );
                 }
@@ -128,11 +144,13 @@ VisitSolution( size_t n_items, DLinkNode *nodes, size_t *X, size_t l,
                 assert( id > n_items );
 
                 // Scan the spacers to get the option ID.
-                size_t p = id - 1;
-                while ( nodes[p].top > 0 ) {
+                size_t p = id;
+                do {
                         p--;
-                }
-                solution[x] = size_t( -1 * ( nodes[p].top ) ) + 1;
+                        assert( p > n_items );
+                } while ( nodes[p].top > 0 );
+
+                solution[x] = size_t( -1 * ( nodes[p].top ) );
                 DEBUG_PRINT( "Sol[%d] = %d\n", (int)x, (int)solution[x] );
         }
 
@@ -248,17 +266,17 @@ DLinkTable::DLinkTable( size_t n_items, size_t n_options,
         assert( n_option_nodes >= 1 );
 
         // Link the horizontal item list.
-        auto *item_list       = this->item_list.data( );
-        item_list[0].id       = 0;
-        item_list[0].l        = n_items;  // Same as this->item_list_size - 1;
-        item_list[0].r        = 1;
-        item_list[n_items].id = n_items;
-        item_list[n_items].l  = n_items - 1;
-        item_list[n_items].r  = 0;
+        auto *item_list = this->item_list.data( );
+        // item_list[0].id       = 0;
+        item_list[0].l = n_items;  // Same as this->item_list_size - 1;
+        item_list[0].r = 1;
+        // item_list[n_items].id = n_items;
+        item_list[n_items].l = n_items - 1;
+        item_list[n_items].r = 0;
         for ( size_t i = 1; i < n_items; i++ ) {
-                item_list[i].id = i;
-                item_list[i].l  = i - 1;
-                item_list[i].r  = i + 1;
+                // item_list[i].id = i;
+                item_list[i].l = i - 1;
+                item_list[i].r = i + 1;
         }
 
         // Link the vertical headers.
@@ -268,20 +286,6 @@ DLinkTable::DLinkTable( size_t n_items, size_t n_options,
                 n->u    = i;
                 n->d    = i;
         }
-}
-
-DLinkItem *
-DLinkTable::GetHorizontalItem( size_t i )
-{
-        assert( i <= this->item_list.size( ) );
-        return &this->item_list[i];
-}
-
-DLinkNode *
-DLinkTable::GetTableItem( size_t i )
-{
-        assert( i <= this->table.size( ) );
-        return &this->table[i];
 }
 
 void

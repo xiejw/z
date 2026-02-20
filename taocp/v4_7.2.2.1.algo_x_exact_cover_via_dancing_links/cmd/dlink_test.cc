@@ -8,29 +8,22 @@
 #include <stdio.h>
 #include <string.h>
 
-/* === --- Test Code -------------------------------------------------------- */
-
-#define SetHeads3( h, a, b, c ) \
-        ( ( h )[0] = ( a ), ( h )[1] = ( b ), ( h )[2] = ( c ) )
-#define SetHeads2( h, a, b ) ( ( h )[0] = ( a ), ( h )[1] = ( b ) )
-
 using namespace taocp;
 
-int
-main( void )
+FORGE_TEST( matrix_cover )
 {
         // Exact cover problem: Cover all columns of a matrix exactly once.
         //
         //        1 2 3 4 5 6 7
-        // row 1: 0 0 1 0 1 1 0    // 3 5 6
-        // row 2: 1 0 0 1 0 0 1    // 1 4 7
-        // row 3: 0 1 1 0 0 1 0    // 2 3 6
-        // row 4: 1 0 0 1 0 0 0    // 1 4
-        // row 5: 0 1 0 0 0 0 1    // 2 7
-        // row 6: 0 0 0 1 1 0 1    // 4 5 7
+        // row 0: 0 0 1 0 1 1 0    // 3 5 6
+        // row 1: 1 0 0 1 0 0 1    // 1 4 7
+        // row 2: 0 1 1 0 0 1 0    // 2 3 6
+        // row 3: 1 0 0 1 0 0 0    // 1 4
+        // row 4: 0 1 0 0 0 0 1    // 2 7
+        // row 5: 0 0 0 1 1 0 1    // 4 5 7
         //
         // solution is
-        // row 1 4 5
+        // row 0 3 4
 
         DLinkTable tbl{ /*n_items=*/7,
                         /*n_options=*/6,
@@ -46,7 +39,7 @@ main( void )
 
         OptionState state{
             0,
-            { "r1", "r2", "r3", "r4", "r5", "r6" },
+            { "r0", "r1", "r2", "r3", "r4", "r5" },
             {
               /* row 0 */ { 3, 5, 6 },
               /* row 1 */ { 1, 4, 7 },
@@ -80,18 +73,22 @@ main( void )
             &sols_size, 7, sols );
 
         EXPECT_TRUE( sols_size == 3, "sols size" );
-        assert( sols[0] != 0 );  // At least one solution
 
         std::sort( sols, sols + sols_size );
 
-        EXPECT_TRUE( 1 == sols[0], "sol 0" );
-        EXPECT_TRUE( 4 == sols[1], "sol 1" );
-        EXPECT_TRUE( 5 == sols[2], "sol 2" );
+        EXPECT_TRUE( 1 - 1 == sols[0], "sol 0" );
+        EXPECT_TRUE( 4 - 1 == sols[1], "sol 1" );
+        EXPECT_TRUE( 5 - 1 == sols[2], "sol 2" );
 
         // Solution is 1 based. -1 to make it 0-based.
-        EXPECT_TRUE( 0 == strcmp( "r1", state.names[sols[0] - 1] ), "name 0" );
-        EXPECT_TRUE( 0 == strcmp( "r4", state.names[sols[1] - 1] ), "name 1" );
-        EXPECT_TRUE( 0 == strcmp( "r5", state.names[sols[2] - 1] ), "name 2" );
+        EXPECT_TRUE( 0 == strcmp( "r0", state.names[sols[0]] ), "name 0" );
+        EXPECT_TRUE( 0 == strcmp( "r3", state.names[sols[1]] ), "name 1" );
+        EXPECT_TRUE( 0 == strcmp( "r4", state.names[sols[2]] ), "name 2" );
+        return NULL;
+}
 
-        printf( "Test passed.\n" );
+int
+main( void )
+{
+        ::forge::test_suite_run( );
 }
