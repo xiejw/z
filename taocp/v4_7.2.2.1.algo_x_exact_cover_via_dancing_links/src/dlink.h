@@ -71,6 +71,9 @@ struct DLinkTable {
                                           size_t **option_node_top_ids ),
                             void *user_data );
 
+        /// Cover one item to narrow the search space.
+        void CoverItem( size_t item_id );
+
         /// Search all solutions.
         ///
         /// === --- visit_fn.

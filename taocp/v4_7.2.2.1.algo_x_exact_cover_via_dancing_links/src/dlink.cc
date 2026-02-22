@@ -363,4 +363,12 @@ DLinkTable::SearchSolutions( bool ( *visit_fn )( void   *user_data,
                                   max_solution_size, solution );
 }
 
+void
+DLinkTable::CoverItem( size_t item_id )
+{
+        assert( item_id > 0 && item_id <= this->n_items );
+        ::taocp::CoverItem( this->item_list.data( ), item_id,
+                            this->table.data( ) );
+}
+
 }  // namespace taocp
