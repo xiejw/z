@@ -39,9 +39,9 @@ The key to designing an effective backtracking algorithm lies in three main aspe
 
 ## Dancing Links
 
-|Algorithm List| Page |
-| :--- | :---|
-| V4 7.2.2.1X Exact Cover via Dancing Links| Page 69 |
+|Algorithm List|
+| :--- |
+| V4 7.2.2.1X Exact Cover via Dancing Links|
 
 Dancing Links (DLX) is an elegant and powerful technique introduced by Donald
 Knuth to implement his Algorithm X. It leverages the properties of a circular
