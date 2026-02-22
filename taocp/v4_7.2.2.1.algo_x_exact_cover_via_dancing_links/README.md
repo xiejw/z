@@ -17,7 +17,7 @@ Reference Books and Papers
 
 #### Use Case: Sudoku
 
-See code, [`main.c`](cmd/main.c), for an interesting example demonstrates
+See code, [`main.cc`](cmd/main.cc), for an interesting example demonstrates
 Dancing Links algorithm. It is based on [Dancing Links Paper][1] by Donald E.
 Knuth.
 

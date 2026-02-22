@@ -175,8 +175,10 @@ FindAllOpts( const int *problem, struct opt *opts )
                                 }
 
                                 {
-                                        struct opt opt{
-                                            .x = x, .y = y, .k = k };
+                                        struct opt opt;
+                                        opt.x         = x;
+                                        opt.y         = y;
+                                        opt.k         = k;
                                         opts[total++] = opt;
                                 }
                         not_a_option:
@@ -355,8 +357,9 @@ main( void )
                 assert( num_sol <= 9 * 9 );
                 printf( "Found solution:\n" );
                 PrintSolution( &tbl, problem, opts, num_sol, sol );
-        } else {
-                printf( "No solution.\n" );
+                return 0;
         }
-        return 0;
+
+        printf( "No solution.\n" );
+        return -1;
 }
