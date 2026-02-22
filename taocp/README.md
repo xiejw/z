@@ -37,6 +37,18 @@ The key to designing an effective backtracking algorithm lies in three main aspe
 | V4 7.2.2B Basic backtrack+Bit vector  | 2'282'380'604  | 33 secs|
 | V4 7.2.2W Walker's backtrack  | 6'893'407'587  | 4.7 secs|
 
+## Dancing Links
+
+|Algorithm List| Page |
+| :--- | :---|
+| V4 7.2.2.1X Exact Cover via Dancing Links| Page 69 |
+
+Dancing Links (DLX) is an elegant and powerful technique introduced by Donald
+Knuth to implement his Algorithm X. It leverages the properties of a circular
+doubly linked list to make the backtracking process—specifically the "covering"
+and "uncovering" of rows and columns—incredibly efficient.
+
+
 ## Components and Traversal
 
 |Algorithm List|
