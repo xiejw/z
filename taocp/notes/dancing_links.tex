@@ -1,0 +1,45 @@
+\section{Dancing Links}
+
+\urldef{\codeAlgoXDLink}\url{https://github.com/xiejw/z/blob/ca4de9515b959db2002abfc2bb1202b936fec962/taocp/v4_7.2.2.1.algo_x_exact_cover_via_dancing_links/src/dlink.h}
+\urldef{\codeAlgoXDLinkSudoku}\url{https://github.com/xiejw/z/blob/ca4de9515b959db2002abfc2bb1202b936fec962/taocp/v4_7.2.2.1.algo_x_exact_cover_via_dancing_links/cmd/main.cc}
+
+In Section 7.2.2.1 (Volume 4B, page 69), Algorithm X\sidenote{The code can be
+found at \codeAlgoXDLink.} establishes the fundamental structure of the Dancing
+Links algorithm. This technique serves as a versatile framework, providing an
+efficient approach to solving a wide array of combinatorial problems. This
+implementation is driven by two primary insights:
+
+\begin{itemize}
+  \item The \emph{undo} operations are computationally inexpensive, allowing for
+    highly efficient backtracking.
+  \item The data structure necessitates the explicit encoding of constraints
+    during the problem setup. This facilitates the immediate pruning of
+    infeasible options, significantly reducing the branching factor of the
+    search space.
+\end{itemize}
+
+Applying the Dancing Links algorithm to a practical example, such as
+Sudoku\sidenote{The example code can be found at \codeAlgoXDLinkSudoku.}, is a
+highly rewarding exercise. It provides a clear demonstration of how to map
+complex problem constraints into the discrete \emph{items} and \emph{options}
+required by the framework.
+
+Based on these observations, several potential improvements emerge:
+\begin{itemize}
+  \item Heuristic Optimization: Unlike a brute-force approach, a human solving
+    Sudoku does not exhaustively test every possibility, even when backtracking
+    is computationally ``cheap.'' Instead, we identify strategic bottlenecks to
+    effectively prune the search tree. While the Minimum Remaining Values (MRV)
+    heuristic in \texttt{X3} adopts this logic, there remains significant room
+    for further optimization.
+  \item Data Structure Efficiency: While ``undo'' operations carry low overhead,
+    they are not cost-free. The lazy data structures detailed in Section 7.2.2.2
+    and the sequentially allocated lists—referenced in (16)–(23) of Section
+    7.2.2—offer a more elegant and efficient implementation for managing these
+    states.
+\end{itemize}
+
+
+
+% can extend to M and C
+

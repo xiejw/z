@@ -60,14 +60,3 @@ examined in detail, including its application to 2-SAT (Boolean satisfiability).
 It perfectly exemplifies an algorithm that achieves "intelligence" not through
 unnecessary complexity, but through the strategic placement of simple data.
 
-## TODO
-
-- Focus on Volume 4A, 4B, etc
-- Write all algorithms in C++ with simple APIs.
-- Use clang-19 above with c++17 only.
-
-- **Dancing Link** ([dlink](./taocp/v4_dlink)): An advanced data structure
-  implementing backtracking algorithms, for the exact cover problem (XC). This
-  can be extended to help exact cover with colors problem (XCC).
-- **SAT Solver** ([sat](./taocp/v4_sat)): Few algorithms which aim to solve the
-  Boolean satisfiability problem (SAT).
