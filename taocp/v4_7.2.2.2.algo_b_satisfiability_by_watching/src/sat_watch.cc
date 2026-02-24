@@ -1,8 +1,6 @@
 #include "sat.h"
 
-#include <print>
-
-#include <zion/zion.h>
+#include "log.h"
 
 #define DEBUG_MODE 0
 
@@ -33,21 +31,23 @@ WatchSolver::reserve_cells( size_t num_cells ) -> void
 }
 
 auto
-WatchSolver::emit_clause( std::span<const literal_t> lits ) -> void
+WatchSolver::emit_clause( size_t size, const literal_t *lits ) -> void
 {
         /* === --- Few quick sanity checks. ----------------------------- === */
-        if ( lits.empty( ) ) PANIC( "emitted clause cannot be empty." );
+        if ( size == 0 ) PANIC( "emitted clause cannot be empty." );
         if ( m_num_emitted_clauses >= m_num_clauses )
                 PANIC( "emitted clause is full. Cannot submit one more." );
 
-        this->debug_check( lits );
+        this->debug_check( size, lits );
 
         /* Clause id is 1-based, and decreasing order. */
         auto clause_id = m_num_clauses - m_num_emitted_clauses;
 
         /* Put each literal into the internal data structures. */
         bool first_v = true;
-        for ( auto lit : lits ) {
+        for ( size_t x = 0; x < size; x++ ) {
+                auto lit = lits[x];
+
                 /* For literal 'l', the value put into the cell is 2*l+C(l).
                  */
                 auto raw_v     = decode_literal_raw_value( lit );
@@ -112,14 +112,14 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                 size_t j = m_watch[comp_l];
 
                 if ( DEBUG_MODE )
-                        DEBUG(
-                            "work at B3 at level d {} to remove compliment of "
-                            "literal with starting clause {} (comp l = {})",
-                            (size_t)d, j, comp_l );
+                        INFO(
+                            "work at B3 at level d %d to remove compliment of "
+                            "literal with starting clause %d (comp l = %d)",
+                            (int)d, int( j ), int( comp_l ) );
 
                 while ( j != 0 ) {
                         if ( DEBUG_MODE ) {
-                                DEBUG(
+                                INFO(
                                     "--> sub level B3 to work on clause j = "
                                     "{}",
                                     (size_t)j );
@@ -142,11 +142,12 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                         size_t k = begin + 1;
                         for ( ; k < end; k++ ) {
                                 if ( DEBUG_MODE )
-                                        DEBUG(
+                                        INFO(
                                             "--> --> sub level B3 clause j = "
-                                            "{} work on cell {} (begin {}, "
-                                            "end {})",
-                                            (size_t)j, (size_t)k, begin, end );
+                                            "%d work on cell %d (begin %d, "
+                                            "end %d)",
+                                            (int)j, (int)k, int( begin ),
+                                            int( end ) );
 
                                 size_t new_l = m_cells[k];
 
@@ -167,11 +168,11 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                                 /* Cannot stop watching on comp_l. */
                                 m_watch[comp_l] = j;
                                 if ( DEBUG_MODE )
-                                        DEBUG(
+                                        INFO(
                                             "cannot stop watching on "
                                             "compliment of literal, go to B5 "
-                                            "at level d {}",
-                                            (size_t)d );
+                                            "at level d %d",
+                                            (int)d );
                                 goto B5;
                         }
                 }
@@ -180,7 +181,7 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                 m_watch[comp_l] = 0;
                 d++;
                 if ( DEBUG_MODE )
-                        DEBUG( "advance to with B2 at level d {}", (size_t)d );
+                        INFO( "advance to with B2 at level d %d", (int)d );
                 continue; /* Return to B2 */
 
         B5:
@@ -192,10 +193,10 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                         comp_l = 2 * d + ( ( new_md & 1 ) ^ 1 );
 
                         if ( DEBUG_MODE )
-                                DEBUG(
-                                    "try again with B3 at level d {} and m[d] "
-                                    "= {}",
-                                    (size_t)d, (size_t)new_md );
+                                INFO(
+                                    "try again with B3 at level d %d and m[d] "
+                                    "= %d",
+                                    (int)d, (int)new_md );
                         goto B3;
                 } else {
                         /* B6 Backtrack */
@@ -205,8 +206,8 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
                         d--;
 
                         if ( DEBUG_MODE )
-                                DEBUG( "backtrack with B5 at level d {}",
-                                       (size_t)d );
+                                INFO( "backtrack with B5 at level d %d",
+                                      (int)d );
                         goto B5;
                 }
         }
@@ -227,60 +228,66 @@ WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
 auto
 WatchSolver::dump_debug_info( ) -> void
 {
-        /* === --- Internal --------------------------------------------- === */
-        std::print( "internal\n" );
-        std::print( "  num_literals {:3}\n", m_num_literals );
-        std::print( "  num_clauses  {:3}\n", m_num_clauses );
-
-        /* === --- Cells ------------------------------------------------ === */
-        std::print( "cells\n" );
-        for ( size_t i = 0; i < m_cells.size( ); i++ ) {
-                std::print( "{:02} ", i );
-        }
-        std::print( "\n" );
-        for ( size_t i = 0; i < m_cells.size( ); i++ ) {
-                std::print( "{:02} ", m_cells[i] );
-        }
-        std::print( "\n" );
-
-        /* === --- Start ------------------------------------------------ === */
-        std::print( "start\n" );
-        for ( size_t i = 0; i < m_start.size( ); i++ ) {
-                std::print( "{:02} ", i );
-        }
-        std::print( "\n" );
-        for ( size_t i = 0; i < m_start.size( ); i++ ) {
-                std::print( "{:02} ", m_start[i] );
-        }
-        std::print( "\n" );
-
-        /* === --- Watch ------------------------------------------------ === */
-        std::print( "watch\n" );
-        for ( size_t i = 0; i < m_watch.size( ); i++ ) {
-                std::print( "{:02} ", i );
-        }
-        std::print( "\n" );
-        for ( size_t i = 0; i < m_watch.size( ); i++ ) {
-                std::print( "{:02} ", m_watch[i] );
-        }
-        std::print( "\n" );
-
-        /* === --- Link ------------------------------------------------- === */
-        std::print( "link\n" );
-        for ( size_t i = 0; i < m_link.size( ); i++ ) {
-                std::print( "{:02} ", i );
-        }
-        std::print( "\n" );
-        for ( size_t i = 0; i < m_link.size( ); i++ ) {
-                std::print( "{:02} ", m_link[i] );
-        }
-        std::print( "\n" );
+        //        /* === --- Internal
+        //        --------------------------------------------- === */
+        //        std::print( "internal\n" );
+        //        std::print( "  num_literals {:3}\n", m_num_literals );
+        //        std::print( "  num_clauses  {:3}\n", m_num_clauses );
+        //
+        //        /* === --- Cells
+        //        ------------------------------------------------ === */
+        //        std::print( "cells\n" );
+        //        for ( size_t i = 0; i < m_cells.size( ); i++ ) {
+        //                std::print( "{:02} ", i );
+        //        }
+        //        std::print( "\n" );
+        //        for ( size_t i = 0; i < m_cells.size( ); i++ ) {
+        //                std::print( "{:02} ", m_cells[i] );
+        //        }
+        //        std::print( "\n" );
+        //
+        //        /* === --- Start
+        //        ------------------------------------------------ === */
+        //        std::print( "start\n" );
+        //        for ( size_t i = 0; i < m_start.size( ); i++ ) {
+        //                std::print( "{:02} ", i );
+        //        }
+        //        std::print( "\n" );
+        //        for ( size_t i = 0; i < m_start.size( ); i++ ) {
+        //                std::print( "{:02} ", m_start[i] );
+        //        }
+        //        std::print( "\n" );
+        //
+        //        /* === --- Watch
+        //        ------------------------------------------------ === */
+        //        std::print( "watch\n" );
+        //        for ( size_t i = 0; i < m_watch.size( ); i++ ) {
+        //                std::print( "{:02} ", i );
+        //        }
+        //        std::print( "\n" );
+        //        for ( size_t i = 0; i < m_watch.size( ); i++ ) {
+        //                std::print( "{:02} ", m_watch[i] );
+        //        }
+        //        std::print( "\n" );
+        //
+        //        /* === --- Link
+        //        ------------------------------------------------- === */
+        //        std::print( "link\n" );
+        //        for ( size_t i = 0; i < m_link.size( ); i++ ) {
+        //                std::print( "{:02} ", i );
+        //        }
+        //        std::print( "\n" );
+        //        for ( size_t i = 0; i < m_link.size( ); i++ ) {
+        //                std::print( "{:02} ", m_link[i] );
+        //        }
+        //        std::print( "\n" );
 }
 
 auto
-WatchSolver::debug_check( std::span<const literal_t> lits ) const -> void
+WatchSolver::debug_check( size_t size, const literal_t *lits ) const -> void
 {
-        for ( auto lit : lits ) {
+        for ( size_t x = 0; x < size; x++ ) {
+                auto lit   = lits[x];
                 auto raw_v = decode_literal_raw_value( lit );
                 if ( raw_v > m_num_literals ) {
                         PANIC( "lit" );

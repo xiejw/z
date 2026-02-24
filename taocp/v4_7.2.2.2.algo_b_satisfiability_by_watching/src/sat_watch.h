@@ -1,7 +1,6 @@
 // vim: ft=cpp
 #pragma once
 
-#include <span>
 #include <vector>
 
 #include "sat_solver.h"
@@ -34,7 +33,7 @@ class WatchSolver : Solver {
 
       public:
         /* === --- Conform Base Class ----------------------------------- === */
-        auto emit_clause( std::span<const literal_t> ) -> void override;
+        auto emit_clause( size_t size, const literal_t * ) -> void override;
         auto search( ) -> std::optional<std::vector<literal_t>> override;
 
       public:
@@ -44,6 +43,6 @@ class WatchSolver : Solver {
         auto dump_debug_info( ) -> void;
 
       private:
-        auto debug_check( std::span<const literal_t> ) const -> void;
+        auto debug_check( size_t size, const literal_t * ) const -> void;
 };
 }  // namespace eos::sat

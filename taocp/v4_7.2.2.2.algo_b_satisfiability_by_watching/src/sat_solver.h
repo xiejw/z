@@ -27,14 +27,14 @@ using literal_t = size_t;
 auto C( literal_t c ) -> literal_t;
 auto decode_literal_raw_value( literal_t c ) -> literal_t;
 auto is_literal_C( literal_t c ) -> bool;
-auto print_clause_literals( std::span<const literal_t> ) -> void;
+auto print_clause_literals( size_t size, const literal_t * ) -> void;
 
 /* === --- SAT Solver Interface  ------------------------------------------- ===
  */
 class Solver {
       public:
-        virtual auto emit_clause( std::span<const literal_t> ) -> void  = 0;
-        virtual auto search( ) -> std::optional<std::vector<literal_t>> = 0;
+        virtual auto emit_clause( size_t size, const literal_t * ) -> void = 0;
+        virtual auto search( ) -> std::optional<std::vector<literal_t>>    = 0;
 };
 
 }  // namespace eos::sat

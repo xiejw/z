@@ -1,7 +1,5 @@
 #include "sat.h"
 
-#include <print>
-
 namespace eos::sat {
 
 namespace {
@@ -27,21 +25,22 @@ C( literal_t c ) -> literal_t
 }
 
 auto
-print_clause_literals( std::span<const literal_t> lits ) -> void
+print_clause_literals( size_t size, const literal_t *lits ) -> void
 {
-        if ( lits.empty( ) ) {
-                std::print( "(empty literals)\n" );
+        if ( size == 0 ) {
+                printf( "(empty literals)\n" );
                 return;
         }
 
-        std::print( "< " );
-        for ( auto i : lits ) {
+        printf( "< " );
+        for ( size_t x = 0; x < size; x++ ) {
+                auto i = lits[x];
                 if ( is_literal_C( i ) )
-                        std::print( "C({:3}), ",
-                                    decode_literal_raw_value( i ) );
+                        printf( "C(%3d), ",
+                                (int)decode_literal_raw_value( i ) );
                 else
-                        std::print( "{:3}, ", i );
+                        printf( "%3d, ", int( i ) );
         }
-        std::print( " >\n" );
+        printf( " >\n" );
 }
 }  // namespace eos::sat
