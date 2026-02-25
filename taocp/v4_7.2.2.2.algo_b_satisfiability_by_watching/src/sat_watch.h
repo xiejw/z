@@ -3,6 +3,7 @@
 #pragma once
 
 #include <vector>
+#include <optional>
 
 #include "sat_literal.h"
 
