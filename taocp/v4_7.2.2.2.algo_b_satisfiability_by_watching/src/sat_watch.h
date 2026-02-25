@@ -2,6 +2,7 @@
 // forge:v1
 #pragma once
 
+#include <initializer_list>
 #include <vector>
 
 #include "sat_literal.h"
@@ -63,6 +64,7 @@ class WatchSolver {
       public:
         /* === --- Conform Base Class ----------------------------------- === */
         void EmitClause( size_t size, const literal_t * );
+        void EmitClause( std::initializer_list<literal_t> );
         auto SearchOneSolution( ) -> std::optional<std::vector<literal_t>>;
 
       public:

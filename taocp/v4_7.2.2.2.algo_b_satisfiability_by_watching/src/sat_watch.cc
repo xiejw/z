@@ -32,6 +32,12 @@ WatchSolver::ReserveCells( size_t num_cells ) -> void
 }
 
 auto
+WatchSolver::EmitClause( std::initializer_list<literal_t> lits ) -> void
+{
+        this->EmitClause( lits.size( ), std::data( lits ) );
+}
+
+auto
 WatchSolver::EmitClause( size_t size, const literal_t *lits ) -> void
 {
         /* === --- Few quick sanity checks. ----------------------------- === */

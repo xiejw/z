@@ -11,11 +11,10 @@ using taocp::WatchSolver;
 
 namespace {
 auto
-PrintAndEmitClause( WatchSolver *sov, size_t size, const literal_t *lits )
-    -> void
+PrintAndEmitClause( WatchSolver *sov, std::initializer_list<literal_t> lits )
 {
-        PrintClause( size, lits );
-        sov->EmitClause( size, lits );
+        PrintClause( lits.size( ), std::data( lits ) );
+        sov->EmitClause( lits );
 }
 
 auto
@@ -26,22 +25,10 @@ RunSolver( ) -> void
         WatchSolver sov{ /*num_literals=*/3, /*num_causes=*/4 };
 
         INFO( "Emit Clauses:" );
-        {
-                literal_t lits[] = { 1 };
-                PrintAndEmitClause( &sov, 1, lits );
-        }
-        {
-                literal_t lits[] = { 1, C( 2 ) };
-                PrintAndEmitClause( &sov, 2, lits );
-        }
-        {
-                literal_t lits[] = { 2, C( 3 ) };
-                PrintAndEmitClause( &sov, 2, lits );
-        }
-        {
-                literal_t lits[] = { 2, 3 };
-                PrintAndEmitClause( &sov, 2, lits );
-        }
+        PrintAndEmitClause( &sov, { 1 } );
+        PrintAndEmitClause( &sov, { 1, C( 2 ) } );
+        PrintAndEmitClause( &sov, { 2, C( 3 ) } );
+        PrintAndEmitClause( &sov, { 2, 3 } );
 
         // INFO( "Debug Print:" );
         // sov.dump_debug_info( );

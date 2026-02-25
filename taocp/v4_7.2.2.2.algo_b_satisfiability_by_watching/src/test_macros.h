@@ -1,10 +1,11 @@
 // vim: ft=cpp
 //
-// forge:v1
+// forge:v3
 //
 // === --- Test Code ------------------------------------------------------- ===
 //
 // History
+// - [2026-02-25]: V3 Test not return NULL.
 // - [2026-01-26]: V2 Add central registry.
 // - [2026-01-26]: V1 Simple EXPECT_TRUE.
 //
@@ -31,7 +32,7 @@
 //
 //     FORGE_TEST( test_foo )
 //     {
-//             return NULL;
+//             return;
 //     }
 //
 //     int
@@ -44,10 +45,10 @@
 #include <vector>
 
 namespace forge {
-inline std::vector<std::pair<const char *, std::function<char *( )>>> &
+inline std::vector<std::pair<const char *, std::function<void( )>>> &
 test_suite_registry( )
 {
-        static std::vector<std::pair<const char *, std::function<char *( )>>>
+        static std::vector<std::pair<const char *, std::function<void( )>>>
             funcs;
         return funcs;
 }
@@ -65,7 +66,7 @@ test_suite_run( )
 }  // namespace forge
 
 #define FORGE_TEST( fn_name )                                      \
-        char *fn_name( );                                          \
+        void fn_name( );                                           \
         struct fn_name##_registrar {                               \
                 fn_name##_registrar( )                             \
                 {                                                  \
@@ -74,7 +75,7 @@ test_suite_run( )
                 }                                                  \
         };                                                         \
         static fn_name##_registrar fn_name##_instance;             \
-        char                      *fn_name( )
+        void                       fn_name( )
 
 //
 // === --- Implementation Code --------------------------------------------- ===
