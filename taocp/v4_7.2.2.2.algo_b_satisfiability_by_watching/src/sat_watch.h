@@ -3,11 +3,30 @@
 
 #include <vector>
 
-#include "sat_solver.h"
+namespace taocp {
 
-namespace eos::sat {
+/* === --- Defined type for literals --------------------------------------- ===
+ *
+ * Any caller should use encoded literal when emitting clauses. This helps to
+ * wrap both the literal and its complement. Internal representation is opaque
+ * to callers.
+ *
+ * - To emit literal x, use 'x';
+ * - To emit complement of literal x, use 'C(x)'.
+ * - Both cases are 1-based literals.
+ *
+ * Few free functions are provided to decode:
+ * - decode_literal_raw_value returns the absolute value of the x.
+ * - is_literal_C returns true if the encoded value is a complement.
+ * - print_clause_literals prints the clause with literals nicely.
+ */
+using literal_t = size_t;
+auto C( literal_t c ) -> literal_t;
+auto decode_literal_raw_value( literal_t c ) -> literal_t;
+auto is_literal_C( literal_t c ) -> bool;
+auto print_clause_literals( size_t size, const literal_t * ) -> void;
 
-class WatchSolver : Solver {
+class WatchSolver {
       private:
         size_t m_num_literals;
         size_t m_num_clauses;
@@ -33,8 +52,8 @@ class WatchSolver : Solver {
 
       public:
         /* === --- Conform Base Class ----------------------------------- === */
-        auto emit_clause( size_t size, const literal_t * ) -> void override;
-        auto search( ) -> std::optional<std::vector<literal_t>> override;
+        void emit_clause( size_t size, const literal_t * );
+        auto search( ) -> std::optional<std::vector<literal_t>>;
 
       public:
         /* === --- A set of debug tooling. ----------------------------- === */
@@ -45,4 +64,4 @@ class WatchSolver : Solver {
       private:
         auto debug_check( size_t size, const literal_t * ) const -> void;
 };
-}  // namespace eos::sat
+}  // namespace taocp
