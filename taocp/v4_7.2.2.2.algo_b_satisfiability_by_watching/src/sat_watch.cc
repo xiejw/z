@@ -1,3 +1,4 @@
+// forge:v1
 #include "sat_watch.h"
 
 #include "log.h"
@@ -6,17 +7,17 @@
 
 namespace taocp {
 namespace {
-constexpr size_t mask = 1 << ( sizeof( size_t ) - 1 );
+constexpr size_t mask = 1 << ( sizeof( literal_t ) - 1 );
 }
 
 auto
-decode_literal_raw_value( literal_t c ) -> literal_t
+DecodeRawLiteralValue( literal_t c ) -> literal_t
 {
         return c & ( ~mask );
 }
 
 auto
-is_literal_C( literal_t c ) -> bool
+IsLiteralComplement( literal_t c ) -> bool
 {
         return c & mask;
 }
@@ -28,7 +29,7 @@ C( literal_t c ) -> literal_t
 }
 
 auto
-print_clause_literals( size_t size, const literal_t *lits ) -> void
+PrintClause( size_t size, const literal_t *lits ) -> void
 {
         if ( size == 0 ) {
                 printf( "(empty literals)\n" );
@@ -38,14 +39,18 @@ print_clause_literals( size_t size, const literal_t *lits ) -> void
         printf( "< " );
         for ( size_t x = 0; x < size; x++ ) {
                 auto i = lits[x];
-                if ( is_literal_C( i ) )
-                        printf( "C(%3d), ",
-                                (int)decode_literal_raw_value( i ) );
+                if ( IsLiteralComplement( i ) )
+                        printf( "C(%3" PRI_literal "), ",
+                                DecodeRawLiteralValue( i ) );
                 else
-                        printf( "%3d, ", int( i ) );
+                        printf( "%3" PRI_literal ", ", i );
         }
         printf( " >\n" );
 }
+
+}  // namespace taocp
+
+namespace taocp {
 
 WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses,
                           size_t num_reserved_cells )
@@ -91,8 +96,8 @@ WatchSolver::emit_clause( size_t size, const literal_t *lits ) -> void
 
                 /* For literal 'l', the value put into the cell is 2*l+C(l).
                  */
-                auto raw_v     = decode_literal_raw_value( lit );
-                auto is_c      = is_literal_C( lit );
+                auto raw_v     = DecodeRawLiteralValue( lit );
+                auto is_c      = IsLiteralComplement( lit );
                 auto literal_v = raw_v * 2 + ( is_c ? 1 : 0 );
                 m_cells.push_back( literal_v );
 
@@ -329,7 +334,7 @@ WatchSolver::debug_check( size_t size, const literal_t *lits ) const -> void
 {
         for ( size_t x = 0; x < size; x++ ) {
                 auto lit   = lits[x];
-                auto raw_v = decode_literal_raw_value( lit );
+                auto raw_v = DecodeRawLiteralValue( lit );
                 if ( raw_v > m_num_literals ) {
                         PANIC( "lit" );
                 }
