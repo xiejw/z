@@ -21,25 +21,25 @@ WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses,
 }
 
 WatchSolver::WatchSolver( size_t num_literals, size_t num_clauses )
-    : WatchSolver( num_literals, num_clauses, 5 * num_clauses )
+    : WatchSolver( num_literals, num_clauses, /*a guess*/ 5 * num_clauses )
 {
 }
 
 auto
-WatchSolver::reserve_cells( size_t num_cells ) -> void
+WatchSolver::ReserveCells( size_t num_cells ) -> void
 {
         m_cells.reserve( 1 + num_cells );
 }
 
 auto
-WatchSolver::emit_clause( size_t size, const literal_t *lits ) -> void
+WatchSolver::EmitClause( size_t size, const literal_t *lits ) -> void
 {
         /* === --- Few quick sanity checks. ----------------------------- === */
         if ( size == 0 ) PANIC( "emitted clause cannot be empty." );
         if ( m_num_emitted_clauses >= m_num_clauses )
                 PANIC( "emitted clause is full. Cannot submit one more." );
 
-        this->debug_check( size, lits );
+        this->DebugCheck( size, lits );
 
         /* Clause id is 1-based, and decreasing order. */
         auto clause_id = m_num_clauses - m_num_emitted_clauses;
@@ -88,7 +88,7 @@ WatchSolver::emit_clause( size_t size, const literal_t *lits ) -> void
 }
 
 auto
-WatchSolver::search( ) -> std::optional<std::vector<literal_t>>
+WatchSolver::SearchOneSolution( ) -> std::optional<std::vector<literal_t>>
 {
         if ( m_num_emitted_clauses != m_num_clauses ) {
                 PANIC( "emitted clauses are not enough. expected {}, got {}",
@@ -285,7 +285,7 @@ WatchSolver::dump_debug_info( ) -> void
 }
 
 auto
-WatchSolver::debug_check( size_t size, const literal_t *lits ) const -> void
+WatchSolver::DebugCheck( size_t size, const literal_t *lits ) const -> void
 {
         for ( size_t x = 0; x < size; x++ ) {
                 auto lit   = lits[x];

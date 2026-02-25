@@ -1,11 +1,15 @@
 // forge:v1
 #include "sat_literal.h"
 
-#define DEBUG_MODE 0
-
 namespace taocp {
 namespace {
 constexpr size_t mask = 1 << ( sizeof( literal_t ) - 1 );
+}
+
+auto
+C( literal_t c ) -> literal_t
+{
+        return c | mask;
 }
 
 auto
@@ -18,12 +22,6 @@ auto
 IsLiteralComplement( literal_t c ) -> bool
 {
         return c & mask;
-}
-
-auto
-C( literal_t c ) -> literal_t
-{
-        return c | mask;
 }
 
 auto
