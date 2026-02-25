@@ -3,8 +3,8 @@
 #pragma once
 
 #include <initializer_list>
-#include <vector>
 #include <optional>
+#include <vector>
 
 #include "sat_literal.h"
 

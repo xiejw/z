@@ -88,6 +88,7 @@ endef
 define TEST_template
 
 test_$(1): compile $${BUILD}/$(1)
+	printf "\e[42m%*s\e[0m\n" "$$(shell tput cols)" ""
 	$${BUILD}/$(1)
 
 test: test_$(1)
