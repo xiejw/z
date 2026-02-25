@@ -1,5 +1,7 @@
 // vim: ft=cpp
 // forge:v1
+//
+// Algorithm B: Satisfiability by Watching. Vol 4B Page 215.
 #pragma once
 
 #include <initializer_list>
@@ -11,8 +13,6 @@
 namespace taocp {
 
 /* === --- Defined type for literals --------------------------------------- ===
- *
- * Algorithm B: Satisfiability by Watching. Vol 4B Page 215.
  */
 
 class WatchSolver {

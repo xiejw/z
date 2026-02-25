@@ -104,13 +104,13 @@ WatchSolver::SearchOneSolution( ) -> std::optional<std::vector<literal_t>>
         }
         /* === --- This algorithm is Vol 4b, Page 215. ------------------ === */
 
-        /* B1 Init */
+B1:  // Init
         size_t d = 1;
         size_t n = m_num_literals;
 
         std::vector<size_t> m( n + 1 );
 
-        /* B2 Rejoice or choose */
+B2:  // Rejoice or choose
         while ( d <= n ) {
                 m[d] = m_watch[2 * d] == 0 || m_watch[2 * d + 1] != 0;
                 // size_t l      = 2 * d + m[d];
@@ -122,23 +122,24 @@ WatchSolver::SearchOneSolution( ) -> std::optional<std::vector<literal_t>>
 
                 if ( DEBUG_MODE )
                         INFO(
-                            "work at B3 at level d %d to remove compliment of "
-                            "literal with starting clause %d (comp l = %d)",
-                            (int)d, int( j ), int( comp_l ) );
+                            "work at B3 at level d %zu to remove compliment of "
+                            "literal with starting clause %zu (comp l = %zu)",
+                            d, j, comp_l );
 
+                // j tracks the current clause wathcing the comp_l
                 while ( j != 0 ) {
                         if ( DEBUG_MODE ) {
                                 INFO(
                                     "--> sub level B3 to work on clause j = "
-                                    "{}",
-                                    (size_t)j );
+                                    "%zu",
+                                    j );
                                 dump_debug_info( );
                         }
                         /* A literal other than comp_l should be watched in
                          * clause j. */
 
                         size_t begin  = m_start[j];
-                        size_t end    = m_start[j - 1];
+                        size_t end    = m_start[j - 1];  // m_start[0] is valid.
                         size_t next_j = m_link[j];
 
                         if ( DEBUG_MODE ) {
@@ -153,10 +154,9 @@ WatchSolver::SearchOneSolution( ) -> std::optional<std::vector<literal_t>>
                                 if ( DEBUG_MODE )
                                         INFO(
                                             "--> --> sub level B3 clause j = "
-                                            "%d work on cell %d (begin %d, "
-                                            "end %d)",
-                                            (int)j, (int)k, int( begin ),
-                                            int( end ) );
+                                            "%zu work on cell %zu (begin %zu, "
+                                            "end %zu)",
+                                            j, k, begin, end );
 
                                 size_t new_l = m_cells[k];
 
@@ -186,15 +186,14 @@ WatchSolver::SearchOneSolution( ) -> std::optional<std::vector<literal_t>>
                         }
                 }
 
-                /* B4 Advance */
+        B4:  // Advance
                 m_watch[comp_l] = 0;
                 d++;
                 if ( DEBUG_MODE )
-                        INFO( "advance to with B2 at level d %d", (int)d );
+                        INFO( "advance to with B2 at level d %zu", d );
                 continue; /* Return to B2 */
 
-        B5:
-                /* B5 Try again */
+        B5:  // B5 Try again
                 if ( m[d] < 2 ) {
                         size_t new_md = 3 - m[d];
                         m[d]          = new_md;
@@ -203,24 +202,26 @@ WatchSolver::SearchOneSolution( ) -> std::optional<std::vector<literal_t>>
 
                         if ( DEBUG_MODE )
                                 INFO(
-                                    "try again with B3 at level d %d and m[d] "
-                                    "= %d",
-                                    (int)d, (int)new_md );
+                                    "try again with B3 at level d %zu and m[d] "
+                                    "= %zu",
+                                    d, new_md );
                         goto B3;
-                } else {
-                        /* B6 Backtrack */
-                        if ( d == 1 ) return std::nullopt; /* Failed */
-
-                        /* Otherwise */
-                        d--;
-
-                        if ( DEBUG_MODE )
-                                INFO( "backtrack with B5 at level d %d",
-                                      (int)d );
-                        goto B5;
                 }
-        }
 
+        B6:  // Backtrack
+
+                if ( d == 1 ) return std::nullopt; /* Failed */
+
+                /* Otherwise */
+                d--;
+
+                if ( DEBUG_MODE ) INFO( "backtrack with B5 at level d %zu", d );
+
+                goto B5;
+
+        }  // End of B2
+
+        // Translate m to results;
         std::vector<literal_t> result( m_num_literals );
 
         for ( size_t i = 1; i <= m_num_literals; i++ ) {
