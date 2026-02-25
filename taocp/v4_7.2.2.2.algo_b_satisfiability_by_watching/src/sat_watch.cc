@@ -1,6 +1,8 @@
 // forge:v1
 #include "sat_watch.h"
 
+#include <stdio.h>
+
 #include "log.h"
 
 #define DEBUG_MODE 0

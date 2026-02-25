@@ -1,6 +1,8 @@
 // forge:v1
 #include "sat_literal.h"
 
+#include <stdio.h>
+
 namespace taocp {
 namespace {
 constexpr size_t mask = 1 << ( sizeof( literal_t ) - 1 );

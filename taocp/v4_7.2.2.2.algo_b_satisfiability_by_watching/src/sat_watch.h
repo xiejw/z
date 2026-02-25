@@ -4,6 +4,7 @@
 
 #include <initializer_list>
 #include <vector>
+#include <optional>
 
 #include "sat_literal.h"
 
