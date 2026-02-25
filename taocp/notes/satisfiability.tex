@@ -1,0 +1,23 @@
+\section{Satisfiability}
+
+%\urldef{\codeAlgoXDLink}\url{https://github.com/xiejw/z/blob/ca4de9515b959db2002abfc2bb1202b936fec962/taocp/v4_7.2.2.1.algo_x_exact_cover_via_dancing_links/src/dlink.h}
+
+In Section 7.2.2.2, boolean Satisfiability (SAT) is studied. It is a
+well-established and rigorously studied framework. While mathematically
+intensive, it is a compelling field of study because it serves as a universal
+interface between high-level applications and algorithmic problem-solving. This
+abstraction allows innovations in the underlying solver to benefit a diverse
+range of applications simultaneously.
+
+\paragraph{Satisfiability by watching} Algorithm B is a particularly elegant
+optimization within this domain. In a clause consisting of a disjunction of
+literals, only one variable needs to be ``watched'' to monitor whether the
+clause is satisfied or at risk of becoming a conflict. This approach makes
+backtracking highly efficient, as the solver only needs to visit clauses
+containing the specific variable being unassigned, rather than scanning all
+clauses. Furthermore, if a watched literal becomes false, the solver can
+cheaply update the watch to another non-false literal. By leveraging the
+inherent structure of Conjunctive Normal Form (CNF), this mechanism
+significantly reduces the overhead of undo operations during search.
+
+

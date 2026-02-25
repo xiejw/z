@@ -48,6 +48,19 @@ Knuth to implement his Algorithm X. It leverages the properties of a circular
 doubly linked list to make the backtracking process—specifically the "covering"
 and "uncovering" of rows and columns—incredibly efficient.
 
+## Satisfiability
+
+|Algorithm List|
+| :--- |
+| V4 7.2.2.2B Satisfiability by Watching|
+
+Algorithm B is an elegant optimization for CNF-based solvers that improves
+efficiency by monitoring only one "watched" literal per clause. Since the solver
+only reacts when a watched literal changes, it avoids scanning every clause
+during backtracking and can quickly update watches to other non-false literals.
+This significantly reduces the computational overhead of undoing operations
+during a search.
+
 
 ## Components and Traversal
 
