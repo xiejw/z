@@ -1,4 +1,5 @@
 MODS    += ${BUILD_OBJS}/log.o
+MODS    += ${BUILD_OBJS}/sat_literal.o
 MODS    += ${BUILD_OBJS}/sat_watch.o
 
 MAIN_OUT = main
