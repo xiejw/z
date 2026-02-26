@@ -1,7 +1,8 @@
 \section{Satisfiability}
 
 \urldef{\refDependencyRes}\url{https://borretti.me/article/dependency-resolution-made-simple}
-%\urldef{\codeAlgoXDLink}\url{https://github.com/xiejw/z/blob/ca4de9515b959db2002abfc2bb1202b936fec962/taocp/v4_7.2.2.1.algo_x_exact_cover_via_dancing_links/src/dlink.h}
+\urldef{\codeAlgoBDPE}\url{https://github.com/xiejw/z/blob/b3106f8892d9265f92817459c079e5798d0395b4/taocp/v4_7.2.2.2.algo_b_satisfiability_by_watching/cmd/test_main.cc#L8-L116}
+\urldef{\codeAlgoBWatch}\url{https://github.com/xiejw/z/blob/b3106f8892d9265f92817459c079e5798d0395b4/taocp/v4_7.2.2.2.algo_b_satisfiability_by_watching/src/sat_watch.cc#L99-L236}
 
 In Section 7.2.2.2, boolean Satisfiability (SAT) is studied. It is a
 well-established and rigorously studied framework. While mathematically
@@ -64,7 +65,8 @@ sql:2                         -  stdlib  1,  4
 threads:0                   http:4
   -  stdlib  2,  4            -  stdlib  3,  4
 \end{verbatim}
-With all the problem setup now, we could map the problem into SAT:
+With all the problem setup now, we could map the problem into SAT\sidenote{Full code
+can be found at \codeAlgoBDPE.}:
 \begin{itemize}
   \item Package Versions are Variables:
     We assign one boolean variable for each
@@ -98,15 +100,16 @@ With all the problem setup now, we could map the problem into SAT:
     terms above with $\hbox{app}_0$ as $1$ (the root).
 \end{itemize}
 
-\paragraph{Satisfiability by Watching} Algorithm B is a particularly elegant
-optimization within this domain. In a clause consisting of a disjunction of
-literals, only one variable needs to be ``watched'' to monitor whether the
-clause is satisfied or at risk of becoming a conflict. This approach makes
-backtracking highly efficient, as the solver only needs to visit clauses
-containing the specific variable being unassigned, rather than scanning all
-clauses. Furthermore, if a watched literal becomes false, the solver can
-cheaply update the watch to another non-false literal. By leveraging the
-inherent structure of Conjunctive Normal Form (CNF), this mechanism
-significantly reduces the overhead of undo operations during search.
+\paragraph{Satisfiability by Watching} Algorithm B\sidenote{Code can be found
+at \codeAlgoBWatch.} is a particularly elegant optimization within this domain.
+In a clause consisting of a disjunction of literals, only one variable needs to
+be ``watched'' to monitor whether the clause is satisfied or at risk of
+becoming a conflict. This approach makes backtracking highly efficient, as the
+solver only needs to visit clauses containing the specific variable being
+unassigned, rather than scanning all clauses. Furthermore, if a watched literal
+becomes false, the solver can cheaply update the watch to another non-false
+literal. By leveraging the inherent structure of Conjunctive Normal Form (CNF),
+this mechanism significantly reduces the overhead of undo operations during
+search.
 
 
