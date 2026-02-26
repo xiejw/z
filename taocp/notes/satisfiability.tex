@@ -1,5 +1,6 @@
 \section{Satisfiability}
 
+\urldef{\refDependencyRes}\url{https://borretti.me/article/dependency-resolution-made-simple}
 %\urldef{\codeAlgoXDLink}\url{https://github.com/xiejw/z/blob/ca4de9515b959db2002abfc2bb1202b936fec962/taocp/v4_7.2.2.1.algo_x_exact_cover_via_dancing_links/src/dlink.h}
 
 In Section 7.2.2.2, boolean Satisfiability (SAT) is studied. It is a
@@ -9,7 +10,95 @@ interface between high-level applications and algorithmic problem-solving. This
 abstraction allows innovations in the underlying solver to benefit a diverse
 range of applications simultaneously.
 
-\paragraph{Satisfiability by watching} Algorithm B is a particularly elegant
+\paragraph{Example: Dependency Resolution Problem} Let's see an interesting
+problem first\sidenote{Source is at \refDependencyRes.}. The databases for all
+packages are as follows:
+\begin{table}[ht]
+  \centering
+  \caption{Package Dependencies}
+  \begin{tabular}{|l|l|}
+    \hline
+    \textbf{Package} & \textbf{Versions}  \\
+    \hline
+    \texttt{app}             & 0 \\
+    \texttt{sql}             & 0, 1, 2       \\
+    \texttt{threads}         & 0, 1, 2       \\
+    \texttt{http}            & 0, 1, 2, 3, 4 \\
+    \texttt{stdlib}          & 0, 1, 2, 3, 4 \\
+    \hline
+  \end{tabular}
+\end{table}
+
+And we want to install \texttt{app:0}, which has dependencies \texttt{sql},
+\texttt{threads}, \texttt{http}, and \texttt{stdlib}. Each dependency, as a
+package, might have its own dependencies; and dependencies are different for
+different versions.
+
+For this case study, we also assume the dependency is recorded
+with a minimum version and a maximum version. For example,
+\begin{verbatim}
+              min,max
+ app:0
+   -  sql     0,  2
+   -  threads 1,  1
+\end{verbatim}
+means \texttt{app:0} needs two dependencies \texttt{sql} and \texttt{threads}.
+Any version $0, 1, 2$ of \texttt{sql} is OK, but only version $1$ of
+\texttt{threads} is allowed for \texttt{app:0}.
+
+With that, the entire dependency tree is as follows
+\begin{verbatim}
+             min,max                   min,max
+app:0                       threads:1
+  -  sql     2,  2            -  stdlib  2,  4
+  -  threads 2,  2          threads:2
+  -  http    3,  4            -  stdlib  3,  4
+  -  stdlib  4,  4          http:0
+sql:0                         -  stdlib  0,  3
+sql:1                       http:1
+  -  stdlib  1,  4            -  stdlib  0,  3
+  -  threads 1,  1          http:2
+sql:2                         -  stdlib  1,  4
+  -  stdlib  2,  4          http:3
+  -  threads 1,  2            -  stdlib  2,  4
+threads:0                   http:4
+  -  stdlib  2,  4            -  stdlib  3,  4
+\end{verbatim}
+With all the problem setup now, we could map the problem into SAT:
+\begin{itemize}
+  \item Package Versions are Variables:
+    We assign one boolean variable for each
+    $\hbox{package}_{\hbox{\small{}version}}$ pair, where $1$ means installed
+    and $0$ means not installed.
+  \item Version Ranges are Disjunctions: For $\hbox{app}_0$ and one of its
+    dependencies \texttt{http} (\texttt{min:3, max:4}), we can write a
+    disjunction of all allowed versions, i.e.,
+    $$\hbox{http}_3 \vee  \hbox{http}_4$$
+    Then the fact either of them is installed (\texttt{true}) means the
+    disjunction is
+    \texttt{true}.
+  \item Dependencies are Implications: For $\hbox{app}_0$ and one of its
+    dependencies \texttt{http}, we express the dependency as $$\hbox{app}_0
+    \rightarrow \hbox{http}_3 \vee \hbox{http}_4$$ which is equivalent to
+    $$\overline{\hbox{app}_0} \vee \hbox{http}_3 \vee \hbox{http}_4.$$
+  \item Consistency: For \texttt{sql} with three versions $0, 1, 2$, only one
+    version is allowed to be installed, which can be expressed as
+    $$
+    \overline{\hbox{sql}_0 \wedge \hbox{sql}_1} \wedge
+    \overline{\hbox{sql}_0 \wedge \hbox{sql}_2} \wedge
+    \overline{\hbox{sql}_1 \wedge \hbox{sql}_2}
+    $$
+    which is same as
+    $$
+    (\overline{\hbox{sql}_0} \vee \overline{\hbox{sql}_1}) \wedge
+    (\overline{\hbox{sql}_0} \vee \overline{\hbox{sql}_2}) \wedge
+    (\overline{\hbox{sql}_1} \vee \overline{\hbox{sql}_2})
+    $$
+  \item The Root of the DAG: The final SAT problem is the conjunction of all
+    terms above with $\hbox{app}_0$ as $1$ (the root).
+\end{itemize}
+
+\paragraph{Satisfiability by Watching} Algorithm B is a particularly elegant
 optimization within this domain. In a clause consisting of a disjunction of
 literals, only one variable needs to be ``watched'' to monitor whether the
 clause is satisfied or at risk of becoming a conflict. This approach makes
