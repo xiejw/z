@@ -1,5 +1,6 @@
 // See two_sat_solver.h
 //
+// forge:skip
 #include "test_macros.h"
 #include "two_sat_solver.h"
 

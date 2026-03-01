@@ -1,4 +1,5 @@
 // === --- Algorithm B - Basic Backtrack - Vol 4B Page 33 ------------------
+// forge:skip
 //
 #include <inttypes.h>  // Required for PRIu64
 #include <stdint.h>

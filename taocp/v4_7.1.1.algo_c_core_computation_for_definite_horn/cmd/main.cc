@@ -1,5 +1,6 @@
 // See horn.h
 //
+// forge:skip
 #include <stdio.h>
 
 #include "horn.h"

@@ -1,3 +1,4 @@
+// forge:skip
 #include <string.h>
 
 #include "log.h"

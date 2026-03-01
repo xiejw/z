@@ -1,4 +1,5 @@
 // === --- Algorithm W - Walker Backtrack - Vol 4B Page 33 ------------------
+// forge:skip
 //
 // History:
 // - [2026-01-20] V4 Avoid a_l/b_l/c_l loads from W3->W2.

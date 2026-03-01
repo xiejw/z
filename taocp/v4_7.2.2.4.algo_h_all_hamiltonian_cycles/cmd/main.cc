@@ -1,3 +1,4 @@
+// forge:skip
 #include <stdio.h>
 
 #include "hamiltonian.h"

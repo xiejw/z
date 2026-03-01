@@ -1,5 +1,6 @@
 // Solve Sudoku via Dancing Links.
 //
+// forge:skip
 // See dlink.h
 #include <assert.h>
 #include <stdio.h>

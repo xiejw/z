@@ -1,3 +1,4 @@
+// forge:skip
 #include "dlink.h"
 
 #include "test_macros.h"

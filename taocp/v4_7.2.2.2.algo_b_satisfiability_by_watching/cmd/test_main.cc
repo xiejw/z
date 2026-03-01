@@ -1,3 +1,4 @@
+// forge:skip
 #include "sat_literal.h"
 #include "sat_watch.h"
 #include "test_macros.h"
