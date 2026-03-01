@@ -2,7 +2,7 @@
 //
 // forge:v1
 //
-// === --- Horn Satisfiability Vol 4A 7.1.1 Algorithrm C Page 59 ----------- ===
+// === --- Horn Satisfiability Vol 4A 7.1.1 Algorithm C Page 59 ----------- ===
 //
 // === --- TLDR
 //
@@ -11,7 +11,7 @@
 //
 // Key idea:
 //
-//     Linealy flow information from conclucions (right hand side, the Core) to
+//     Linearly flow information from conclusions (right hand side, the Core) to
 //     propositional variables (left hand side) and see whether there is
 //     solutions.
 //
@@ -32,7 +32,7 @@
 // The _Core_ of the definite Horn function is set the variables which must be
 // true whenever `f` is true.
 //
-// === --- Algorithrm C (Vol 4A, Page 59)
+// === --- Algorithm C (Vol 4A, Page 59)
 //
 // The algorithm is as follows:
 //
@@ -62,7 +62,7 @@
 //   !a || !b || lambda
 //   ```
 //
-// - Apply _Algorithrm C_ to the new definite Horn function. The original Horn
+// - Apply _Algorithm C_ to the new definite Horn function. The original Horn
 //   function is satisfiable if and only if `lambda` is not in the Core of the
 //   new definite Horn function.
 //

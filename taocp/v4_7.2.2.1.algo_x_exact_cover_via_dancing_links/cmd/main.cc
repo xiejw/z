@@ -121,7 +121,7 @@ PrintProblem( const int *problem )
         }
 }
 
-/* Seach all options that on (x,y) the digit k is allowed to be put there.
+/* Search all options that on (x,y) the digit k is allowed to be put there.
  *
  * The argument opts must have enough capacity to hold all potential options.
  *

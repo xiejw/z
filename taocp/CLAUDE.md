@@ -61,6 +61,6 @@ All binaries output to `.build/` within each module directory.
 - **Goto-based state machines**: Steps like `B1:`, `B2:` etc. directly mirror TAOCP pseudocode labels. This is intentional — do not refactor gotos away.
 - **1-based arrays**: Arrays are allocated with one extra slot and indexed from 1, matching TAOCP notation.
 - **MEMs metric**: Performance is measured in memory accesses (Knuth's MEMs). Instrumented via `mem_access_counter`.
-- **`forge:skip` comments**: Mark sections that the code formatter should leave untouched.
+- **`forge:` comments**: Mark files for checksum checks..
 - **C++17** with `-Wall -Werror -pedantic -Wextra -fno-rtti -fno-exceptions`.
 - Multi-language implementations exist for some modules (Go in `go/`, Rust in `rs/`).

@@ -205,7 +205,7 @@ horn_core_compute( struct horn *h )
 {
         assert( !h->core_computed && ( h->core_computed = true ) );
 
-        // Introdcue lambda.
+        // Introduce lambda.
         int lambda_id = h->num_variables;
         assert( h->vars[lambda_id].truth == 0 );
 

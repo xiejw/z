@@ -4,7 +4,7 @@
 // History:
 // - [2026-01-20] V4 Avoid a_l/b_l/c_l loads from W3->W2.
 // - [2026-01-20] V3 Skip l==kNumQueue computation.
-// - [2026-01-20] V2 Optimize away unncessary A/B/C reads and move s_l check.
+// - [2026-01-20] V2 Optimize away unnecessary A/B/C reads and move s_l check.
 // - [2026-01-20] V1 Optimize away S_l reading in W2 and W3.
 // - [2026-01-20] V0 can work. But mem access is much higher than book reports.
 //
@@ -159,7 +159,7 @@ W2:  // Enter level l
         /* NOTE:
 
            This special optimization can roughly reduce mems from 6'952'497'635
-           to 6'893'407'587 mems as it skips the entire W3 for 'unncessary'
+           to 6'893'407'587 mems as it skips the entire W3 for 'unnecessary'
            execution.
 
            In order to visit the solution X, we could deduce the final bit with

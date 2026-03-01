@@ -45,7 +45,7 @@ TwoSatSolver::CheckSatisfiability( )
         // Exercise 54 (Page 86): Instead of checking whether a variable and
         // its complement exist in one component for all variables, we could
         // simply check the first variable only. If its complement is in the
-        // same component, the 2SAT is not satisfiability.
+        // same component, the 2SAT is not satisfiable.
         const size_t        SENT = 2 * this->n;
         std::vector<size_t> leader_for_components( ids->size( ), SENT );
 

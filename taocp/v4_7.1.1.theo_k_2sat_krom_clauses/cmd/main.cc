@@ -20,7 +20,7 @@ FORGE_TEST( test_single_node_sat )
         return NULL;
 }
 
-FORGE_TEST( test_single_node_constradict )
+FORGE_TEST( test_single_node_contradict )
 {
         // a || a               C(a) -> a
         // C(a) || C(a)         a -> C(a)

@@ -109,7 +109,7 @@ UncoverItem( DLinkItem *items, size_t item_id, DLinkNode *nodes )
 
 // Visit a solution and call the user passed-in visit_fn.
 //
-// NOTE: The X array recods the node in the DLinkTable. We need to deduce the
+// NOTE: The X array records the node in the DLinkTable. We need to deduce the
 // 0-based Option ID and then set Option ID in the solution buffer. To do so,
 // there are two approaches
 //
