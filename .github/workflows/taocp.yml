@@ -18,6 +18,7 @@ jobs:
         run: |
           curl -L -o ${RUNNER_TEMP}/equali https://github.com/xiejw/z/releases/download/v0.0.4/equali
           cd ${{ github.workspace }}/z/${{ github.workflow }}
+          chmod +x ${RUNNER_TEMP}/equali
           ${RUNNER_TEMP}/equali
       - name: Run ${{ github.workflow }} Test
         run: make -C ${{ github.workspace }}/z/${{ github.workflow }} clean test
