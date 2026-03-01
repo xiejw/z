@@ -7,35 +7,37 @@
 
 namespace deep_wonders {
 
-typedef struct {
-        int current_player; /* 0 or 1 */
-        int turn;           /* Current turn number, starts at 0. */
-        int done;           /* 1 if game is over. */
-        int winner;         /* -1 ongoing, 0/1 winner, 2 tie. */
-} Game;
+class Game {
+public:
+        /// Initialize game to starting state.
+        Game();
 
-/// Create a new game in its initial state.
-Game *game_new( void );
+        /// Deep-copy this game. Caller owns the returned pointer.
+        Game *Dup() const;
 
-/// Free a game.
-void game_free( Game *g );
+        /// Number of legal actions available (may vary by game state in real games).
+        int  NumActions() const;
 
-/// Duplicate a game state (deep copy).
-Game *game_dup( Game *g );
+        /// Apply action, advancing the game state. Asserts action is valid.
+        void ApplyAction( int action );
 
-/// Return the number of legal actions (stub: always NUM_ACTIONS).
-int game_num_actions( Game *g );
+        /// Whose turn it is: 0 or 1.
+        int  CurrentPlayer() const;
 
-/// Apply an action to the game, advancing the state.
-void game_apply_action( Game *g, int action );
+        /// Returns -1 (ongoing), 0 or 1 (winner), 2 (tie).
+        int  Winner() const;
 
-/// Return the winner: -1 ongoing, 0/1 winner, 2 tie.
-int game_winner( Game *g );
+        /// True if the game has ended.
+        bool IsOver() const;
 
-/// Return 1 if the game is over, 0 otherwise.
-int game_is_over( Game *g );
+        /// Print current state to stdout.
+        void Show() const;
 
-/// Print the current game state.
-void show_game( Game *g );
+private:
+        int  current_player_;
+        int  turn_;
+        bool done_;
+        int  winner_;
+};
 
 }  // namespace deep_wonders

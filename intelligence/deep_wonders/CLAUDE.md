@@ -29,9 +29,9 @@ make clean      # Clean build artifacts
 ## Conventions
 
 - Namespace: `deep_wonders`
-- `#pragma once`, `snake_case`, C++17
+- `#pragma once`, `Camel case`, C++17
 - CXXFLAGS: `-Wall -Werror -pedantic -Wextra -fno-rtti -fno-exceptions`
-- Function naming: `type_operation()` (e.g., `game_new()`, `mcts_search()`)
+- Function naming: free functions and class methods use `CamelCase` (e.g., `Game::ApplyAction()`, `Game::IsOver()`)
 - Memory: `malloc`/`calloc`/`free`, `assert` on allocation
 
 ## Coding Style
@@ -39,8 +39,7 @@ make clean      # Clean build artifacts
 This codebase uses a C++11-like style that leans heavily toward C:
 
 - **Raw pointers everywhere.** Pass raw pointers, not references. Move semantics
-  and `std::move` are avoided. Ownership is documented via comments
-  (`/* Owned */`, `/* Unowned */`, `/*moved_in*/`).
+  and `std::move` are avoided. Ownership is implied. All pointers are not owned.
 - **Simple classes/structs.** Classes are fine but must be deadly simple, close
   to C style — simple methods, no inheritance, no virtual methods. Free
   functions (e.g., `game_new()`) are legacy; prefer simple class methods for

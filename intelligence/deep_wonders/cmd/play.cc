@@ -16,11 +16,11 @@ using namespace deep_wonders;
 int
 policy_human_move( Game *g )
 {
-        int n = game_num_actions( g );
+        int n = g->NumActions();
         while ( 1 ) {
                 char movec;
                 printf( "[Player %d] Your move (0-%d): ",
-                        g->current_player, n - 1 );
+                        g->CurrentPlayer(), n - 1 );
                 if ( EOF == scanf( " %c", &movec ) ) {
                         PANIC( "eof, unexpected.\n" );
                 }
@@ -43,27 +43,27 @@ policy_ai_move( Game *g, NN *nn )
 void
 play_game( NN *nn )
 {
-        Game *g         = game_new( );
+        Game *g         = new Game();
         int   ai_player = rand( ) % 2;
 
         INFO( "You are Player %d. AI is Player %d.\n", 1 - ai_player,
               ai_player );
 
-        show_game( g );
-        while ( !game_is_over( g ) ) {
+        g->Show();
+        while ( !g->IsOver() ) {
                 int action;
-                if ( g->current_player == ai_player ) {
+                if ( g->CurrentPlayer() == ai_player ) {
                         action = policy_ai_move( g, nn );
                         printf( "AI plays action %d\n", action );
                 } else {
                         action = policy_human_move( g );
                 }
 
-                game_apply_action( g, action );
-                show_game( g );
+                g->ApplyAction( action );
+                g->Show();
         }
 
-        int winner = game_winner( g );
+        int winner = g->Winner();
         if ( winner == 2 )
                 printf( "Game over: Tie!\n" );
         else if ( winner == ai_player )
@@ -71,7 +71,7 @@ play_game( NN *nn )
         else
                 printf( "Game over: You win!\n" );
 
-        game_free( g );
+        delete g;
 }
 
 int

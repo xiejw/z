@@ -20,20 +20,20 @@ using namespace deep_wonders;
 void
 self_play_one_game( NN *nn, int game_id )
 {
-        Game *g = game_new( );
+        Game *g = new Game();
 
-        while ( !game_is_over( g ) ) {
+        while ( !g->IsOver() ) {
                 int action = mcts_search( g, nn, MCTS_ITER_CNT );
-                game_apply_action( g, action );
+                g->ApplyAction( action );
         }
 
-        int winner = game_winner( g );
+        int winner = g->Winner();
         if ( winner == 2 )
                 printf( "Game %d: Tie\n", game_id );
         else
                 printf( "Game %d: Player %d wins\n", game_id, winner );
 
-        game_free( g );
+        delete g;
 }
 
 int

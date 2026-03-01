@@ -35,7 +35,7 @@ mcts_node_free( MCTSNode *n )
         for ( int i = 0; i < NUM_ACTIONS; i++ ) {
                 mcts_node_free( n->children[i] );
         }
-        game_free( n->game_snapshot );
+        delete n->game_snapshot;
         free( n );
 }
 
@@ -43,7 +43,7 @@ int
 mcts_search( Game *g, NN * /*nn*/, int /*iterations*/ )
 {
         /* Stub: return a random legal action. */
-        int n = game_num_actions( g );
+        int n = g->NumActions();
         return rand( ) % n;
 }
 

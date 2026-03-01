@@ -3,85 +3,73 @@
 
 #include <assert.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 namespace deep_wonders {
 
-Game *
-game_new( void )
+Game::Game()
+        : current_player_( 0 ), turn_( 0 ), done_( false ), winner_( -1 )
 {
-        Game *g = (Game *)calloc( 1, sizeof( *g ) );
-        assert( g != NULL );
-        g->current_player = 0;
-        g->turn           = 0;
-        g->done           = 0;
-        g->winner         = -1;
-        return g;
-}
-
-void
-game_free( Game *g )
-{
-        if ( g == NULL ) return;
-        free( g );
 }
 
 Game *
-game_dup( Game *g )
+Game::Dup() const
 {
-        Game *ng = (Game *)malloc( sizeof( *ng ) );
-        assert( ng != NULL );
-        memcpy( ng, g, sizeof( *ng ) );
+        Game *ng = new Game( *this );
         return ng;
 }
 
 int
-game_num_actions( Game * /*g*/ )
+Game::NumActions() const
 {
         return NUM_ACTIONS;
 }
 
 void
-game_apply_action( Game *g, int action )
+Game::ApplyAction( int action )
 {
-        assert( !g->done );
+        assert( !done_ );
         assert( action >= 0 && action < NUM_ACTIONS );
 
-        g->turn++;
-        g->current_player = 1 - g->current_player;
+        turn_++;
+        current_player_ = 1 - current_player_;
 
-        if ( g->turn >= MAX_TURNS ) {
-                g->done = 1;
+        if ( turn_ >= MAX_TURNS ) {
+                done_ = true;
                 /* Stub: player 0 wins if turn count is even, else player 1. */
-                if ( g->turn % 2 == 0 )
-                        g->winner = 0;
+                if ( turn_ % 2 == 0 )
+                        winner_ = 0;
                 else
-                        g->winner = 1;
+                        winner_ = 1;
         }
 }
 
 int
-game_winner( Game *g )
+Game::CurrentPlayer() const
 {
-        return g->winner;
+        return current_player_;
 }
 
 int
-game_is_over( Game *g )
+Game::Winner() const
 {
-        return g->done;
+        return winner_;
+}
+
+bool
+Game::IsOver() const
+{
+        return done_;
 }
 
 void
-show_game( Game *g )
+Game::Show() const
 {
-        printf( "Turn: %d | Player: %d | ", g->turn, g->current_player );
-        if ( g->done ) {
-                if ( g->winner == 2 )
+        printf( "Turn: %d | Player: %d | ", turn_, current_player_ );
+        if ( done_ ) {
+                if ( winner_ == 2 )
                         printf( "Result: Tie\n" );
                 else
-                        printf( "Result: Player %d wins\n", g->winner );
+                        printf( "Result: Player %d wins\n", winner_ );
         } else {
                 printf( "Status: Ongoing\n" );
         }

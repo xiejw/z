@@ -24,7 +24,7 @@ nn_free( NN *nn )
 void
 nn_evaluate( NN * /*nn*/, Game *g, float *policy_out, float *value_out )
 {
-        int n = game_num_actions( g );
+        int n = g->NumActions();
         /* Uniform policy. */
         for ( int i = 0; i < n; i++ ) {
                 policy_out[i] = 1.0f / (float)n;
