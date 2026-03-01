@@ -1,8 +1,6 @@
 // vim: ft=cpp
 //
-// forge:v1
-//
-// C++17 based Logging Library
+// forge:v2
 #pragma once
 
 #define PANIC( ... ) \

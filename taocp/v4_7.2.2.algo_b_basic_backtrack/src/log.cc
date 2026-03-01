@@ -1,3 +1,4 @@
+// forge:v1
 #include "log.h"
 
 #include <stdarg.h>

@@ -1,6 +1,6 @@
 // vim: ft=cpp
 //
-// Log v1
+// forge:v1
 #pragma once
 
 #define PANIC( ... ) base::PanicImpl( __FILE__, __LINE__, __VA_ARGS__ )
