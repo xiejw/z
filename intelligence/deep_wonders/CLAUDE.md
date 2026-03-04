@@ -18,7 +18,7 @@ make clean      # Clean build artifacts
 
 ## Architecture
 
-- `src/game.{h,cc}` — Game state, rules, legal actions (stub: 3 actions, 10 turns)
+- `src/game.{h,cc}` — Game state, rules, legal actions (wonder drafting: 12 cards, snake draft)
 - `src/mcts.{h,cc}` — Monte Carlo Tree Search
 - `src/nn.{h,cc}` — Neural network (policy + value heads, stub: uniform policy)
 - `src/log.{h,cc}` — Logging utilities (forge library)

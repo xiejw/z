@@ -16,18 +16,40 @@ using namespace deep_wonders;
 int
 policy_human_move( Game *g )
 {
-        int n = g->NumActions();
+        int  legal[NUM_ACTIONS];
+        int  n = g->LegalActions( legal );
+
+        /* Show available cards. */
+        printf( "  Available:" );
+        for ( int i = 0; i < n; i++ ) {
+                int card = ActionCard( legal[i] );
+                if ( card < 10 )
+                        printf( " %d", card );
+                else
+                        printf( " %c", (char)( 'a' + card - 10 ) );
+        }
+        printf( "\n" );
+
         while ( 1 ) {
                 char movec;
-                printf( "[Player %d] Your move (0-%d): ",
-                        g->CurrentPlayer(), n - 1 );
+                printf( "[Player %d] Pick a card: ", g->CurrentPlayer() );
                 if ( EOF == scanf( " %c", &movec ) ) {
                         PANIC( "eof, unexpected.\n" );
                 }
-                int action = movec - '0';
-                if ( action < 0 || action >= n ) {
-                        printf( "Invalid move! Must be 0-%d. Try again.\n",
-                                n - 1 );
+
+                int card;
+                if ( movec >= '0' && movec <= '9' )
+                        card = movec - '0';
+                else if ( movec >= 'a' && movec <= 'b' )
+                        card = 10 + ( movec - 'a' );
+                else {
+                        printf( "Invalid input. Use 0-9 or a-b.\n" );
+                        continue;
+                }
+
+                int action = ActionEncode( card, OP_SELECT );
+                if ( !g->IsLegalAction( action ) ) {
+                        printf( "Card not available. Try again.\n" );
                         continue;
                 }
                 return action;
@@ -54,7 +76,12 @@ play_game( NN *nn )
                 int action;
                 if ( g->CurrentPlayer() == ai_player ) {
                         action = policy_ai_move( g, nn );
-                        printf( "AI plays action %d\n", action );
+                        int card = ActionCard( action );
+                        if ( card < 10 )
+                                printf( "AI picks card %d\n", card );
+                        else
+                                printf( "AI picks card %c\n",
+                                        (char)( 'a' + card - 10 ) );
                 } else {
                         action = policy_human_move( g );
                 }

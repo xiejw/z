@@ -43,8 +43,9 @@ int
 mcts_search( Game *g, NN * /*nn*/, int /*iterations*/ )
 {
         /* Stub: return a random legal action. */
-        int n = g->NumActions();
-        return rand( ) % n;
+        int actions[NUM_ACTIONS];
+        int n = g->LegalActions( actions );
+        return actions[rand() % n];
 }
 
 }  // namespace deep_wonders
