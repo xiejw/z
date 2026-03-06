@@ -1,4 +1,4 @@
-FMT             = ~/Workspace/y/tools/clang_format_all.sh
+FMT             = ~/Workspace/y/tools/scripts/clang_format_all.sh
 
 fmt:
 	${FMT} .
