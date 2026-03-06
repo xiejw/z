@@ -26,4 +26,4 @@ bench_mac:
 	clang -o a.out conv2d.c -O3 -march=native ${CFLAGS} ${LDFLAGS}  && ./a.out
 
 fmt:
-	~/Workspace/y/tools/clang_format_all.sh .
+	~/Workspace/y/tools/scripts/clang_format_all.sh .
