@@ -7,8 +7,14 @@ pub const NUM_OPS: usize = 1;
 pub const OP_SELECT: usize = 0;
 pub const NUM_ACTIONS: usize = NUM_WONDERS * NUM_OPS;
 
+// === --- Wonder Cards ---------------------------------------------------- ===
+//
+
 /// Snake draft order: P0, P1, P1, P0, P1, P0, P0, P1
 const DRAFT_PLAYER: [i32; NUM_SELECTED] = [0, 1, 1, 0, 1, 0, 0, 1];
+
+// === --- Card and Action ------------------------------------------------- ===
+//
 
 pub fn action_encode(card: usize, op: usize) -> usize {
     card * NUM_OPS + op
@@ -31,6 +37,9 @@ pub fn card_char(card: usize) -> char {
         (b'a' + (card - 10) as u8) as char
     }
 }
+
+// === --- Game ------------------------------------------------------------ ===
+//
 
 #[derive(Clone)]
 pub struct Game {
