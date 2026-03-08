@@ -202,3 +202,97 @@ impl Game {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_action_encode_decode_roundtrip() {
+        for card in 0..NUM_WONDERS {
+            for op in 0..NUM_OPS {
+                let action = action_encode(card, op);
+                assert_eq!(action_card(action), card);
+                assert_eq!(action_op(action), op);
+            }
+        }
+    }
+
+    #[test]
+    fn test_card_char() {
+        assert_eq!(card_char(0), '0');
+        assert_eq!(card_char(9), '9');
+        assert_eq!(card_char(10), 'a');
+        assert_eq!(card_char(11), 'b');
+    }
+
+    #[test]
+    fn test_legal_actions_count_at_start() {
+        let game = Game::new();
+        assert_eq!(game.legal_actions().len(), BATCH_SIZE);
+    }
+
+    #[test]
+    fn test_is_legal_action() {
+        let game = Game::new();
+        let actions = game.legal_actions();
+
+        // All returned actions are legal.
+        for &a in &actions {
+            assert!(game.is_legal_action(a));
+        }
+
+        // Out-of-range action is illegal.
+        assert!(!game.is_legal_action(NUM_ACTIONS));
+
+        // Actions from the second batch (not yet active) are illegal.
+        // Build the set of first-batch actions.
+        let first_batch: std::collections::HashSet<usize> = actions.iter().cloned().collect();
+        // Enumerate all valid actions and check non-first-batch ones are illegal.
+        for a in 0..NUM_ACTIONS {
+            if !first_batch.contains(&a) {
+                assert!(!game.is_legal_action(a));
+            }
+        }
+    }
+
+    #[test]
+    fn test_apply_action_advances_turn_and_removes_card() {
+        let mut game = Game::new();
+        let actions = game.legal_actions();
+        let first_action = actions[0];
+
+        game.apply_action(first_action);
+
+        // One slot picked — 3 remain in this batch.
+        assert_eq!(game.legal_actions().len(), BATCH_SIZE - 1);
+
+        // Applied action is no longer legal.
+        assert!(!game.is_legal_action(first_action));
+
+        // Turn advanced to index 1, so current player is DRAFT_PLAYER[1].
+        assert_eq!(game.current_player(), DRAFT_PLAYER[1]);
+    }
+
+    #[test]
+    fn test_full_game_plays_to_completion() {
+        let mut game = Game::new();
+        for _ in 0..NUM_SELECTED {
+            let action = game.legal_actions()[0];
+            game.apply_action(action);
+        }
+        assert!(game.is_over());
+        let w = game.winner();
+        assert!(w == 0 || w == 1 || w == 2);
+    }
+
+    #[test]
+    fn test_current_player_returns_minus_one_when_done() {
+        let mut game = Game::new();
+        for _ in 0..NUM_SELECTED {
+            let action = game.legal_actions()[0];
+            game.apply_action(action);
+        }
+        assert_eq!(game.current_player(), -1);
+    }
+}
