@@ -59,7 +59,11 @@ fn play_game(nn: &Nn) {
     let mut g = Game::new();
     let ai_player = rand::random::<u32>() % 2;
 
-    info!("You are Player {}. AI is Player {}.", 1 - ai_player, ai_player);
+    info!(
+        "You are Player {}. AI is Player {}.",
+        1 - ai_player,
+        ai_player
+    );
 
     g.show();
     while !g.is_over() {

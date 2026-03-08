@@ -1,11 +1,11 @@
 use rand::Rng;
 
-pub const NUM_WONDERS: usize = 12;
-pub const NUM_SELECTED: usize = 8;
-pub const BATCH_SIZE: usize = 4;
-pub const NUM_OPS: usize = 1;
-pub const OP_SELECT: usize = 0;
-pub const NUM_ACTIONS: usize = NUM_WONDERS * NUM_OPS;
+pub const NUM_WONDERS: usize = 12; // Total wonder cards in the pool
+pub const NUM_SELECTED: usize = 8; // Wonder cards drawn per game (split into 2 batches)
+pub const BATCH_SIZE: usize = 4; // Wonder cards revealed per batch; players draft from the active batch only
+pub const NUM_OPS: usize = 1; // Operations per card (currently 1: select)
+pub const OP_SELECT: usize = 0; // The only op: claim this card
+pub const NUM_ACTIONS: usize = NUM_WONDERS * NUM_OPS; // Total action-space size = NUM_WONDERS × NUM_OPS
 
 // === --- Wonder Cards ---------------------------------------------------- ===
 //
@@ -43,19 +43,26 @@ pub fn card_char(card: usize) -> char {
 
 #[derive(Clone)]
 pub struct Game {
-    selected: [i32; NUM_SELECTED],
-    picked: [bool; NUM_SELECTED],
-    owner: [i32; NUM_SELECTED],
+    /// The 8 wonder card IDs drawn at random from the pool for this game;
+    /// indices [0,3] = batch 0, [4,7] = batch 1.
+    wonder_cards: [i32; NUM_SELECTED],
+    /// Player ID (0 or 1) who claimed each slot, -1 if unclaimed.
+    /// Parallel to `wonder_cards`.
+    wonder_cards_owner: [i32; NUM_SELECTED],
+    /// Number of picks completed (0 = start, NUM_SELECTED = game over);
+    /// indexes into DRAFT_PLAYER to find the current player.
     turn: usize,
+    /// True once all NUM_SELECTED picks have been made.
     done: bool,
-    winner: i32, // -1 ongoing, 0/1 winner, 2 tie
+    /// Result: -1 ongoing, 0 or 1 for the winning player, 2 for a tie.
+    winner: i32,
 }
 
 impl Game {
     pub fn new() -> Game {
         let mut rng = rand::thread_rng();
 
-        // Fisher-Yates shuffle of 0..NUM_WONDERS, take first 8.
+        // Fisher-Yates shuffle of 0..NUM_WONDERS, take first NUM_SELECTED.
         let mut deck = [0i32; NUM_WONDERS];
         for i in 0..NUM_WONDERS {
             deck[i] = i as i32;
@@ -65,17 +72,15 @@ impl Game {
             deck.swap(i, j);
         }
 
-        let mut selected = [0i32; NUM_SELECTED];
-        let picked = [false; NUM_SELECTED];
-        let owner = [-1i32; NUM_SELECTED];
+        let mut wonder_cards = [0i32; NUM_SELECTED];
+        let wonder_cards_owner = [-1i32; NUM_SELECTED];
         for i in 0..NUM_SELECTED {
-            selected[i] = deck[i];
+            wonder_cards[i] = deck[i];
         }
 
         Game {
-            selected,
-            picked,
-            owner,
+            wonder_cards,
+            wonder_cards_owner,
             turn: 0,
             done: false,
             winner: -1,
@@ -88,11 +93,15 @@ impl Game {
 
     pub fn legal_actions(&self) -> Vec<usize> {
         assert!(!self.done);
-        let base = if self.turn < BATCH_SIZE { 0 } else { BATCH_SIZE };
+        let base = if self.turn < BATCH_SIZE {
+            0
+        } else {
+            BATCH_SIZE
+        };
         let mut actions = Vec::new();
         for i in base..base + BATCH_SIZE {
-            if !self.picked[i] {
-                actions.push(action_encode(self.selected[i] as usize, OP_SELECT));
+            if self.wonder_cards_owner[i] == -1 {
+                actions.push(action_encode(self.wonder_cards[i] as usize, OP_SELECT));
             }
         }
         actions
@@ -111,9 +120,13 @@ impl Game {
             return false;
         }
 
-        let base = if self.turn < BATCH_SIZE { 0 } else { BATCH_SIZE };
+        let base = if self.turn < BATCH_SIZE {
+            0
+        } else {
+            BATCH_SIZE
+        };
         for i in base..base + BATCH_SIZE {
-            if !self.picked[i] && self.selected[i] == card as i32 {
+            if self.wonder_cards_owner[i] == -1 && self.wonder_cards[i] == card as i32 {
                 return true;
             }
         }
@@ -128,11 +141,14 @@ impl Game {
         let player = DRAFT_PLAYER[self.turn];
 
         // Find slot and mark picked.
-        let base = if self.turn < BATCH_SIZE { 0 } else { BATCH_SIZE };
+        let base = if self.turn < BATCH_SIZE {
+            0
+        } else {
+            BATCH_SIZE
+        };
         for i in base..base + BATCH_SIZE {
-            if !self.picked[i] && self.selected[i] == card {
-                self.picked[i] = true;
-                self.owner[i] = player;
+            if self.wonder_cards_owner[i] == -1 && self.wonder_cards[i] == card {
+                self.wonder_cards_owner[i] = player;
                 break;
             }
         }
@@ -141,11 +157,11 @@ impl Game {
 
         if self.turn >= NUM_SELECTED {
             self.done = true;
-            // Count cards in [0, 7] per player.
+            // Count "scoring" wonders (card IDs 0–7) per player; IDs 8–11 are non-scoring.
             let mut score = [0i32; 2];
             for i in 0..NUM_SELECTED {
-                if self.selected[i] >= 0 && self.selected[i] <= 7 {
-                    score[self.owner[i] as usize] += 1;
+                if self.wonder_cards[i] >= 0 && self.wonder_cards[i] <= 7 {
+                    score[self.wonder_cards_owner[i] as usize] += 1;
                 }
             }
             if score[0] > score[1] {
@@ -180,14 +196,19 @@ impl Game {
         }
         println!();
 
-        for batch in 0..2 {
+        let num_batches = if self.turn < BATCH_SIZE { 1 } else { 2 };
+        for batch in 0..num_batches {
             let base = batch * BATCH_SIZE;
             print!("  Batch {}:", batch);
             for i in base..base + BATCH_SIZE {
-                if self.picked[i] {
-                    print!(" [{}:P{}]", card_char(self.selected[i] as usize), self.owner[i]);
+                if self.wonder_cards_owner[i] >= 0 {
+                    print!(
+                        " [{}:P{}]",
+                        card_char(self.wonder_cards[i] as usize),
+                        self.wonder_cards_owner[i]
+                    );
                 } else {
-                    print!(" {}", card_char(self.selected[i] as usize));
+                    print!(" {}", card_char(self.wonder_cards[i] as usize));
                 }
             }
             println!();

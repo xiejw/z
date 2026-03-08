@@ -1,7 +1,7 @@
 use deep_wonders::game::Game;
+use deep_wonders::info;
 use deep_wonders::mcts::mcts_search;
 use deep_wonders::nn::Nn;
-use deep_wonders::info;
 
 const MCTS_ITER_CNT: i32 = 100;
 const NUM_GAMES: i32 = 10;
