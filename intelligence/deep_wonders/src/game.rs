@@ -52,6 +52,8 @@ pub struct Game {
     /// Number of picks completed (0 = start, NUM_SELECTED = game over);
     /// indexes into DRAFT_PLAYER to find the current player.
     turn: usize,
+    /// (player, action) recorded each turn.
+    history: Vec<(i32, usize)>,
     /// True once all NUM_SELECTED picks have been made.
     done: bool,
     /// Result: -1 ongoing, 0 or 1 for the winning player, 2 for a tie.
@@ -81,6 +83,7 @@ impl Game {
         Game {
             wonder_cards,
             wonder_cards_owner,
+            history: Vec::new(),
             turn: 0,
             done: false,
             winner: -1,
@@ -153,6 +156,8 @@ impl Game {
             }
         }
 
+        self.history.push((player, action));
+
         self.turn += 1;
 
         if self.turn >= NUM_SELECTED {
@@ -187,6 +192,14 @@ impl Game {
 
     pub fn is_over(&self) -> bool {
         self.done
+    }
+
+    pub fn history(&self) -> &[(i32, usize)] {
+        &self.history
+    }
+
+    pub fn wonder_cards(&self) -> &[i32; NUM_SELECTED] {
+        &self.wonder_cards
     }
 
     pub fn show(&self) {
@@ -305,6 +318,25 @@ mod tests {
         assert!(game.is_over());
         let w = game.winner();
         assert!(w == 0 || w == 1 || w == 2);
+    }
+
+    #[test]
+    fn test_history_records_all_moves() {
+        let mut game = Game::new();
+        let mut expected = Vec::new();
+        for turn in 0..NUM_SELECTED {
+            let player = game.current_player();
+            let action = game.legal_actions()[0];
+            expected.push((player, action));
+            game.apply_action(action);
+            assert_eq!(game.history().len(), turn + 1);
+        }
+        assert!(game.is_over());
+        let history = game.history();
+        assert_eq!(history.len(), NUM_SELECTED);
+        for i in 0..NUM_SELECTED {
+            assert_eq!(history[i], expected[i]);
+        }
     }
 
     #[test]

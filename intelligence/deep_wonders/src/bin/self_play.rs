@@ -1,4 +1,5 @@
 use deep_wonders::game::Game;
+use deep_wonders::history::write_game_log;
 use deep_wonders::info;
 use deep_wonders::mcts::mcts_search;
 use deep_wonders::nn::Nn;
@@ -19,6 +20,11 @@ fn self_play_one_game(nn: &Nn, game_id: i32) {
         println!("Game {}: Tie", game_id);
     } else {
         println!("Game {}: Player {} wins", game_id, winner);
+    }
+
+    match write_game_log(&g) {
+        Ok(path) => info!("Game {} log written to {}", game_id, path),
+        Err(e) => eprintln!("Warning: failed to write game {} log: {}", game_id, e),
     }
 }
 

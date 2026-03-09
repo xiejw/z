@@ -12,3 +12,7 @@ clean:
 
 run:
 	cargo run --bin play
+
+self_play:
+	cargo run --bin self_play
+
