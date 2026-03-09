@@ -9,3 +9,5 @@ and compare it with my implementation to identify any gaps or misunderstandings.
 
 ### Algorithm Scratch
 
+- `MEM`: Layout all the literals in all clauses in the memory cells.
+
