@@ -6,6 +6,12 @@ pub const BATCH_SIZE: usize = 4; // Wonder cards revealed per batch; players dra
 pub const NUM_OPS: usize = 1; // Operations per card (currently 1: select)
 pub const OP_SELECT: usize = 0; // The only op: claim this card
 pub const NUM_ACTIONS: usize = NUM_WONDERS * NUM_OPS; // Total action-space size = NUM_WONDERS × NUM_OPS
+/// Number of floats per card in the observation vector (in_game, visible, unclaimed, owner_self, owner_opp).
+/// Acts as the stride: card ID `c` occupies indices `[c*OBS_CARD_FEATURES .. c*OBS_CARD_FEATURES+4]`.
+pub const OBS_CARD_FEATURES: usize = 5;
+/// Number of game-level floats appended after the card section (game_stage, next_player).
+pub const OBS_GLOBAL_FEATURES: usize = 2;
+pub const OBS_SIZE: usize = NUM_WONDERS * OBS_CARD_FEATURES + OBS_GLOBAL_FEATURES;
 
 // === --- Wonder Cards ---------------------------------------------------- ===
 //
@@ -15,6 +21,12 @@ const DRAFT_PLAYER: [i32; NUM_SELECTED] = [0, 1, 1, 0, 1, 0, 0, 1];
 
 // === --- Card and Action ------------------------------------------------- ===
 //
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum GameStage {
+    WonderBatch0,
+    WonderBatch1,
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Action {
@@ -213,6 +225,84 @@ impl Game {
         &self.history
     }
 
+    pub fn game_stage(&self) -> GameStage {
+        if self.turn < BATCH_SIZE {
+            GameStage::WonderBatch0
+        } else {
+            GameStage::WonderBatch1
+        }
+    }
+
+    /// Build a fixed-size observation vector of length `OBS_SIZE` (= 62) for
+    /// the current player.  The layout has two sections:
+    ///
+    /// **Card section** — `NUM_WONDERS * OBS_CARD_FEATURES` = 12 × 5 = 60 floats.
+    ///
+    /// The vector is *card-centric*: card ID `c` always occupies indices
+    /// `[c*5 .. c*5+4]`, regardless of which draft slot it was placed in.
+    /// `OBS_CARD_FEATURES = 5` is the stride between consecutive card blocks.
+    /// Within each block the five features are:
+    ///
+    /// ```text
+    ///   base+0  in_game    — 1 if card c was drawn into this game
+    ///   base+1  visible    — 1 if in_game AND the card has been revealed
+    ///                        (batch 0 is always revealed; batch 1 only after
+    ///                        all four batch-0 picks are done)
+    ///   base+2  unclaimed  — 1 if visible AND no player has taken it yet
+    ///   base+3  owner_self — 1 if visible AND taken by the current player
+    ///   base+4  owner_opp  — 1 if visible AND taken by the opponent
+    /// ```
+    ///
+    /// Cards not drawn this game, and batch-1 cards before they are revealed,
+    /// have all five features = 0.  Exactly one of {unclaimed, owner_self,
+    /// owner_opp} is 1 for every visible card.
+    ///
+    /// **Global section** — `OBS_GLOBAL_FEATURES` = 2 floats, starting at
+    /// index `NUM_WONDERS * OBS_CARD_FEATURES` = 60.
+    ///
+    /// ```text
+    ///   60  game_stage   — 0.0 = WonderBatch0, 1.0 = WonderBatch1
+    ///   61  next_player  — 0.0 or 1.0, absolute ID of the player to move
+    /// ```
+    pub fn observe(&self) -> [f32; OBS_SIZE] {
+        let mut obs = [0.0f32; OBS_SIZE];
+        let player = self.current_player();
+        let batch1_revealed = self.turn >= BATCH_SIZE;
+
+        for slot in 0..NUM_SELECTED {
+            let card = self.wonder_cards[slot] as usize;
+            let in_batch1 = slot >= BATCH_SIZE;
+            let visible = !in_batch1 || batch1_revealed;
+            // Card-centric stride: each card ID maps to a fixed block of
+            // OBS_CARD_FEATURES (= 5) consecutive floats.
+            let base = card * OBS_CARD_FEATURES;
+
+            if !visible {
+                continue; // batch 1 not yet revealed: all features stay 0
+            }
+            obs[base + 0] = 1.0; // in_game
+            obs[base + 1] = 1.0; // visible
+            let owner = self.wonder_cards_owner[slot];
+            if owner == -1 {
+                obs[base + 2] = 1.0; // unclaimed
+            } else if owner == player {
+                obs[base + 3] = 1.0; // owner_self
+            } else {
+                obs[base + 4] = 1.0; // owner_opp
+            }
+        }
+
+        // Global features begin immediately after the card section.
+        // OBS_GLOBAL_FEATURES = 2, so this block occupies indices [60, 61].
+        let global_base = NUM_WONDERS * OBS_CARD_FEATURES;
+        obs[global_base + 0] = match self.game_stage() {
+            GameStage::WonderBatch0 => 0.0,
+            GameStage::WonderBatch1 => 1.0,
+        };
+        obs[global_base + 1] = player as f32; // next_player: 0.0 or 1.0
+        obs
+    }
+
     pub fn wonder_cards(&self) -> &[i32; NUM_SELECTED] {
         &self.wonder_cards
     }
@@ -348,6 +438,22 @@ mod tests {
         for i in 0..NUM_SELECTED {
             assert_eq!(history[i], expected[i]);
         }
+    }
+
+    #[test]
+    fn test_observe_shape_and_basic_invariants() {
+        let game = Game::new();
+        let obs = game.observe();
+        assert_eq!(obs.len(), OBS_SIZE);
+        // All values in [0, 1].
+        for &v in &obs {
+            assert!(v >= 0.0 && v <= 1.0);
+        }
+        // Exactly BATCH_SIZE cards visible and unclaimed at start.
+        let unclaimed: usize = (0..NUM_WONDERS)
+            .filter(|&c| obs[c * OBS_CARD_FEATURES + 2] == 1.0)
+            .count();
+        assert_eq!(unclaimed, BATCH_SIZE);
     }
 
     #[test]
