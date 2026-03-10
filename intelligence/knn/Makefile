@@ -7,7 +7,7 @@ LABELS_GZ := $(DATA_DIR)/train-labels-idx1-ubyte.gz
 IMAGES    := $(DATA_DIR)/train-images-idx3-ubyte
 LABELS    := $(DATA_DIR)/train-labels-idx1-ubyte
 
-.PHONY: download run clean
+.PHONY: download run eval clean
 
 .DEFAULT_GOAL = run
 
@@ -29,7 +29,10 @@ $(LABELS): $(LABELS_GZ)
 	gunzip -k $<
 
 run: download
-	cargo run -- 0
+	cargo run -- view 0
+
+eval: download
+	cargo run --release -- eval
 
 clean:
 	rm -rf $(DATA_DIR) ${BUILD}
