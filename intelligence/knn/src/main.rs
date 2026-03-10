@@ -191,7 +191,8 @@ fn main() {
             let labels = load_all_labels(labels_path).expect("failed to load labels");
 
             println!("Fitting KNN (k={k}) on {TRAIN_END} training samples...");
-            let mut clf = hermes::KnnClassifier::new(k);
+            let mut clf: Box<dyn hermes::Classifier + Sync> =
+                Box::new(hermes::KnnClassifier::new(k));
             clf.fit(&images[..TRAIN_END], &labels[..TRAIN_END]);
 
             println!("Evaluating on {TEST_COUNT} test samples...");
