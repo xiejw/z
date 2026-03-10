@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use crate::game::{Game, NUM_ACTIONS};
+use crate::game::{Action, Game, NUM_ACTIONS};
 use crate::nn::Nn;
 
 pub struct MctsNode {
@@ -24,7 +24,7 @@ impl MctsNode {
 
 /// Run MCTS search and return the best action.
 /// Currently returns a random legal action (stub).
-pub fn mcts_search(g: &Game, _nn: &Nn, _iterations: i32) -> usize {
+pub fn mcts_search(g: &Game, _nn: &Nn, _iterations: i32) -> Action {
     let actions = g.legal_actions();
     let mut rng = rand::thread_rng();
     actions[rng.gen_range(0..actions.len())]

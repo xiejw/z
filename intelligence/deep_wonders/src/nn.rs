@@ -15,7 +15,7 @@ impl Nn {
         let mut policy = [0.0f32; NUM_ACTIONS];
         let n = actions.len() as f32;
         for &a in &actions {
-            policy[a] = 1.0 / n;
+            policy[a.encode()] = 1.0 / n;
         }
         (policy, 0.0)
     }

@@ -2,7 +2,7 @@ use std::fs;
 use std::io::Write;
 use std::time::SystemTime;
 
-use crate::game::{action_card, action_op, Game};
+use crate::game::Game;
 
 /// Convert days since epoch to (year, month, day).
 fn epoch_days_to_date(mut days: u64) -> (u64, u64, u64) {
@@ -63,12 +63,16 @@ pub fn write_game_log(game: &Game) -> Result<String, std::io::Error> {
 
     // Moves.
     for (turn, &(player, action)) in game.history().iter().enumerate() {
-        let card = action_card(action);
-        let op = action_op(action);
+        let card = action.card();
+        let op = action.op();
         writeln!(
             file,
             "{{\"type\":\"move\",\"turn\":{},\"player\":{},\"action\":{},\"card\":{},\"op\":{}}}",
-            turn, player, action, card, op
+            turn,
+            player,
+            action.encode(),
+            card,
+            op
         )?;
     }
 

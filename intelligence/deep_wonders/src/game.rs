@@ -16,16 +16,38 @@ const DRAFT_PLAYER: [i32; NUM_SELECTED] = [0, 1, 1, 0, 1, 0, 0, 1];
 // === --- Card and Action ------------------------------------------------- ===
 //
 
-pub fn action_encode(card: usize, op: usize) -> usize {
-    card * NUM_OPS + op
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Action {
+    SelectWonder(usize), // card id
 }
 
-pub fn action_card(action: usize) -> usize {
-    action / NUM_OPS
-}
+impl Action {
+    pub fn encode(self) -> usize {
+        match self {
+            Action::SelectWonder(card) => card * NUM_OPS + OP_SELECT,
+        }
+    }
 
-pub fn action_op(action: usize) -> usize {
-    action % NUM_OPS
+    pub fn decode(encoded: usize) -> Self {
+        let card = encoded / NUM_OPS;
+        let op = encoded % NUM_OPS;
+        match op {
+            OP_SELECT => Action::SelectWonder(card),
+            _ => panic!("invalid action encoding: {}", encoded),
+        }
+    }
+
+    pub fn card(self) -> usize {
+        match self {
+            Action::SelectWonder(card) => card,
+        }
+    }
+
+    pub fn op(self) -> usize {
+        match self {
+            Action::SelectWonder(_) => OP_SELECT,
+        }
+    }
 }
 
 /// Display character for a card ID: 0-9 as '0'-'9', 10 as 'a', 11 as 'b'.
@@ -53,7 +75,7 @@ pub struct Game {
     /// indexes into DRAFT_PLAYER to find the current player.
     turn: usize,
     /// (player, action) recorded each turn.
-    history: Vec<(i32, usize)>,
+    history: Vec<(i32, Action)>,
     /// True once all NUM_SELECTED picks have been made.
     done: bool,
     /// Result: -1 ongoing, 0 or 1 for the winning player, 2 for a tie.
@@ -94,7 +116,7 @@ impl Game {
         NUM_ACTIONS
     }
 
-    pub fn legal_actions(&self) -> Vec<usize> {
+    pub fn legal_actions(&self) -> Vec<Action> {
         assert!(!self.done);
         let base = if self.turn < BATCH_SIZE {
             0
@@ -104,24 +126,17 @@ impl Game {
         let mut actions = Vec::new();
         for i in base..base + BATCH_SIZE {
             if self.wonder_cards_owner[i] == -1 {
-                actions.push(action_encode(self.wonder_cards[i] as usize, OP_SELECT));
+                actions.push(Action::SelectWonder(self.wonder_cards[i] as usize));
             }
         }
         actions
     }
 
-    pub fn is_legal_action(&self, action: usize) -> bool {
+    pub fn is_legal_action(&self, action: Action) -> bool {
         if self.done {
             return false;
         }
-        if action >= NUM_ACTIONS {
-            return false;
-        }
-        let card = action_card(action);
-        let op = action_op(action);
-        if op != OP_SELECT {
-            return false;
-        }
+        let card = action.card();
 
         let base = if self.turn < BATCH_SIZE {
             0
@@ -136,11 +151,11 @@ impl Game {
         false
     }
 
-    pub fn apply_action(&mut self, action: usize) {
+    pub fn apply_action(&mut self, action: Action) {
         assert!(!self.done);
         assert!(self.is_legal_action(action));
 
-        let card = action_card(action) as i32;
+        let card = action.card() as i32;
         let player = DRAFT_PLAYER[self.turn];
 
         // Find slot and mark picked.
@@ -194,7 +209,7 @@ impl Game {
         self.done
     }
 
-    pub fn history(&self) -> &[(i32, usize)] {
+    pub fn history(&self) -> &[(i32, Action)] {
         &self.history
     }
 
@@ -244,11 +259,9 @@ mod tests {
     #[test]
     fn test_action_encode_decode_roundtrip() {
         for card in 0..NUM_WONDERS {
-            for op in 0..NUM_OPS {
-                let action = action_encode(card, op);
-                assert_eq!(action_card(action), card);
-                assert_eq!(action_op(action), op);
-            }
+            let action = Action::SelectWonder(card);
+            let encoded = action.encode();
+            assert_eq!(Action::decode(encoded).card(), card);
         }
     }
 
@@ -276,16 +289,14 @@ mod tests {
             assert!(game.is_legal_action(a));
         }
 
-        // Out-of-range action is illegal.
-        assert!(!game.is_legal_action(NUM_ACTIONS));
-
         // Actions from the second batch (not yet active) are illegal.
         // Build the set of first-batch actions.
-        let first_batch: std::collections::HashSet<usize> = actions.iter().cloned().collect();
-        // Enumerate all valid actions and check non-first-batch ones are illegal.
+        let first_batch: std::collections::HashSet<usize> =
+            actions.iter().map(|a| a.encode()).collect();
+        // Enumerate all valid encoded actions and check non-first-batch ones are illegal.
         for a in 0..NUM_ACTIONS {
             if !first_batch.contains(&a) {
-                assert!(!game.is_legal_action(a));
+                assert!(!game.is_legal_action(Action::decode(a)));
             }
         }
     }

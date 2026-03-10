@@ -7,14 +7,13 @@ use deep_wonders::{info, panic_log};
 
 const MCTS_ITER_CNT: i32 = 100;
 
-fn policy_human_move(g: &Game) -> usize {
+fn policy_human_move(g: &Game) -> Action {
     let legal = g.legal_actions();
 
     // Show available cards.
     print!("  Available:");
     for &a in &legal {
-        let card = action_card(a);
-        print!(" {}", card_char(card));
+        print!(" {}", card_char(a.card()));
     }
     println!();
 
@@ -42,7 +41,7 @@ fn policy_human_move(g: &Game) -> usize {
             continue;
         };
 
-        let action = action_encode(card, OP_SELECT);
+        let action = Action::SelectWonder(card);
         if !g.is_legal_action(action) {
             println!("Card not available. Try again.");
             continue;
@@ -51,7 +50,7 @@ fn policy_human_move(g: &Game) -> usize {
     }
 }
 
-fn policy_ai_move(g: &Game, nn: &Nn) -> usize {
+fn policy_ai_move(g: &Game, nn: &Nn) -> Action {
     mcts_search(g, nn, MCTS_ITER_CNT)
 }
 
@@ -70,8 +69,7 @@ fn play_game(nn: &Nn) {
         let action;
         if g.current_player() == ai_player as i32 {
             action = policy_ai_move(&g, nn);
-            let card = action_card(action);
-            println!("AI picks card {}", card_char(card));
+            println!("AI picks card {}", card_char(action.card()));
         } else {
             action = policy_human_move(&g);
         }
