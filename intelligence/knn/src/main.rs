@@ -14,6 +14,7 @@
 //
 mod hermes;
 
+use rayon::prelude::*;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
@@ -194,13 +195,16 @@ fn main() {
             clf.fit(&images[..TRAIN_END], &labels[..TRAIN_END]);
 
             println!("Evaluating on {TEST_COUNT} test samples...");
+            // Predict all test samples in parallel; each call is read-only on clf.
+            let results: Vec<(u8, u8)> = (TRAIN_END..TOTAL)
+                .into_par_iter()
+                .map(|i| (clf.predict(&images[i]), labels[i]))
+                .collect();
+
             let mut correct = 0usize;
             let mut class_correct = [0u32; 10];
             let mut class_total = [0u32; 10];
-
-            for i in TRAIN_END..TOTAL {
-                let pred = clf.predict(&images[i]);
-                let true_lbl = labels[i];
+            for (pred, true_lbl) in results {
                 class_total[true_lbl as usize] += 1;
                 if pred == true_lbl {
                     correct += 1;
