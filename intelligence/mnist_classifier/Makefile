@@ -1,5 +1,4 @@
-BUILD      = .build
-DATA_DIR  := data
+DATA_DIR  := .build
 BASE_URL  := https://storage.googleapis.com/cvdf-datasets/mnist
 
 TRAIN_IMAGES_GZ := $(DATA_DIR)/train-images-idx3-ubyte.gz
@@ -55,7 +54,7 @@ nn: download
 	cargo run --release -- nn
 
 clean:
-	rm -rf $(DATA_DIR) ${BUILD}
+	rm -rf $(DATA_DIR)
 
 fmt:
 	cargo fmt

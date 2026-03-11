@@ -8,10 +8,10 @@
 //   cargo run --release -- nn [hidden] [lr] [ep] [batch] MLP accuracy benchmark
 //
 // Data files (relative to the working directory):
-//   data/train-images-idx3-ubyte   — 60 000 × 28 × 28 grayscale pixel arrays
-//   data/train-labels-idx1-ubyte   — 60 000 digit labels (0–9)
-//   data/t10k-images-idx3-ubyte    — 10 000 × 28 × 28 test pixel arrays
-//   data/t10k-labels-idx1-ubyte    — 10 000 test digit labels (0–9)
+//   .build/train-images-idx3-ubyte   — 60 000 × 28 × 28 grayscale pixel arrays
+//   .build/train-labels-idx1-ubyte   — 60 000 digit labels (0–9)
+//   .build/t10k-images-idx3-ubyte    — 10 000 × 28 × 28 test pixel arrays
+//   .build/t10k-labels-idx1-ubyte    — 10 000 test digit labels (0–9)
 //
 // Run `make download` once to fetch and decompress these files before use.
 //
@@ -203,10 +203,10 @@ fn run_eval(
 }
 
 fn main() {
-    let train_images_path = "data/train-images-idx3-ubyte";
-    let train_labels_path = "data/train-labels-idx1-ubyte";
-    let test_images_path = "data/t10k-images-idx3-ubyte";
-    let test_labels_path = "data/t10k-labels-idx1-ubyte";
+    let train_images_path = ".build/train-images-idx3-ubyte";
+    let train_labels_path = ".build/train-labels-idx1-ubyte";
+    let test_images_path = ".build/t10k-images-idx3-ubyte";
+    let test_labels_path = ".build/t10k-labels-idx1-ubyte";
 
     let mut args = std::env::args().skip(1);
     let subcommand = args.next().unwrap_or_else(|| "view".to_string());

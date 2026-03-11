@@ -10,7 +10,7 @@ dataset, with an ASCII terminal viewer.  All classifiers implement the
 src/
   main.rs      — CLI entry point, IDX file parsers, ASCII renderer, run_eval helper
   hermes.rs    — Classifier trait, gemm, KnnClassifier, NeuralNetClassifier
-data/          — MNIST binary files (created by `make download`)
+.build/        — MNIST binary files (created by `make download`)
 Makefile       — download, run, knn, nn, clean, fmt targets
 CLAUDE.md      — this file
 ```
@@ -18,7 +18,7 @@ CLAUDE.md      — this file
 ## Data requirements
 
 Run `make download` once before any other command.  Downloads and decompresses
-four files into `data/`:
+four files into `.build/`:
 
 | File | Samples | Description |
 |------|---------|-------------|
@@ -44,7 +44,7 @@ The official MNIST split is used directly — no manual holdout needed:
 | `make run` | `cargo run -- view 0` | ASCII-render training sample 0 |
 | `make knn` | `cargo run --release -- knn [k]` | KNN benchmark (default k=5) |
 | `make nn` | `cargo run --release -- nn [hidden] [lr] [epochs] [batch]` | MLP benchmark |
-| `make clean` | — | Delete `data/` and build cache |
+| `make clean` | — | Delete `.build/` and build cache |
 | `make fmt` | `cargo fmt` | Format source |
 
 KNN and MLP subcommands must run with `--release`; both are slow in debug mode.
