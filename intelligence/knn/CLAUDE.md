@@ -54,7 +54,7 @@ Renders one training sample as ASCII art (default index 0, range 0–59999).
 cargo run --release -- knn [<k>]
 ```
 
-Fits KnnClassifier on 48 000 samples, evaluates on 12 000.  Default k=3.
+Fits KnnClassifier on 48 000 samples, evaluates on 12 000.  Default k=5.
 Expected accuracy: ~96–97%.
 
 ### `nn` subcommand

@@ -4,7 +4,7 @@
 //
 // Usage:
 //   cargo run -- view [<index>]                          ASCII render (default index 0)
-//   cargo run --release -- knn [<k>]                     KNN accuracy benchmark (default k=3)
+//   cargo run --release -- knn [<k>]                     KNN accuracy benchmark (default k=5)
 //   cargo run --release -- nn [hidden] [lr] [ep] [batch] MLP accuracy benchmark
 //
 // Data files (relative to the working directory):
@@ -19,6 +19,12 @@ use hermes::Classifier as _;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
+use std::time::Instant;
+
+fn fmt_elapsed(t: Instant) -> String {
+    let ms = t.elapsed().as_millis();
+    format!("{:.3} s ({} ms)", ms as f64 / 1000.0, ms)
+}
 
 // 16-entry ASCII palette ordered by increasing visual density (ink coverage).
 // A pixel value 0–255 maps to an index via: pixel * 15 / 255
@@ -50,7 +56,7 @@ fn read_u32_be(file: &mut File) -> std::io::Result<u32> {
     Ok(u32::from_be_bytes(buf))
 }
 
-fn load_image(path: &str, index: usize) -> std::io::Result<Vec<u8>> {
+fn load_image(path: &str, index: usize) -> std::io::Result<Vec<f32>> {
     // IDX3 image file layout (all integers big-endian):
     //   bytes  0– 3: magic = 0x00000803  (0x08 = u8 data type, 0x03 = 3 dimensions)
     //   bytes  4– 7: number of images
@@ -69,9 +75,9 @@ fn load_image(path: &str, index: usize) -> std::io::Result<Vec<u8>> {
     assert_eq!(cols, COLS, "unexpected col count in file");
     let offset = 16 + index * ROWS * COLS;
     f.seek(SeekFrom::Start(offset as u64))?;
-    let mut pixels = vec![0u8; ROWS * COLS];
-    f.read_exact(&mut pixels)?;
-    Ok(pixels)
+    let mut raw = vec![0u8; ROWS * COLS];
+    f.read_exact(&mut raw)?;
+    Ok(raw.iter().map(|&p| p as f32 / 255.0).collect())
 }
 
 fn load_label(path: &str, index: usize) -> std::io::Result<u8> {
@@ -91,7 +97,7 @@ fn load_label(path: &str, index: usize) -> std::io::Result<u8> {
     Ok(label[0])
 }
 
-fn load_all_images(path: &str) -> std::io::Result<Vec<[u8; 784]>> {
+fn load_all_images(path: &str) -> std::io::Result<Vec<[f32; 784]>> {
     let mut f = File::open(path)?;
     let magic = read_u32_be(&mut f)?;
     assert_eq!(magic, 0x0000_0803, "invalid images magic number");
@@ -102,7 +108,11 @@ fn load_all_images(path: &str) -> std::io::Result<Vec<[u8; 784]>> {
     assert_eq!(cols, COLS);
     let mut raw = vec![0u8; num_images * ROWS * COLS];
     f.read_exact(&mut raw)?;
-    Ok(raw.chunks_exact(784).map(|c| { let mut a = [0u8; 784]; a.copy_from_slice(c); a }).collect())
+    Ok(raw.chunks_exact(784).map(|c| {
+        let mut a = [0.0f32; 784];
+        for (dst, &src) in a.iter_mut().zip(c.iter()) { *dst = src as f32 / 255.0; }
+        a
+    }).collect())
 }
 
 fn load_all_labels(path: &str) -> std::io::Result<Vec<u8>> {
@@ -115,12 +125,12 @@ fn load_all_labels(path: &str) -> std::io::Result<Vec<u8>> {
     Ok(labels)
 }
 
-fn render(pixels: &[u8]) {
+fn render(pixels: &[f32]) {
     for row in 0..ROWS {
         let line: String = pixels[row * COLS..(row + 1) * COLS]
             .iter()
             .flat_map(|&p| {
-                let idx = (p as usize) * (PALETTE.len() - 1) / 255;
+                let idx = (p * (PALETTE.len() - 1) as f32).round() as usize;
                 let ch = PALETTE[idx];
                 [ch, ch]
             })
@@ -131,14 +141,16 @@ fn render(pixels: &[u8]) {
 
 /// Evaluate a trained classifier on test_images/test_labels, printing accuracy.
 /// Predictions run in parallel via rayon.
-fn run_eval(clf: &(impl hermes::Classifier + Sync), test_images: &[[u8; 784]], test_labels: &[u8]) {
+fn run_eval(clf: &(impl hermes::Classifier + Sync), test_images: &[[f32; 784]], test_labels: &[u8]) {
     let n = test_images.len();
     println!("Evaluating on {n} test samples...");
+    let t_eval = Instant::now();
     let results: Vec<(u8, u8)> = test_images
         .par_iter()
         .zip(test_labels.par_iter())
         .map(|(img, &lbl)| (clf.predict(img), lbl))
         .collect();
+    println!("  prediction time: {}", fmt_elapsed(t_eval));
 
     let mut correct = 0usize;
     let mut class_correct = [0u32; 10];
@@ -179,14 +191,20 @@ fn main() {
         }
 
         "knn" => {
-            let k: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(3);
+            let k: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(5);
+
             println!("Loading all {TOTAL} images and labels...");
+            let t_load = Instant::now();
             let images = load_all_images(images_path).expect("failed to load images");
             let labels = load_all_labels(labels_path).expect("failed to load labels");
+            println!("  load time: {}", fmt_elapsed(t_load));
 
             println!("Fitting KNN (k={k}) on {TRAIN_END} training samples...");
+            let t_fit = Instant::now();
             let mut clf = hermes::KnnClassifier::new(k);
             clf.fit(&images[..TRAIN_END], &labels[..TRAIN_END]);
+            println!("  fit time:  {}", fmt_elapsed(t_fit));
+
             run_eval(&clf, &images[TRAIN_END..], &labels[TRAIN_END..]);
         }
 
@@ -197,12 +215,17 @@ fn main() {
             let batch: usize  = args.next().and_then(|s| s.parse().ok()).unwrap_or(64);
 
             println!("Loading all {TOTAL} images and labels...");
+            let t_load = Instant::now();
             let images = load_all_images(images_path).expect("failed to load images");
             let labels = load_all_labels(labels_path).expect("failed to load labels");
+            println!("  load time: {}", fmt_elapsed(t_load));
 
             println!("Training MLP (hidden={hidden}, lr={lr}, epochs={epochs}, batch={batch}) on {TRAIN_END} samples...");
+            let t_fit = Instant::now();
             let mut clf = hermes::NeuralNetClassifier::new(hidden, lr, epochs, batch);
             clf.fit(&images[..TRAIN_END], &labels[..TRAIN_END]);
+            println!("  train time: {}", fmt_elapsed(t_fit));
+
             run_eval(&clf, &images[TRAIN_END..], &labels[TRAIN_END..]);
         }
 

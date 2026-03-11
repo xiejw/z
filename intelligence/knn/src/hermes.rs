@@ -1,6 +1,6 @@
 pub trait Classifier {
-    fn fit(&mut self, images: &[[u8; 784]], labels: &[u8]);
-    fn predict(&self, image: &[u8; 784]) -> u8;
+    fn fit(&mut self, images: &[[f32; 784]], labels: &[u8]);
+    fn predict(&self, image: &[f32; 784]) -> u8;
 }
 
 // ── BLAS-style SGEMM ─────────────────────────────────────────────────────────
@@ -55,7 +55,7 @@ fn gemm(
 
 pub struct KnnClassifier {
     k: usize,
-    train: Vec<([u8; 784], u8)>,
+    train: Vec<([f32; 784], u8)>,
 }
 
 impl KnnClassifier {
@@ -63,30 +63,32 @@ impl KnnClassifier {
         KnnClassifier { k, train: Vec::new() }
     }
 
-    fn distance(a: &[u8; 784], b: &[u8; 784]) -> u32 {
-        a.iter().zip(b.iter()).map(|(&x, &y)| (x as i32 - y as i32).unsigned_abs()).sum()
+    fn distance(a: &[f32; 784], b: &[f32; 784]) -> f32 {
+        a.iter().zip(b.iter()).map(|(x, y)| (x - y).abs()).sum()
     }
 }
 
 impl Classifier for KnnClassifier {
-    fn fit(&mut self, images: &[[u8; 784]], labels: &[u8]) {
+    fn fit(&mut self, images: &[[f32; 784]], labels: &[u8]) {
         self.train = images.iter().zip(labels.iter()).map(|(img, &lbl)| (*img, lbl)).collect();
     }
 
-    fn predict(&self, image: &[u8; 784]) -> u8 {
-        // Bounded max-heap of size k: store (neg_dist, label) so the root is
-        // always the farthest of the k nearest neighbours seen so far.
+    fn predict(&self, image: &[f32; 784]) -> u8 {
+        // Bounded max-heap of size k tracking the k nearest neighbours.
+        // We store (d.to_bits(), label) as (u32, u8).  For non-negative f32,
+        // IEEE 754 guarantees that bit-pattern order equals numeric order, so
+        // the max-heap root is always the farthest of the k kept so far.
         use std::collections::BinaryHeap;
-        let mut heap: BinaryHeap<(i64, u8)> = BinaryHeap::with_capacity(self.k + 1);
+        let mut heap: BinaryHeap<(u32, u8)> = BinaryHeap::with_capacity(self.k + 1);
         for (train_img, train_lbl) in &self.train {
-            let d = Self::distance(image, train_img) as i64;
-            let neg_d = -d;
+            let d = Self::distance(image, train_img);
+            let key = d.to_bits();
             if heap.len() < self.k {
-                heap.push((neg_d, *train_lbl));
-            } else if let Some(&(top_neg, _)) = heap.peek() {
-                if neg_d > top_neg {
+                heap.push((key, *train_lbl));
+            } else if let Some(&(top_key, _)) = heap.peek() {
+                if key < top_key {
                     heap.pop();
-                    heap.push((neg_d, *train_lbl));
+                    heap.push((key, *train_lbl));
                 }
             }
         }
@@ -157,7 +159,7 @@ impl NeuralNetClassifier {
 }
 
 impl Classifier for NeuralNetClassifier {
-    fn fit(&mut self, images: &[[u8; 784]], labels: &[u8]) {
+    fn fit(&mut self, images: &[[f32; 784]], labels: &[u8]) {
         self.init_weights();
         let n = images.len();
         let h = self.hidden;
@@ -177,14 +179,12 @@ impl Classifier for NeuralNetClassifier {
                 let b = chunk.len();
 
                 // ── Build batch matrices ──────────────────────────────────────
-                // x_batch [B × 784]  pixels normalised to [0, 1]
+                // x_batch [B × 784]  pixels already normalised to [0, 1]
                 // y_batch [B × 10]   one-hot labels
                 let mut x_batch = vec![0.0f32; b * 784];
                 let mut y_batch = vec![0.0f32; b * 10];
                 for (bi, &si) in chunk.iter().enumerate() {
-                    for (j, &p) in images[si].iter().enumerate() {
-                        x_batch[bi * 784 + j] = p as f32 / 255.0;
-                    }
+                    x_batch[bi * 784..(bi + 1) * 784].copy_from_slice(&images[si]);
                     y_batch[bi * 10 + labels[si] as usize] = 1.0;
                 }
 
@@ -270,14 +270,14 @@ impl Classifier for NeuralNetClassifier {
         }
     }
 
-    fn predict(&self, image: &[u8; 784]) -> u8 {
+    fn predict(&self, image: &[f32; 784]) -> u8 {
         let h = self.hidden;
 
         // z1 [H] = W1 [H×784] · x [784] + b1
         let mut z1 = self.b1.clone();
         for i in 0..h {
             let mut s = 0.0f32;
-            for j in 0..784 { s += self.w1[i * 784 + j] * image[j] as f32 / 255.0; }
+            for j in 0..784 { s += self.w1[i * 784 + j] * image[j]; }
             z1[i] += s;
         }
 
