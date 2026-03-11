@@ -74,19 +74,18 @@ impl Classifier for KnnClassifier {
     }
 
     fn predict(&self, image: &[u8; 784]) -> u8 {
-        // Bounded max-heap of size k: store (neg_dist, label) so the root is
+        // Bounded max-heap of size k: store (dist, label) so the root is
         // always the farthest of the k nearest neighbours seen so far.
         use std::collections::BinaryHeap;
         let mut heap: BinaryHeap<(i64, u8)> = BinaryHeap::with_capacity(self.k + 1);
         for (train_img, train_lbl) in &self.train {
             let d = Self::distance(image, train_img) as i64;
-            let neg_d = -d;
             if heap.len() < self.k {
-                heap.push((neg_d, *train_lbl));
-            } else if let Some(&(top_neg, _)) = heap.peek() {
-                if neg_d > top_neg {
+                heap.push((d, *train_lbl));
+            } else if let Some(&(top_d, _)) = heap.peek() {
+                if d < top_d {
                     heap.pop();
-                    heap.push((neg_d, *train_lbl));
+                    heap.push((d, *train_lbl));
                 }
             }
         }
