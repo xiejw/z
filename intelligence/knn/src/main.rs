@@ -10,6 +10,8 @@
 // Data files (relative to the working directory):
 //   data/train-images-idx3-ubyte   — 60 000 × 28 × 28 grayscale pixel arrays
 //   data/train-labels-idx1-ubyte   — 60 000 digit labels (0–9)
+//   data/t10k-images-idx3-ubyte    — 10 000 × 28 × 28 test pixel arrays
+//   data/t10k-labels-idx1-ubyte    — 10 000 test digit labels (0–9)
 //
 // Run `make download` once to fetch and decompress these files before use.
 //
@@ -66,11 +68,18 @@ fn load_image(path: &str, index: usize) -> std::io::Result<Vec<f32>> {
     //                image N starts at offset 16 + N * rows * cols
     let mut f = File::open(path)?;
     let magic = read_u32_be(&mut f)?;
-    assert_eq!(magic, 0x0000_0803, "invalid images magic number; likely the file is bad");
+    assert_eq!(
+        magic, 0x0000_0803,
+        "invalid images magic number; likely the file is bad"
+    );
     let num_images = read_u32_be(&mut f)? as usize;
     let rows = read_u32_be(&mut f)? as usize;
     let cols = read_u32_be(&mut f)? as usize;
-    assert!(index < num_images, "index {index} out of range (max {})", num_images - 1);
+    assert!(
+        index < num_images,
+        "index {index} out of range (max {})",
+        num_images - 1
+    );
     assert_eq!(rows, ROWS, "unexpected row count in file");
     assert_eq!(cols, COLS, "unexpected col count in file");
     let offset = 16 + index * ROWS * COLS;
@@ -88,9 +97,16 @@ fn load_label(path: &str, index: usize) -> std::io::Result<u8> {
     //              label N is at offset 8 + N
     let mut f = File::open(path)?;
     let magic = read_u32_be(&mut f)?;
-    assert_eq!(magic, 0x0000_0801, "invalid labels magic number; likely the file is bad");
+    assert_eq!(
+        magic, 0x0000_0801,
+        "invalid labels magic number; likely the file is bad"
+    );
     let num_labels = read_u32_be(&mut f)? as usize;
-    assert!(index < num_labels, "index {index} out of range (max {})", num_labels - 1);
+    assert!(
+        index < num_labels,
+        "index {index} out of range (max {})",
+        num_labels - 1
+    );
     f.seek(SeekFrom::Start((8 + index) as u64))?;
     let mut label = [0u8; 1];
     f.read_exact(&mut label)?;
@@ -108,11 +124,16 @@ fn load_all_images(path: &str) -> std::io::Result<Vec<[f32; 784]>> {
     assert_eq!(cols, COLS);
     let mut raw = vec![0u8; num_images * ROWS * COLS];
     f.read_exact(&mut raw)?;
-    Ok(raw.chunks_exact(784).map(|c| {
-        let mut a = [0.0f32; 784];
-        for (dst, &src) in a.iter_mut().zip(c.iter()) { *dst = src as f32 / 255.0; }
-        a
-    }).collect())
+    Ok(raw
+        .chunks_exact(784)
+        .map(|c| {
+            let mut a = [0.0f32; 784];
+            for (dst, &src) in a.iter_mut().zip(c.iter()) {
+                *dst = src as f32 / 255.0;
+            }
+            a
+        })
+        .collect())
 }
 
 fn load_all_labels(path: &str) -> std::io::Result<Vec<u8>> {
@@ -141,7 +162,11 @@ fn render(pixels: &[f32]) {
 
 /// Evaluate a trained classifier on test_images/test_labels, printing accuracy.
 /// Predictions run in parallel via rayon.
-fn run_eval(clf: &(impl hermes::Classifier + Sync), test_images: &[[f32; 784]], test_labels: &[u8]) {
+fn run_eval(
+    clf: &(impl hermes::Classifier + Sync),
+    test_images: &[[f32; 784]],
+    test_labels: &[u8],
+) {
     let n = test_images.len();
     println!("Evaluating on {n} test samples...");
     let t_eval = Instant::now();
@@ -162,30 +187,35 @@ fn run_eval(clf: &(impl hermes::Classifier + Sync), test_images: &[[f32; 784]], 
             class_correct[true_lbl as usize] += 1;
         }
     }
-    println!("\nAccuracy: {correct}/{n} ({:.2}%)", correct as f64 / n as f64 * 100.0);
+    println!(
+        "\nAccuracy: {correct}/{n} ({:.2}%)",
+        correct as f64 / n as f64 * 100.0
+    );
     println!("\nPer-class breakdown:");
     for digit in 0..10usize {
         let tot = class_total[digit];
         let cor = class_correct[digit];
-        println!("  digit {digit}: {cor}/{tot} ({:.2}%)", cor as f64 / tot as f64 * 100.0);
+        println!(
+            "  digit {digit}: {cor}/{tot} ({:.2}%)",
+            cor as f64 / tot as f64 * 100.0
+        );
     }
 }
 
 fn main() {
-    let images_path = "data/train-images-idx3-ubyte";
-    let labels_path = "data/train-labels-idx1-ubyte";
+    let train_images_path = "data/train-images-idx3-ubyte";
+    let train_labels_path = "data/train-labels-idx1-ubyte";
+    let test_images_path = "data/t10k-images-idx3-ubyte";
+    let test_labels_path = "data/t10k-labels-idx1-ubyte";
 
     let mut args = std::env::args().skip(1);
     let subcommand = args.next().unwrap_or_else(|| "view".to_string());
 
-    const TRAIN_END: usize = 48_000;
-    const TOTAL: usize = 60_000;
-
     match subcommand.as_str() {
         "view" => {
             let index: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(0);
-            let label = load_label(labels_path, index).expect("failed to load label");
-            let pixels = load_image(images_path, index).expect("failed to load image");
+            let label = load_label(train_labels_path, index).expect("failed to load label");
+            let pixels = load_image(train_images_path, index).expect("failed to load image");
             println!("Label: {label}  (sample index {index})");
             render(&pixels);
         }
@@ -193,40 +223,68 @@ fn main() {
         "knn" => {
             let k: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(5);
 
-            println!("Loading all {TOTAL} images and labels...");
+            println!("Loading training set...");
             let t_load = Instant::now();
-            let images = load_all_images(images_path).expect("failed to load images");
-            let labels = load_all_labels(labels_path).expect("failed to load labels");
-            println!("  load time: {}", fmt_elapsed(t_load));
+            let train_images =
+                load_all_images(train_images_path).expect("failed to load train images");
+            let train_labels =
+                load_all_labels(train_labels_path).expect("failed to load train labels");
+            let test_images =
+                load_all_images(test_images_path).expect("failed to load test images");
+            let test_labels =
+                load_all_labels(test_labels_path).expect("failed to load test labels");
+            println!(
+                "  load time: {} ({} train, {} test)",
+                fmt_elapsed(t_load),
+                train_images.len(),
+                test_images.len()
+            );
 
-            println!("Fitting KNN (k={k}) on {TRAIN_END} training samples...");
+            println!(
+                "Fitting KNN (k={k}) on {} training samples...",
+                train_images.len()
+            );
             let t_fit = Instant::now();
             let mut clf = hermes::KnnClassifier::new(k);
-            clf.fit(&images[..TRAIN_END], &labels[..TRAIN_END]);
+            clf.fit(&train_images, &train_labels);
             println!("  fit time:  {}", fmt_elapsed(t_fit));
 
-            run_eval(&clf, &images[TRAIN_END..], &labels[TRAIN_END..]);
+            run_eval(&clf, &test_images, &test_labels);
         }
 
         "nn" => {
             let hidden: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(128);
-            let lr: f32    = args.next().and_then(|s| s.parse().ok()).unwrap_or(0.1);
+            let lr: f32 = args.next().and_then(|s| s.parse().ok()).unwrap_or(0.1);
             let epochs: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(10);
-            let batch: usize  = args.next().and_then(|s| s.parse().ok()).unwrap_or(64);
+            let batch: usize = args.next().and_then(|s| s.parse().ok()).unwrap_or(64);
 
-            println!("Loading all {TOTAL} images and labels...");
+            println!("Loading training set...");
             let t_load = Instant::now();
-            let images = load_all_images(images_path).expect("failed to load images");
-            let labels = load_all_labels(labels_path).expect("failed to load labels");
-            println!("  load time: {}", fmt_elapsed(t_load));
+            let train_images =
+                load_all_images(train_images_path).expect("failed to load train images");
+            let train_labels =
+                load_all_labels(train_labels_path).expect("failed to load train labels");
+            let test_images =
+                load_all_images(test_images_path).expect("failed to load test images");
+            let test_labels =
+                load_all_labels(test_labels_path).expect("failed to load test labels");
+            println!(
+                "  load time: {} ({} train, {} test)",
+                fmt_elapsed(t_load),
+                train_images.len(),
+                test_images.len()
+            );
 
-            println!("Training MLP (hidden={hidden}, lr={lr}, epochs={epochs}, batch={batch}) on {TRAIN_END} samples...");
+            println!(
+                "Training MLP (hidden={hidden}, lr={lr}, epochs={epochs}, batch={batch}) on {} samples...",
+                train_images.len()
+            );
             let t_fit = Instant::now();
             let mut clf = hermes::NeuralNetClassifier::new(hidden, lr, epochs, batch);
-            clf.fit(&images[..TRAIN_END], &labels[..TRAIN_END]);
+            clf.fit(&train_images, &train_labels);
             println!("  train time: {}", fmt_elapsed(t_fit));
 
-            run_eval(&clf, &images[TRAIN_END..], &labels[TRAIN_END..]);
+            run_eval(&clf, &test_images, &test_labels);
         }
 
         other => {

@@ -17,23 +17,32 @@ CLAUDE.md      — this file
 
 ## Data requirements
 
-Run `make download` once before any other command.
+Run `make download` once before any other command.  Downloads and decompresses
+four files into `data/`:
 
-- `data/train-images-idx3-ubyte` — 60 000 × 28 × 28 pixel arrays (IDX3 format)
-- `data/train-labels-idx1-ubyte` — 60 000 digit labels 0–9 (IDX1 format)
+| File | Samples | Description |
+|------|---------|-------------|
+| `train-images-idx3-ubyte` | 60 000 | Training pixel arrays (28×28, IDX3) |
+| `train-labels-idx1-ubyte` | 60 000 | Training digit labels 0–9 (IDX1) |
+| `t10k-images-idx3-ubyte`  | 10 000 | Test pixel arrays (28×28, IDX3) |
+| `t10k-labels-idx1-ubyte`  | 10 000 | Test digit labels 0–9 (IDX1) |
 
-## 80/20 split
+Pixels are normalised to `f32` in `[0.0, 1.0]` at load time (`/ 255.0`).
 
-- Train: indices `0..48_000`
-- Test:  indices `48_000..60_000` (12 000 samples)
+## Train / test split
+
+The official MNIST split is used directly — no manual holdout needed:
+
+- **Fit** on all 60 000 training samples
+- **Evaluate** on the separate 10 000 test samples
 
 ## Commands
 
 | Makefile target | cargo equivalent | Description |
 |---|---|---|
-| `make download` | — | Fetch + decompress MNIST files |
-| `make run` | `cargo run -- view 0` | ASCII-render sample 0 |
-| `make knn` | `cargo run --release -- knn [k]` | KNN benchmark (default k=3) |
+| `make download` | — | Fetch + decompress all four MNIST files |
+| `make run` | `cargo run -- view 0` | ASCII-render training sample 0 |
+| `make knn` | `cargo run --release -- knn [k]` | KNN benchmark (default k=5) |
 | `make nn` | `cargo run --release -- nn [hidden] [lr] [epochs] [batch]` | MLP benchmark |
 | `make clean` | — | Delete `data/` and build cache |
 | `make fmt` | `cargo fmt` | Format source |
@@ -54,8 +63,8 @@ Renders one training sample as ASCII art (default index 0, range 0–59999).
 cargo run --release -- knn [<k>]
 ```
 
-Fits KnnClassifier on 48 000 samples, evaluates on 12 000.  Default k=5.
-Expected accuracy: ~96–97%.
+Fits KnnClassifier on all 60 000 training samples, evaluates on 10 000 test
+samples.  Default k=5.  Expected accuracy: ~97%.
 
 ### `nn` subcommand
 
@@ -63,8 +72,9 @@ Expected accuracy: ~96–97%.
 cargo run --release -- nn [hidden] [lr] [epochs] [batch]
 ```
 
-Trains NeuralNetClassifier (784 → hidden → 10) on 48 000 samples, evaluates
-on 12 000.  Defaults: hidden=128, lr=0.1, epochs=10, batch=64.
+Trains NeuralNetClassifier (784 → hidden → 10) on all 60 000 training samples,
+evaluates on 10 000 test samples.
+Defaults: hidden=128, lr=0.1, epochs=10, batch=64.
 Expected accuracy: ~97–98% with defaults.
 
 ---

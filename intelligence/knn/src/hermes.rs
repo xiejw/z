@@ -17,13 +17,19 @@ pub trait Classifier {
 //
 // This signature mirrors cblas_sgemm with Layout=RowMajor.
 fn gemm(
-    trans_a: bool, trans_b: bool,
-    m: usize, n: usize, k: usize,
+    trans_a: bool,
+    trans_b: bool,
+    m: usize,
+    n: usize,
+    k: usize,
     alpha: f32,
-    a: &[f32], lda: usize,
-    b: &[f32], ldb: usize,
+    a: &[f32],
+    lda: usize,
+    b: &[f32],
+    ldb: usize,
     beta: f32,
-    c: &mut [f32], ldc: usize,
+    c: &mut [f32],
+    ldc: usize,
 ) {
     // Scale C first (handles beta = 0 cleanly to avoid NaN × 0).
     if beta == 0.0 {
@@ -37,15 +43,25 @@ fn gemm(
     // trans_b = false (the common case in both forward and backward passes).
     for i in 0..m {
         for l in 0..k {
-            let a_il = if !trans_a { a[i * lda + l] } else { a[l * lda + i] };
-            if a_il == 0.0 { continue; }
+            let a_il = if !trans_a {
+                a[i * lda + l]
+            } else {
+                a[l * lda + i]
+            };
+            if a_il == 0.0 {
+                continue;
+            }
             let alpha_a = alpha * a_il;
             let c_row = &mut c[i * ldc..i * ldc + n];
             if !trans_b {
                 let b_row = &b[l * ldb..l * ldb + n];
-                for j in 0..n { c_row[j] += alpha_a * b_row[j]; }
+                for j in 0..n {
+                    c_row[j] += alpha_a * b_row[j];
+                }
             } else {
-                for j in 0..n { c_row[j] += alpha_a * b[j * ldb + l]; }
+                for j in 0..n {
+                    c_row[j] += alpha_a * b[j * ldb + l];
+                }
             }
         }
     }
@@ -60,7 +76,10 @@ pub struct KnnClassifier {
 
 impl KnnClassifier {
     pub fn new(k: usize) -> Self {
-        KnnClassifier { k, train: Vec::new() }
+        KnnClassifier {
+            k,
+            train: Vec::new(),
+        }
     }
 
     fn distance(a: &[f32; 784], b: &[f32; 784]) -> f32 {
@@ -70,7 +89,11 @@ impl KnnClassifier {
 
 impl Classifier for KnnClassifier {
     fn fit(&mut self, images: &[[f32; 784]], labels: &[u8]) {
-        self.train = images.iter().zip(labels.iter()).map(|(img, &lbl)| (*img, lbl)).collect();
+        self.train = images
+            .iter()
+            .zip(labels.iter())
+            .map(|(img, &lbl)| (*img, lbl))
+            .collect();
     }
 
     fn predict(&self, image: &[f32; 784]) -> u8 {
@@ -93,8 +116,15 @@ impl Classifier for KnnClassifier {
             }
         }
         let mut counts = [0u32; 10];
-        for (_, lbl) in heap { counts[lbl as usize] += 1; }
-        counts.iter().enumerate().max_by_key(|&(_, c)| c).map(|(i, _)| i as u8).unwrap_or(0)
+        for (_, lbl) in heap {
+            counts[lbl as usize] += 1;
+        }
+        counts
+            .iter()
+            .enumerate()
+            .max_by_key(|&(_, c)| c)
+            .map(|(i, _)| i as u8)
+            .unwrap_or(0)
     }
 }
 
@@ -139,7 +169,10 @@ pub struct NeuralNetClassifier {
 impl NeuralNetClassifier {
     pub fn new(hidden: usize, lr: f32, epochs: usize, batch: usize) -> Self {
         NeuralNetClassifier {
-            hidden, lr, epochs, batch,
+            hidden,
+            lr,
+            epochs,
+            batch,
             w1: vec![0.0; hidden * 784],
             b1: vec![0.0; hidden],
             w2: vec![0.0; 10 * hidden],
@@ -152,8 +185,12 @@ impl NeuralNetClassifier {
         // He initialisation: std = sqrt(2 / fan_in).
         let std1 = (2.0_f32 / 784.0).sqrt();
         let std2 = (2.0_f32 / self.hidden as f32).sqrt();
-        for w in self.w1.iter_mut() { *w = rng.normal() * std1; }
-        for w in self.w2.iter_mut() { *w = rng.normal() * std2; }
+        for w in self.w1.iter_mut() {
+            *w = rng.normal() * std1;
+        }
+        for w in self.w2.iter_mut() {
+            *w = rng.normal() * std2;
+        }
         // biases stay at zero
     }
 }
@@ -191,8 +228,14 @@ impl Classifier for NeuralNetClassifier {
                 // ── Forward pass ──────────────────────────────────────────────
                 // Z1 [B×H] = X [B×784] · W1^T [784×H]  +  b1
                 let mut z1 = vec![0.0f32; b * h];
-                gemm(false, true, b, h, 784, 1.0, &x_batch, 784, &self.w1, 784, 0.0, &mut z1, h);
-                for i in 0..b { for j in 0..h { z1[i * h + j] += self.b1[j]; } }
+                gemm(
+                    false, true, b, h, 784, 1.0, &x_batch, 784, &self.w1, 784, 0.0, &mut z1, h,
+                );
+                for i in 0..b {
+                    for j in 0..h {
+                        z1[i * h + j] += self.b1[j];
+                    }
+                }
 
                 // A1 [B×H] = ReLU(Z1)
                 let mut a1 = z1.clone();
@@ -200,8 +243,14 @@ impl Classifier for NeuralNetClassifier {
 
                 // Z2 [B×10] = A1 [B×H] · W2^T [H×10]  +  b2
                 let mut z2 = vec![0.0f32; b * 10];
-                gemm(false, true, b, 10, h, 1.0, &a1, h, &self.w2, h, 0.0, &mut z2, 10);
-                for i in 0..b { for j in 0..10 { z2[i * 10 + j] += self.b2[j]; } }
+                gemm(
+                    false, true, b, 10, h, 1.0, &a1, h, &self.w2, h, 0.0, &mut z2, 10,
+                );
+                for i in 0..b {
+                    for j in 0..10 {
+                        z2[i * 10 + j] += self.b2[j];
+                    }
+                }
 
                 // A2 [B×10] = softmax(Z2) row-wise
                 let mut a2 = z2.clone();
@@ -209,8 +258,13 @@ impl Classifier for NeuralNetClassifier {
                     let row = &mut a2[i * 10..(i + 1) * 10];
                     let max = row.iter().cloned().fold(f32::NEG_INFINITY, f32::max);
                     let mut s = 0.0f32;
-                    for v in row.iter_mut() { *v = (*v - max).exp(); s += *v; }
-                    for v in row.iter_mut() { *v /= s; }
+                    for v in row.iter_mut() {
+                        *v = (*v - max).exp();
+                        s += *v;
+                    }
+                    for v in row.iter_mut() {
+                        *v /= s;
+                    }
                 }
 
                 // Accumulate cross-entropy loss for reporting.
@@ -234,29 +288,45 @@ impl Classifier for NeuralNetClassifier {
 
                 // dW2 [10×H] = dZ2^T [10×B] · A1 [B×H]
                 let mut dw2 = vec![0.0f32; 10 * h];
-                gemm(true, false, 10, h, b, 1.0, &dz2, 10, &a1, h, 0.0, &mut dw2, h);
+                gemm(
+                    true, false, 10, h, b, 1.0, &dz2, 10, &a1, h, 0.0, &mut dw2, h,
+                );
 
                 // db2 [10] = Σ_rows dZ2
                 let mut db2 = vec![0.0f32; 10];
-                for i in 0..b { for j in 0..10 { db2[j] += dz2[i * 10 + j]; } }
+                for i in 0..b {
+                    for j in 0..10 {
+                        db2[j] += dz2[i * 10 + j];
+                    }
+                }
 
                 // dA1 [B×H] = dZ2 [B×10] · W2 [10×H]
                 let mut da1 = vec![0.0f32; b * h];
-                gemm(false, false, b, h, 10, 1.0, &dz2, 10, &self.w2, h, 0.0, &mut da1, h);
+                gemm(
+                    false, false, b, h, 10, 1.0, &dz2, 10, &self.w2, h, 0.0, &mut da1, h,
+                );
 
                 // dZ1 [B×H] = dA1 ⊙ ReLU'(Z1)
                 for (dz, &z) in da1.iter_mut().zip(z1.iter()) {
-                    if z <= 0.0 { *dz = 0.0; }
+                    if z <= 0.0 {
+                        *dz = 0.0;
+                    }
                 }
                 let dz1 = da1;
 
                 // dW1 [H×784] = dZ1^T [H×B] · X [B×784]
                 let mut dw1 = vec![0.0f32; h * 784];
-                gemm(true, false, h, 784, b, 1.0, &dz1, h, &x_batch, 784, 0.0, &mut dw1, 784);
+                gemm(
+                    true, false, h, 784, b, 1.0, &dz1, h, &x_batch, 784, 0.0, &mut dw1, 784,
+                );
 
                 // db1 [H] = Σ_rows dZ1
                 let mut db1 = vec![0.0f32; h];
-                for i in 0..b { for j in 0..h { db1[j] += dz1[i * h + j]; } }
+                for i in 0..b {
+                    for j in 0..h {
+                        db1[j] += dz1[i * h + j];
+                    }
+                }
 
                 // ── SGD update ────────────────────────────────────────────────
                 let lr = self.lr;
@@ -266,7 +336,12 @@ impl Classifier for NeuralNetClassifier {
                 self.b2.iter_mut().zip(db2).for_each(|(b, d)| *b -= lr * d);
             }
 
-            println!("  epoch {}/{}: loss = {:.4}", epoch + 1, self.epochs, total_loss / n as f32);
+            println!(
+                "  epoch {}/{}: loss = {:.4}",
+                epoch + 1,
+                self.epochs,
+                total_loss / n as f32
+            );
         }
     }
 
@@ -277,7 +352,9 @@ impl Classifier for NeuralNetClassifier {
         let mut z1 = self.b1.clone();
         for i in 0..h {
             let mut s = 0.0f32;
-            for j in 0..784 { s += self.w1[i * 784 + j] * image[j]; }
+            for j in 0..784 {
+                s += self.w1[i * 784 + j] * image[j];
+            }
             z1[i] += s;
         }
 
@@ -288,11 +365,17 @@ impl Classifier for NeuralNetClassifier {
         let mut z2 = self.b2.clone();
         for i in 0..10 {
             let mut s = 0.0f32;
-            for j in 0..h { s += self.w2[i * h + j] * a1[j]; }
+            for j in 0..h {
+                s += self.w2[i * h + j] * a1[j];
+            }
             z2[i] += s;
         }
 
         // argmax — no softmax needed for argmax prediction
-        z2.iter().enumerate().max_by(|a, b| a.1.partial_cmp(b.1).unwrap()).map(|(i, _)| i as u8).unwrap_or(0)
+        z2.iter()
+            .enumerate()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap())
+            .map(|(i, _)| i as u8)
+            .unwrap_or(0)
     }
 }
