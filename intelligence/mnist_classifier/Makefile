@@ -1,6 +1,7 @@
-DATA_DIR  := .build
-BASE_URL  := https://storage.googleapis.com/cvdf-datasets/mnist
+BUILD     := .build
+DATA_DIR  := ${BUILD}
 
+BASE_URL  := https://storage.googleapis.com/cvdf-datasets/mnist
 TRAIN_IMAGES_GZ := $(DATA_DIR)/train-images-idx3-ubyte.gz
 TRAIN_LABELS_GZ := $(DATA_DIR)/train-labels-idx1-ubyte.gz
 TEST_IMAGES_GZ  := $(DATA_DIR)/t10k-images-idx3-ubyte.gz
@@ -11,7 +12,10 @@ TRAIN_LABELS := $(DATA_DIR)/train-labels-idx1-ubyte
 TEST_IMAGES  := $(DATA_DIR)/t10k-images-idx3-ubyte
 TEST_LABELS  := $(DATA_DIR)/t10k-labels-idx1-ubyte
 
-.PHONY: download run knn nn clean fmt
+CC     := cc
+CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -O2
+
+.PHONY: download run knn nn clean fmt c
 
 .DEFAULT_GOAL = run
 
@@ -44,17 +48,16 @@ $(TEST_IMAGES): $(TEST_IMAGES_GZ)
 $(TEST_LABELS): $(TEST_LABELS_GZ)
 	gunzip -k $<
 
-run: download
-	cargo run -- view 0
-
-knn: download
-	cargo run --release -- knn
-
-nn: download
-	cargo run --release -- nn
-
 clean:
-	rm -rf $(DATA_DIR)
+	rm -rf ${BUILD} $(DATA_DIR)
 
 fmt:
-	cargo fmt
+	~/Workspace/y/tools/scripts/clang_format_all.sh .
+
+compile: $(BUILD)/error.o $(BUILD)/hermes.o
+
+$(BUILD)/error.o: error.c error.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/hermes.o: hermes.c hermes.h error.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
