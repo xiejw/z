@@ -15,9 +15,9 @@ TEST_LABELS  := $(DATA_DIR)/t10k-labels-idx1-ubyte
 CC     := cc
 CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -O2
 
-.PHONY: download run knn nn clean fmt c
+.PHONY: download view knn nn compile clean fmt
 
-.DEFAULT_GOAL = run
+.DEFAULT_GOAL = compile
 
 download: $(TRAIN_IMAGES) $(TRAIN_LABELS) $(TEST_IMAGES) $(TEST_LABELS)
 
@@ -54,10 +54,28 @@ clean:
 fmt:
 	~/Workspace/y/tools/scripts/clang_format_all.sh .
 
-compile: $(BUILD)/error.o $(BUILD)/hermes.o
-
 $(BUILD)/error.o: error.c error.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/hermes.o: hermes.c hermes.h error.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/par.o: par.c par.h error.h | $(BUILD)
+	$(CC) $(CFLAGS) -D_POSIX_C_SOURCE=200809L -c $< -o $@
+
+$(BUILD)/main.o: main.c hermes.h par.h error.h | $(BUILD)
+	$(CC) $(CFLAGS) -D_POSIX_C_SOURCE=200809L -c $< -o $@
+
+$(BUILD)/mnist: $(BUILD)/main.o $(BUILD)/hermes.o $(BUILD)/par.o $(BUILD)/error.o
+	$(CC) $(CFLAGS) $^ -lm -lpthread -o $@
+
+compile: $(BUILD)/mnist
+
+view: $(BUILD)/mnist download
+	$(BUILD)/mnist view
+
+knn: $(BUILD)/mnist download
+	$(BUILD)/mnist knn
+
+nn: $(BUILD)/mnist download
+	$(BUILD)/mnist nn
