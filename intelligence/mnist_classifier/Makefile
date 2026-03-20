@@ -13,7 +13,7 @@ TEST_IMAGES  := $(DATA_DIR)/t10k-images-idx3-ubyte
 TEST_LABELS  := $(DATA_DIR)/t10k-labels-idx1-ubyte
 
 CC     := cc
-CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -O2
+CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -O2 -DNDEBUG
 
 .PHONY: download view knn nn compile clean fmt
 
