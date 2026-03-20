@@ -54,15 +54,15 @@ static double elapsed_s( struct timespec t0, struct timespec t1 )
 //
 
 /* Read a 4-byte big-endian uint32 from f. */
-static int read_u32_be( FILE *f, uint32_t *out, struct err_stack *stk )
+static int read_u32_be( FILE *f, uint32_t *val_out, struct err_stack *stk )
 {
         unsigned char buf[4];
         if ( fread( buf, 1, 4, f ) != 4 ) {
                 forge_err_emit( stk, "read_u32_be: unexpected end of file" );
                 return 1;
         }
-        *out = ( (uint32_t)buf[0] << 24 ) | ( (uint32_t)buf[1] << 16 ) |
-               ( (uint32_t)buf[2] << 8 )  |   (uint32_t)buf[3];
+        *val_out = ( (uint32_t)buf[0] << 24 ) | ( (uint32_t)buf[1] << 16 ) |
+                   ( (uint32_t)buf[2] << 8 )  |   (uint32_t)buf[3];
         return 0;
 }
 
@@ -71,56 +71,54 @@ static int read_u32_be( FILE *f, uint32_t *out, struct err_stack *stk )
 static float ( *load_all_images( const char *path, size_t *n_out,
                                  struct err_stack *stk ) )[HERMES_PIXELS]
 {
-        FILE *f = fopen( path, "rb" );
+        int                           ok     = 0;
+        FILE                         *f      = NULL;
+        uint8_t                      *raw    = NULL;
+        float ( *images )[HERMES_PIXELS]     = NULL;
+        uint32_t                      magic  = 0, n = 0, rows = 0, cols = 0;
+        size_t                        total;
+
+        f = fopen( path, "rb" );
         if ( !f ) {
                 forge_err_emit( stk, "fopen: cannot open '%s'", path );
-                return NULL;
+                goto exit;
         }
-
-        uint32_t magic, n, rows, cols;
         if ( read_u32_be( f, &magic, stk ) || read_u32_be( f, &n, stk ) ||
              read_u32_be( f, &rows,  stk ) || read_u32_be( f, &cols, stk ) ) {
-                fclose( f );
                 forge_err_emit( stk, "load_all_images: failed reading header of '%s'", path );
-                return NULL;
+                goto exit;
         }
         if ( magic != 0x00000803u ) {
-                fclose( f );
                 forge_err_emit( stk, "load_all_images: invalid magic 0x%08x in '%s'", magic, path );
-                return NULL;
+                goto exit;
         }
         if ( rows != HERMES_IMG_ROWS || cols != HERMES_IMG_COLS ) {
-                fclose( f );
                 forge_err_emit( stk, "load_all_images: unexpected dims %ux%u in '%s'", rows, cols, path );
-                return NULL;
+                goto exit;
         }
 
-        size_t total  = (size_t)n * HERMES_PIXELS;
-        uint8_t *raw  = malloc( total );
-        float ( *images )[HERMES_PIXELS] = malloc( (size_t)n * sizeof( *images ) );
+        total  = (size_t)n * HERMES_PIXELS;
+        raw    = malloc( total );
+        images = malloc( (size_t)n * sizeof( *images ) );
         if ( !raw || !images ) {
-                free( raw );
-                free( images );
-                fclose( f );
                 forge_err_emit( stk, "load_all_images: malloc failed" );
-                return NULL;
+                goto exit;
         }
-
         if ( fread( raw, 1, total, f ) != total ) {
-                free( raw );
-                free( images );
-                fclose( f );
                 forge_err_emit( stk, "load_all_images: short read in '%s'", path );
-                return NULL;
+                goto exit;
         }
-        fclose( f );
 
         for ( size_t img = 0; img < (size_t)n; img++ )
                 for ( size_t p = 0; p < HERMES_PIXELS; p++ )
                         images[img][p] = raw[img * HERMES_PIXELS + p] / 255.0f;
-        free( raw );
-
         *n_out = (size_t)n;
+        ok = 1;
+
+exit:
+        if ( f ) fclose( f );
+        free( raw );
+        if ( !ok ) { free( images ); images = NULL; }
         return images;
 }
 
@@ -129,39 +127,40 @@ static float ( *load_all_images( const char *path, size_t *n_out,
 static uint8_t *load_all_labels( const char *path, size_t *n_out,
                                   struct err_stack *stk )
 {
-        FILE *f = fopen( path, "rb" );
+        int       ok     = 0;
+        FILE     *f      = NULL;
+        uint8_t  *labels = NULL;
+        uint32_t  magic  = 0, n = 0;
+
+        f = fopen( path, "rb" );
         if ( !f ) {
                 forge_err_emit( stk, "fopen: cannot open '%s'", path );
-                return NULL;
+                goto exit;
         }
-
-        uint32_t magic, n;
         if ( read_u32_be( f, &magic, stk ) || read_u32_be( f, &n, stk ) ) {
-                fclose( f );
                 forge_err_emit( stk, "load_all_labels: failed reading header of '%s'", path );
-                return NULL;
+                goto exit;
         }
         if ( magic != 0x00000801u ) {
-                fclose( f );
                 forge_err_emit( stk, "load_all_labels: invalid magic 0x%08x in '%s'", magic, path );
-                return NULL;
+                goto exit;
         }
 
-        uint8_t *labels = malloc( (size_t)n );
+        labels = malloc( (size_t)n );
         if ( !labels ) {
-                fclose( f );
                 forge_err_emit( stk, "load_all_labels: malloc failed" );
-                return NULL;
+                goto exit;
         }
         if ( fread( labels, 1, (size_t)n, f ) != (size_t)n ) {
-                free( labels );
-                fclose( f );
                 forge_err_emit( stk, "load_all_labels: short read in '%s'", path );
-                return NULL;
+                goto exit;
         }
-        fclose( f );
-
         *n_out = (size_t)n;
+        ok = 1;
+
+exit:
+        if ( f ) fclose( f );
+        if ( !ok ) { free( labels ); labels = NULL; }
         return labels;
 }
 
@@ -169,55 +168,57 @@ static uint8_t *load_all_labels( const char *path, size_t *n_out,
  * Returns a malloc'd float[HERMES_PIXELS] array, or NULL on error. */
 static float *load_image( const char *path, size_t index, struct err_stack *stk )
 {
-        FILE *f = fopen( path, "rb" );
+        int      ok    = 0;
+        FILE    *f     = NULL;
+        float   *img   = NULL;
+        uint32_t magic = 0, n = 0, rows = 0, cols = 0;
+        uint8_t  raw[HERMES_PIXELS];
+        long     offset;
+
+        f = fopen( path, "rb" );
         if ( !f ) {
                 forge_err_emit( stk, "fopen: cannot open '%s'", path );
-                return NULL;
+                goto exit;
         }
-
-        uint32_t magic, n, rows, cols;
         if ( read_u32_be( f, &magic, stk ) || read_u32_be( f, &n, stk ) ||
              read_u32_be( f, &rows,  stk ) || read_u32_be( f, &cols, stk ) ) {
-                fclose( f );
                 forge_err_emit( stk, "load_image: failed reading header of '%s'", path );
-                return NULL;
+                goto exit;
         }
         if ( magic != 0x00000803u ) {
-                fclose( f );
                 forge_err_emit( stk, "load_image: invalid magic in '%s'", path );
-                return NULL;
+                goto exit;
         }
         if ( index >= (size_t)n ) {
-                fclose( f );
                 forge_err_emit( stk, "load_image: index %zu out of range (max %u) in '%s'",
                                 index, n - 1, path );
-                return NULL;
+                goto exit;
         }
         (void)rows;
         (void)cols;
 
-        long offset = 16L + (long)( index * HERMES_PIXELS );
+        offset = 16L + (long)( index * HERMES_PIXELS );
         if ( fseek( f, offset, SEEK_SET ) != 0 ) {
-                fclose( f );
                 forge_err_emit( stk, "load_image: fseek failed in '%s'", path );
-                return NULL;
+                goto exit;
         }
-
-        uint8_t raw[HERMES_PIXELS];
         if ( fread( raw, 1, HERMES_PIXELS, f ) != HERMES_PIXELS ) {
-                fclose( f );
                 forge_err_emit( stk, "load_image: short read in '%s'", path );
-                return NULL;
+                goto exit;
         }
-        fclose( f );
 
-        float *img = malloc( HERMES_PIXELS * sizeof( float ) );
+        img = malloc( HERMES_PIXELS * sizeof( float ) );
         if ( !img ) {
                 forge_err_emit( stk, "load_image: malloc failed" );
-                return NULL;
+                goto exit;
         }
         for ( int i = 0; i < HERMES_PIXELS; i++ )
                 img[i] = raw[i] / 255.0f;
+        ok = 1;
+
+exit:
+        if ( f ) fclose( f );
+        if ( !ok ) { free( img ); img = NULL; }
         return img;
 }
 
@@ -225,43 +226,41 @@ static float *load_image( const char *path, size_t index, struct err_stack *stk 
  * Returns the digit (0-9) or -1 on error. */
 static int load_label( const char *path, size_t index, struct err_stack *stk )
 {
-        FILE *f = fopen( path, "rb" );
+        int      rc    = -1;
+        FILE    *f     = NULL;
+        uint32_t magic = 0, n = 0;
+        uint8_t  label;
+
+        f = fopen( path, "rb" );
         if ( !f ) {
                 forge_err_emit( stk, "fopen: cannot open '%s'", path );
-                return -1;
+                goto exit;
         }
-
-        uint32_t magic, n;
         if ( read_u32_be( f, &magic, stk ) || read_u32_be( f, &n, stk ) ) {
-                fclose( f );
                 forge_err_emit( stk, "load_label: failed reading header of '%s'", path );
-                return -1;
+                goto exit;
         }
         if ( magic != 0x00000801u ) {
-                fclose( f );
                 forge_err_emit( stk, "load_label: invalid magic in '%s'", path );
-                return -1;
+                goto exit;
         }
         if ( index >= (size_t)n ) {
-                fclose( f );
                 forge_err_emit( stk, "load_label: index %zu out of range in '%s'", index, path );
-                return -1;
+                goto exit;
         }
-
         if ( fseek( f, 8L + (long)index, SEEK_SET ) != 0 ) {
-                fclose( f );
                 forge_err_emit( stk, "load_label: fseek failed in '%s'", path );
-                return -1;
+                goto exit;
         }
-
-        uint8_t label;
         if ( fread( &label, 1, 1, f ) != 1 ) {
-                fclose( f );
                 forge_err_emit( stk, "load_label: short read in '%s'", path );
-                return -1;
+                goto exit;
         }
-        fclose( f );
-        return (int)label;
+        rc = (int)label;
+
+exit:
+        if ( f ) fclose( f );
+        return rc;
 }
 
 // === --- renderer -----------------------------------------------------------
@@ -293,69 +292,203 @@ struct eval_ctx {
         const float ( *images )[HERMES_PIXELS];
 };
 
-static void predict_one( size_t i, void *slot, const void *ctx )
+static void predict_one( size_t i, void *slot_out, const void *ctx )
 {
         const struct eval_ctx *e = ctx;
-        *(uint8_t *)slot = e->clf->predict( e->clf, e->images[i] );
+        *(uint8_t *)slot_out = e->clf->predict( e->clf, e->images[i] );
 }
 
-static void run_eval( const struct hermes_classifier *clf,
-                      const float ( *test_images )[HERMES_PIXELS],
-                      const uint8_t *test_labels, size_t n )
+static int run_eval( const struct hermes_classifier *clf,
+                     const float ( *test_images )[HERMES_PIXELS],
+                     const uint8_t *test_labels, size_t n )
 {
+        int              rc    = 0;
+        uint8_t         *preds = NULL;
+        struct err_stack stk   = { 0 };
+        struct eval_ctx  ctx;
+        struct timespec  t0, t1;
+        double           secs;
+
+        forge_err_init( &stk );
         printf( "Evaluating on %zu test samples...\n", n );
 
-        uint8_t *preds = malloc( n );
+        preds = malloc( n );
         if ( !preds ) {
                 fprintf( stderr, "run_eval: malloc failed\n" );
-                return;
+                rc = 1;
+                goto exit;
         }
 
-        struct err_stack stk = { 0 };
-        forge_err_init( &stk );
-
-        struct eval_ctx   ctx = { clf, test_images };
-        struct timespec   t0, t1;
+        ctx = ( struct eval_ctx ){ clf, test_images };
         clock_gettime( CLOCK_MONOTONIC, &t0 );
 
         if ( forge_par_map( n, predict_one, preds, sizeof( uint8_t ), &ctx, 0, &stk ) ) {
                 fprintf( stderr, "%s", forge_err_get( &stk ) );
-                forge_err_deinit( &stk );
-                free( preds );
-                return;
+                rc = 1;
+                goto exit;
         }
 
         clock_gettime( CLOCK_MONOTONIC, &t1 );
-        double secs = elapsed_s( t0, t1 );
+        secs = elapsed_s( t0, t1 );
         printf( "  prediction time: %.3f s (%.0f ms)\n", secs, secs * 1000.0 );
-        forge_err_deinit( &stk );
 
-        size_t   correct            = 0;
-        uint32_t class_correct[10]  = { 0 };
-        uint32_t class_total[10]    = { 0 };
-        for ( size_t i = 0; i < n; i++ ) {
-                uint8_t lbl = test_labels[i];
-                class_total[lbl]++;
-                if ( preds[i] == lbl ) {
-                        correct++;
-                        class_correct[lbl]++;
+        {
+                size_t   correct           = 0;
+                uint32_t class_correct[10] = { 0 };
+                uint32_t class_total[10]   = { 0 };
+                for ( size_t i = 0; i < n; i++ ) {
+                        uint8_t lbl = test_labels[i];
+                        class_total[lbl]++;
+                        if ( preds[i] == lbl ) {
+                                correct++;
+                                class_correct[lbl]++;
+                        }
+                }
+                printf( "\nAccuracy: %zu/%zu (%.2f%%)\n",
+                        correct, n, (double)correct / (double)n * 100.0 );
+                printf( "\nPer-class breakdown:\n" );
+                for ( int d = 0; d < 10; d++ ) {
+                        printf( "  digit %d: %u/%u (%.2f%%)\n", d,
+                                class_correct[d], class_total[d],
+                                (double)class_correct[d] / (double)class_total[d] * 100.0 );
                 }
         }
-        free( preds );
 
-        printf( "\nAccuracy: %zu/%zu (%.2f%%)\n",
-                correct, n, (double)correct / (double)n * 100.0 );
-        printf( "\nPer-class breakdown:\n" );
-        for ( int d = 0; d < 10; d++ ) {
-                printf( "  digit %d: %u/%u (%.2f%%)\n", d,
-                        class_correct[d], class_total[d],
-                        (double)class_correct[d] / (double)class_total[d] * 100.0 );
-        }
+exit:
+        forge_err_deinit( &stk );
+        free( preds );
+        return rc;
 }
 
 // === --- entry point --------------------------------------------------------
 // ===
 //
+
+static int run_knn( int argc, char **argv, struct err_stack *stk )
+{
+        size_t k = ( argc >= 3 ) ? (size_t)atoi( argv[2] ) : 5;
+
+        int                             rc            = 0;
+        int                             clf_init      = 0;
+        float ( *train_images )[HERMES_PIXELS]        = NULL;
+        uint8_t                        *train_labels  = NULL;
+        float ( *test_images )[HERMES_PIXELS]         = NULL;
+        uint8_t                        *test_labels   = NULL;
+        size_t                          n_train       = 0, n_test = 0;
+        struct hermes_knn_classifier    clf;
+        struct timespec                 t0, t1;
+        double                          load_s, fit_s;
+
+        printf( "Loading training set...\n" );
+        clock_gettime( CLOCK_MONOTONIC, &t0 );
+
+        train_images = load_all_images( DATA_TRAIN_IMAGES, &n_train, stk );
+        if ( !train_images ) { rc = 1; goto exit; }
+        train_labels = load_all_labels( DATA_TRAIN_LABELS, &n_train, stk );
+        if ( !train_labels ) { rc = 1; goto exit; }
+        test_images  = load_all_images( DATA_TEST_IMAGES,  &n_test,  stk );
+        if ( !test_images  ) { rc = 1; goto exit; }
+        test_labels  = load_all_labels( DATA_TEST_LABELS,  &n_test,  stk );
+        if ( !test_labels  ) { rc = 1; goto exit; }
+
+        clock_gettime( CLOCK_MONOTONIC, &t1 );
+        load_s = elapsed_s( t0, t1 );
+        printf( "  load time: %.3f s (%.0f ms) (%zu train, %zu test)\n",
+                load_s, load_s * 1000.0, n_train, n_test );
+
+        printf( "Fitting KNN (k=%zu) on %zu training samples...\n", k, n_train );
+        clock_gettime( CLOCK_MONOTONIC, &t0 );
+
+        hermes_knn_init( &clf, k );
+        clf_init = 1;
+        if ( clf.ops.fit( &clf, (const float (*)[HERMES_PIXELS])train_images,
+                          train_labels, n_train, stk ) ) {
+                rc = 1;
+                goto exit;
+        }
+
+        clock_gettime( CLOCK_MONOTONIC, &t1 );
+        fit_s = elapsed_s( t0, t1 );
+        printf( "  fit time:  %.3f s (%.0f ms)\n", fit_s, fit_s * 1000.0 );
+
+        run_eval( &clf.ops, (const float (*)[HERMES_PIXELS])test_images,
+                  test_labels, n_test );
+
+exit:
+        if ( clf_init ) hermes_knn_deinit( &clf );
+        free( train_images );
+        free( train_labels );
+        free( test_images );
+        free( test_labels );
+        return rc;
+}
+
+static int run_nn( int argc, char **argv, struct err_stack *stk )
+{
+        size_t hidden = ( argc >= 3 ) ? (size_t)atoi( argv[2] ) : 128;
+        float  lr     = ( argc >= 4 ) ? (float)atof( argv[3] ) : 0.1f;
+        size_t epochs = ( argc >= 5 ) ? (size_t)atoi( argv[4] ) : 10;
+        size_t batch  = ( argc >= 6 ) ? (size_t)atoi( argv[5] ) : 64;
+
+        int                                    rc           = 0;
+        int                                    clf_init     = 0;
+        float ( *train_images )[HERMES_PIXELS]              = NULL;
+        uint8_t                               *train_labels = NULL;
+        float ( *test_images )[HERMES_PIXELS]               = NULL;
+        uint8_t                               *test_labels  = NULL;
+        size_t                                 n_train      = 0, n_test = 0;
+        struct hermes_neural_net_classifier    clf;
+        struct timespec                        t0, t1;
+        double                                 load_s, fit_s;
+
+        printf( "Loading training set...\n" );
+        clock_gettime( CLOCK_MONOTONIC, &t0 );
+
+        train_images = load_all_images( DATA_TRAIN_IMAGES, &n_train, stk );
+        if ( !train_images ) { rc = 1; goto exit; }
+        train_labels = load_all_labels( DATA_TRAIN_LABELS, &n_train, stk );
+        if ( !train_labels ) { rc = 1; goto exit; }
+        test_images  = load_all_images( DATA_TEST_IMAGES,  &n_test,  stk );
+        if ( !test_images  ) { rc = 1; goto exit; }
+        test_labels  = load_all_labels( DATA_TEST_LABELS,  &n_test,  stk );
+        if ( !test_labels  ) { rc = 1; goto exit; }
+
+        clock_gettime( CLOCK_MONOTONIC, &t1 );
+        load_s = elapsed_s( t0, t1 );
+        printf( "  load time: %.3f s (%.0f ms) (%zu train, %zu test)\n",
+                load_s, load_s * 1000.0, n_train, n_test );
+
+        printf( "Training MLP (hidden=%zu, lr=%.4f, epochs=%zu, batch=%zu)"
+                " on %zu samples...\n",
+                hidden, (double)lr, epochs, batch, n_train );
+        clock_gettime( CLOCK_MONOTONIC, &t0 );
+
+        if ( hermes_neural_net_init( &clf, hidden, lr, epochs, batch, stk ) ) {
+                rc = 1;
+                goto exit;
+        }
+        clf_init = 1;
+        if ( clf.ops.fit( &clf, (const float (*)[HERMES_PIXELS])train_images,
+                          train_labels, n_train, stk ) ) {
+                rc = 1;
+                goto exit;
+        }
+
+        clock_gettime( CLOCK_MONOTONIC, &t1 );
+        fit_s = elapsed_s( t0, t1 );
+        printf( "  train time: %.3f s (%.0f ms)\n", fit_s, fit_s * 1000.0 );
+
+        run_eval( &clf.ops, (const float (*)[HERMES_PIXELS])test_images,
+                  test_labels, n_test );
+
+exit:
+        if ( clf_init ) hermes_neural_net_deinit( &clf );
+        free( train_images );
+        free( train_labels );
+        free( test_images );
+        free( test_labels );
+        return rc;
+}
 
 static void print_usage( void )
 {
@@ -371,6 +504,7 @@ int main( int argc, char **argv )
 
         struct err_stack stk = { 0 };
         forge_err_init( &stk );
+        int rc = 0;
 
         if ( strcmp( sub, "view" ) == 0 ) {
                 size_t index = ( argc >= 3 ) ? (size_t)atoi( argv[2] ) : 0;
@@ -378,159 +512,38 @@ int main( int argc, char **argv )
                 int label = load_label( DATA_TRAIN_LABELS, index, &stk );
                 if ( label < 0 ) {
                         fprintf( stderr, "%s", forge_err_get( &stk ) );
-                        forge_err_deinit( &stk );
-                        return 1;
+                        rc = 1;
+                        goto exit;
                 }
                 float *pixels = load_image( DATA_TRAIN_IMAGES, index, &stk );
                 if ( !pixels ) {
                         fprintf( stderr, "%s", forge_err_get( &stk ) );
-                        forge_err_deinit( &stk );
-                        return 1;
+                        rc = 1;
+                        goto exit;
                 }
                 printf( "Label: %d  (sample index %zu)\n", label, index );
                 render( pixels );
                 free( pixels );
 
         } else if ( strcmp( sub, "knn" ) == 0 ) {
-                size_t k = ( argc >= 3 ) ? (size_t)atoi( argv[2] ) : 5;
-
-                printf( "Loading training set...\n" );
-                struct timespec t0, t1;
-                clock_gettime( CLOCK_MONOTONIC, &t0 );
-
-                size_t n_train, n_test;
-                float ( *train_images )[HERMES_PIXELS] =
-                    load_all_images( DATA_TRAIN_IMAGES, &n_train, &stk );
-                uint8_t              *train_labels = NULL;
-                float ( *test_images )[HERMES_PIXELS] = NULL;
-                uint8_t              *test_labels  = NULL;
-
-                if ( !train_images ||
-                     !( train_labels = load_all_labels( DATA_TRAIN_LABELS, &n_train, &stk ) ) ||
-                     !( test_images  = load_all_images( DATA_TEST_IMAGES,  &n_test,  &stk ) ) ||
-                     !( test_labels  = load_all_labels( DATA_TEST_LABELS,  &n_test,  &stk ) ) ) {
+                if ( run_knn( argc, argv, &stk ) ) {
                         fprintf( stderr, "%s", forge_err_get( &stk ) );
-                        free( train_images );
-                        free( train_labels );
-                        free( test_images );
-                        free( test_labels );
-                        forge_err_deinit( &stk );
-                        return 1;
+                        rc = 1;
                 }
-
-                clock_gettime( CLOCK_MONOTONIC, &t1 );
-                double load_s = elapsed_s( t0, t1 );
-                printf( "  load time: %.3f s (%.0f ms) (%zu train, %zu test)\n",
-                        load_s, load_s * 1000.0, n_train, n_test );
-
-                printf( "Fitting KNN (k=%zu) on %zu training samples...\n", k, n_train );
-                clock_gettime( CLOCK_MONOTONIC, &t0 );
-
-                struct hermes_knn_classifier clf;
-                hermes_knn_init( &clf, k );
-                if ( clf.ops.fit( &clf, train_images, train_labels, n_train, &stk ) ) {
-                        fprintf( stderr, "%s", forge_err_get( &stk ) );
-                        hermes_knn_deinit( &clf );
-                        free( train_images );
-                        free( train_labels );
-                        free( test_images );
-                        free( test_labels );
-                        forge_err_deinit( &stk );
-                        return 1;
-                }
-
-                clock_gettime( CLOCK_MONOTONIC, &t1 );
-                double fit_s = elapsed_s( t0, t1 );
-                printf( "  fit time:  %.3f s (%.0f ms)\n", fit_s, fit_s * 1000.0 );
-
-                run_eval( &clf.ops, test_images, test_labels, n_test );
-
-                hermes_knn_deinit( &clf );
-                free( train_images );
-                free( train_labels );
-                free( test_images );
-                free( test_labels );
 
         } else if ( strcmp( sub, "nn" ) == 0 ) {
-                size_t hidden  = ( argc >= 3 ) ? (size_t)atoi( argv[2] ) : 128;
-                float  lr      = ( argc >= 4 ) ? (float)atof( argv[3] ) : 0.1f;
-                size_t epochs  = ( argc >= 5 ) ? (size_t)atoi( argv[4] ) : 10;
-                size_t batch   = ( argc >= 6 ) ? (size_t)atoi( argv[5] ) : 64;
-
-                printf( "Loading training set...\n" );
-                struct timespec t0, t1;
-                clock_gettime( CLOCK_MONOTONIC, &t0 );
-
-                size_t n_train, n_test;
-                float ( *train_images )[HERMES_PIXELS] =
-                    load_all_images( DATA_TRAIN_IMAGES, &n_train, &stk );
-                uint8_t              *train_labels = NULL;
-                float ( *test_images )[HERMES_PIXELS] = NULL;
-                uint8_t              *test_labels  = NULL;
-
-                if ( !train_images ||
-                     !( train_labels = load_all_labels( DATA_TRAIN_LABELS, &n_train, &stk ) ) ||
-                     !( test_images  = load_all_images( DATA_TEST_IMAGES,  &n_test,  &stk ) ) ||
-                     !( test_labels  = load_all_labels( DATA_TEST_LABELS,  &n_test,  &stk ) ) ) {
+                if ( run_nn( argc, argv, &stk ) ) {
                         fprintf( stderr, "%s", forge_err_get( &stk ) );
-                        free( train_images );
-                        free( train_labels );
-                        free( test_images );
-                        free( test_labels );
-                        forge_err_deinit( &stk );
-                        return 1;
+                        rc = 1;
                 }
-
-                clock_gettime( CLOCK_MONOTONIC, &t1 );
-                double load_s = elapsed_s( t0, t1 );
-                printf( "  load time: %.3f s (%.0f ms) (%zu train, %zu test)\n",
-                        load_s, load_s * 1000.0, n_train, n_test );
-
-                printf( "Training MLP (hidden=%zu, lr=%.4f, epochs=%zu, batch=%zu)"
-                        " on %zu samples...\n",
-                        hidden, (double)lr, epochs, batch, n_train );
-                clock_gettime( CLOCK_MONOTONIC, &t0 );
-
-                struct hermes_neural_net_classifier clf;
-                if ( hermes_neural_net_init( &clf, hidden, lr, epochs, batch, &stk ) ) {
-                        fprintf( stderr, "%s", forge_err_get( &stk ) );
-                        free( train_images );
-                        free( train_labels );
-                        free( test_images );
-                        free( test_labels );
-                        forge_err_deinit( &stk );
-                        return 1;
-                }
-                if ( clf.ops.fit( &clf, train_images, train_labels, n_train, &stk ) ) {
-                        fprintf( stderr, "%s", forge_err_get( &stk ) );
-                        hermes_neural_net_deinit( &clf );
-                        free( train_images );
-                        free( train_labels );
-                        free( test_images );
-                        free( test_labels );
-                        forge_err_deinit( &stk );
-                        return 1;
-                }
-
-                clock_gettime( CLOCK_MONOTONIC, &t1 );
-                double fit_s = elapsed_s( t0, t1 );
-                printf( "  train time: %.3f s (%.0f ms)\n", fit_s, fit_s * 1000.0 );
-
-                run_eval( &clf.ops, test_images, test_labels, n_test );
-
-                hermes_neural_net_deinit( &clf );
-                free( train_images );
-                free( train_labels );
-                free( test_images );
-                free( test_labels );
 
         } else {
                 fprintf( stderr, "Unknown subcommand: %s\n", sub );
                 print_usage();
-                forge_err_deinit( &stk );
-                return 1;
+                rc = 1;
         }
 
+exit:
         forge_err_deinit( &stk );
-        return 0;
+        return rc;
 }

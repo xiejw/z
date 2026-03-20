@@ -141,6 +141,7 @@ knn_fit( void          *self, const float ( *images )[HERMES_PIXELS],
          const uint8_t *labels, size_t n, struct err_stack *stk )
 {
         struct hermes_knn_classifier *c = self;
+        int rc = 0;
 
         free( c->train_images );
         free( c->train_labels );
@@ -150,23 +151,27 @@ knn_fit( void          *self, const float ( *images )[HERMES_PIXELS],
 
         c->train_images = malloc( n * sizeof( *c->train_images ) );
         if ( !c->train_images ) {
-                forge_err_emit( stk,
-                                "knn_fit: malloc failed for train_images" );
-                return 1;
+                forge_err_emit( stk, "knn_fit: malloc failed for train_images" );
+                rc = 1;
+                goto exit;
         }
         c->train_labels = malloc( n * sizeof( uint8_t ) );
         if ( !c->train_labels ) {
-                free( c->train_images );
-                c->train_images = NULL;
-                forge_err_emit( stk,
-                                "knn_fit: malloc failed for train_labels" );
-                return 1;
+                forge_err_emit( stk, "knn_fit: malloc failed for train_labels" );
+                rc = 1;
+                goto exit;
         }
 
         memcpy( c->train_images, images, n * sizeof( *c->train_images ) );
         memcpy( c->train_labels, labels, n * sizeof( uint8_t ) );
         c->train_n = n;
-        return 0;
+
+exit:
+        if ( rc ) {
+                free( c->train_images ); c->train_images = NULL;
+                free( c->train_labels ); c->train_labels = NULL;
+        }
+        return rc;
 }
 
 static uint8_t
@@ -259,14 +264,16 @@ nn_fit( void          *self, const float ( *images )[HERMES_PIXELS],
 {
         struct hermes_neural_net_classifier *c = self;
         size_t                               h = c->hidden;
+        int                                  rc = 0;
+        size_t                              *idx = NULL;
 
         nn_init_weights( c );
 
-        size_t *idx = malloc( n * sizeof( size_t ) );
+        idx = malloc( n * sizeof( size_t ) );
         if ( !idx ) {
-                forge_err_emit( stk,
-                                "nn_fit: malloc failed for shuffle index" );
-                return 1;
+                forge_err_emit( stk, "nn_fit: malloc failed for shuffle index" );
+                rc = 1;
+                goto exit;
         }
         for ( size_t i = 0; i < n; i++ ) idx[i] = i;
 
@@ -289,67 +296,50 @@ nn_fit( void          *self, const float ( *images )[HERMES_PIXELS],
                         const size_t *chunk = idx + start;
 
                         /* Allocate per-batch temporaries. */
-                        float *x_batch =
-                            malloc( b * HERMES_PIXELS * sizeof( float ) );
-                        float *y_batch =
-                            calloc( b * HERMES_CLASSES, sizeof( float ) );
-                        float *z1 = malloc( b * h * sizeof( float ) );
-                        float *a1 = malloc( b * h * sizeof( float ) );
-                        float *z2 =
-                            malloc( b * HERMES_CLASSES * sizeof( float ) );
-                        float *a2 =
-                            malloc( b * HERMES_CLASSES * sizeof( float ) );
-                        float *dz2 =
-                            malloc( b * HERMES_CLASSES * sizeof( float ) );
-                        float *dw2 =
-                            calloc( HERMES_CLASSES * h, sizeof( float ) );
-                        float *db2 = calloc( HERMES_CLASSES, sizeof( float ) );
-                        float *da1 = malloc( b * h * sizeof( float ) );
-                        float *dw1 =
-                            calloc( h * HERMES_PIXELS, sizeof( float ) );
-                        float *db1 = calloc( h, sizeof( float ) );
+                        float *x_batch = NULL, *y_batch = NULL;
+                        float *z1 = NULL, *a1 = NULL;
+                        float *z2 = NULL, *a2 = NULL, *dz2 = NULL;
+                        float *dw2 = NULL, *db2 = NULL;
+                        float *da1 = NULL, *dw1 = NULL, *db1 = NULL;
+
+                        x_batch = malloc( b * HERMES_PIXELS * sizeof( float ) );
+                        y_batch = calloc( b * HERMES_CLASSES, sizeof( float ) );
+                        z1      = malloc( b * h * sizeof( float ) );
+                        a1      = malloc( b * h * sizeof( float ) );
+                        z2      = malloc( b * HERMES_CLASSES * sizeof( float ) );
+                        a2      = malloc( b * HERMES_CLASSES * sizeof( float ) );
+                        dz2     = malloc( b * HERMES_CLASSES * sizeof( float ) );
+                        dw2     = calloc( HERMES_CLASSES * h, sizeof( float ) );
+                        db2     = calloc( HERMES_CLASSES, sizeof( float ) );
+                        da1     = malloc( b * h * sizeof( float ) );
+                        dw1     = calloc( h * HERMES_PIXELS, sizeof( float ) );
+                        db1     = calloc( h, sizeof( float ) );
 
                         if ( !x_batch || !y_batch || !z1 || !a1 || !z2 || !a2 ||
                              !dz2 || !dw2 || !db2 || !da1 || !dw1 || !db1 ) {
-                                free( x_batch );
-                                free( y_batch );
-                                free( z1 );
-                                free( a1 );
-                                free( z2 );
-                                free( a2 );
-                                free( dz2 );
-                                free( dw2 );
-                                free( db2 );
-                                free( da1 );
-                                free( dw1 );
-                                free( db1 );
-                                free( idx );
-                                forge_err_emit( stk,
-                                                "nn_fit: malloc failed for "
-                                                "batch temporaries" );
-                                return 1;
+                                forge_err_emit( stk, "nn_fit: malloc failed for "
+                                                     "batch temporaries" );
+                                rc = 1;
+                                goto batch_exit;
                         }
 
                         /* ── Build batch matrices
                          * ─────────────────────────────────────── */
-                        /* x_batch [B×784]: pixels already normalised to [0,1]
-                         */
+                        /* x_batch [B×784]: pixels already normalised to [0,1] */
                         /* y_batch [B×10]:  one-hot labels */
                         for ( size_t bi = 0; bi < b; bi++ ) {
                                 size_t si = chunk[bi];
                                 memcpy( x_batch + bi * HERMES_PIXELS,
                                         images[si],
                                         HERMES_PIXELS * sizeof( float ) );
-                                y_batch[bi * HERMES_CLASSES + labels[si]] =
-                                    1.0f;
+                                y_batch[bi * HERMES_CLASSES + labels[si]] = 1.0f;
                         }
 
                         /* ── Forward pass
                          * ─────────────────────────────────────────────── */
                         /* Z1 [B×H] = X [B×784] · W1^T [784×H] + b1 */
                         gemm( 0, 1, b, h, HERMES_PIXELS, 1.0f, x_batch,
-                              HERMES_PIXELS, c->w1, HERMES_PIXELS, 0.0f, z1,
-                              h );
+                              HERMES_PIXELS, c->w1, HERMES_PIXELS, 0.0f, z1, h );
                         for ( size_t i = 0; i < b; i++ )
                                 for ( size_t j = 0; j < h; j++ )
                                         z1[i * h + j] += c->b1[j];
@@ -385,10 +375,8 @@ nn_fit( void          *self, const float ( *images )[HERMES_PIXELS],
                         /* Accumulate cross-entropy loss. */
                         for ( size_t i = 0; i < b; i++ ) {
                                 for ( size_t j = 0; j < HERMES_CLASSES; j++ ) {
-                                        if ( y_batch[i * HERMES_CLASSES + j] >
-                                             0.5f ) {
-                                                float p =
-                                                    a2[i * HERMES_CLASSES + j];
+                                        if ( y_batch[i * HERMES_CLASSES + j] > 0.5f ) {
+                                                float p = a2[i * HERMES_CLASSES + j];
                                                 if ( p < 1e-7f ) p = 1e-7f;
                                                 total_loss -= logf( p );
                                         }
@@ -416,20 +404,18 @@ nn_fit( void          *self, const float ( *images )[HERMES_PIXELS],
                         gemm( 0, 0, b, h, HERMES_CLASSES, 1.0f, dz2,
                               HERMES_CLASSES, c->w2, h, 0.0f, da1, h );
 
-                        /* dZ1 [B×H] = dA1 ⊙ ReLU'(Z1)  (in-place; da1 becomes
-                         * dz1) */
+                        /* dZ1 [B×H] = dA1 ⊙ ReLU'(Z1)  (in-place; da1 becomes dz1) */
                         for ( size_t i = 0; i < b * h; i++ )
                                 if ( z1[i] <= 0.0f ) da1[i] = 0.0f;
-                        float *dz1 = da1;
 
                         /* dW1 [H×784] = dZ1^T [H×B] · X [B×784] */
-                        gemm( 1, 0, h, HERMES_PIXELS, b, 1.0f, dz1, h, x_batch,
+                        gemm( 1, 0, h, HERMES_PIXELS, b, 1.0f, da1, h, x_batch,
                               HERMES_PIXELS, 0.0f, dw1, HERMES_PIXELS );
 
                         /* db1 [H] = Σ_rows dZ1 */
                         for ( size_t i = 0; i < b; i++ )
                                 for ( size_t j = 0; j < h; j++ )
-                                        db1[j] += dz1[i * h + j];
+                                        db1[j] += da1[i * h + j];
 
                         /* ── SGD update
                          * ─────────────────────────────────────────────── */
@@ -443,27 +429,22 @@ nn_fit( void          *self, const float ( *images )[HERMES_PIXELS],
                         for ( size_t i = 0; i < HERMES_CLASSES; i++ )
                                 c->b2[i] -= lr * db2[i];
 
-                        /* Free per-batch temporaries. */
-                        free( x_batch );
-                        free( y_batch );
-                        free( z1 );
-                        free( a1 );
-                        free( z2 );
-                        free( a2 );
-                        free( dz2 );
-                        free( dw2 );
-                        free( db2 );
-                        free( da1 );
-                        free( dw1 );
-                        free( db1 );
+batch_exit:
+                        free( x_batch ); free( y_batch );
+                        free( z1 );      free( a1 );
+                        free( z2 );      free( a2 );      free( dz2 );
+                        free( dw2 );     free( db2 );
+                        free( da1 );     free( dw1 );     free( db1 );
+                        if ( rc ) goto exit;
                 }
 
                 printf( "  epoch %zu/%zu: loss = %.4f\n", epoch + 1, c->epochs,
                         total_loss / (float)n );
         }
 
+exit:
         free( idx );
-        return 0;
+        return rc;
 }
 
 static uint8_t

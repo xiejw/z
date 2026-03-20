@@ -17,6 +17,15 @@ Applies to all C projects under this directory.
 use the `hermes_` prefix (not `forge_`). Constants use the `HERMES_` prefix.
 Infrastructure utilities (err_stack) keep the `forge_` prefix as usual.
 
+- **forge_ namespace owns all foundational infrastructure** — error handling,
+  parallel utilities, and similar shared data structures always use the `forge_`
+  prefix, even when used by `hermes_` code.  The `hermes_` namespace is reserved
+  for ML domain types and algorithms only.
+- **Output parameters** (pointer args through which a function returns a computed
+  value to the caller) must be named with the `_out` suffix — e.g., `size_t
+  *n_out`, `uint32_t *val_out`, `void *dst_out`.  "In-out" self/object parameters
+  are exempt.
+
 ## Code Style
 
 - Standard: **C99** (`-std=c99`).
@@ -93,6 +102,52 @@ forge_err_deinit(&stk);
 |---|---|
 | Fatal (malloc fail, file open fail) | `forge_err_emit` + `return 1` immediately |
 | Non-fatal parse/format error | `forge_err_emit` + continue; caller checks at the end |
+
+## Resource Cleanup
+
+Use `goto exit` to consolidate cleanup.  Every resource is freed in a single
+`exit:` label at the end of the function.
+
+```c
+/* Pattern for int-returning functions with heap/file resources: */
+int forge_foo(..., struct err_stack *stk)
+{
+    int   rc   = 0;
+    FILE *f    = NULL;
+    char *buf  = NULL;
+
+    f = fopen(...);
+    if (!f) { forge_err_emit(stk, "..."); rc = 1; goto exit; }
+
+    buf = malloc(...);
+    if (!buf) { forge_err_emit(stk, "..."); rc = 1; goto exit; }
+
+    /* ... normal work ... */
+
+exit:
+    if (f) fclose(f);
+    free(buf);        /* free(NULL) is safe */
+    return rc;
+}
+
+/* Pattern for pointer-returning functions — use ok flag: */
+static char *make_thing(...)
+{
+    int    ok  = 0;
+    FILE  *f   = NULL;
+    char  *buf = NULL;
+
+    f = fopen(...); if (!f) { forge_err_emit(...); goto exit; }
+    buf = malloc(...); if (!buf) { forge_err_emit(...); goto exit; }
+    /* ... fill buf ... */
+    ok = 1;
+
+exit:
+    if (f) fclose(f);
+    if (!ok) { free(buf); buf = NULL; }
+    return buf;
+}
+```
 
 ## Build
 
