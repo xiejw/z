@@ -11,6 +11,7 @@ src/
   main.rs        — Rust CLI (unchanged)
   hermes.rs      — Rust classifiers (unchanged)
 error.h/error.c  — forge_ err_stack infrastructure
+base.h/base.c    — forge_ platform utilities (CPU count, etc.)
 par.h/par.c      — forge_par_map (pthreads parallel map)
 hermes.h/hermes.c — Classifier vtable, KNN, MLP (C port)
 main.c           — C CLI entry point

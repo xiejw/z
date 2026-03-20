@@ -1,10 +1,10 @@
 /* par.c — forge_par_map implementation (pthreads) */
 
 #include "par.h"
+#include "base.h"
 
 #include <pthread.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 // === --- worker -------------------------------------------------------------
 // ===
@@ -40,10 +40,8 @@ int forge_par_map( size_t n,
         if ( n == 0 )
                 return 0;
 
-        if ( n_threads == 0 ) {
-                long nc   = sysconf( _SC_NPROCESSORS_ONLN );
-                n_threads = ( nc > 0 ) ? (size_t)nc : 1;
-        }
+        if ( n_threads == 0 )
+                n_threads = forge_n_logical_cpus();
         if ( n_threads > n )
                 n_threads = n;
 

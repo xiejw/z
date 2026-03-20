@@ -1,5 +1,6 @@
 BUILD     := .build
 DATA_DIR  := ${BUILD}
+K         ?= 5
 
 BASE_URL  := https://storage.googleapis.com/cvdf-datasets/mnist
 TRAIN_IMAGES_GZ := $(DATA_DIR)/train-images-idx3-ubyte.gz
@@ -60,13 +61,16 @@ $(BUILD)/error.o: error.c error.h | $(BUILD)
 $(BUILD)/hermes.o: hermes.c hermes.h error.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/par.o: par.c par.h error.h | $(BUILD)
-	$(CC) $(CFLAGS) -D_POSIX_C_SOURCE=200809L -c $< -o $@
+$(BUILD)/base.o: base.c base.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD)/par.o: par.c par.h base.h error.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD)/main.o: main.c hermes.h par.h error.h | $(BUILD)
-	$(CC) $(CFLAGS) -D_POSIX_C_SOURCE=200809L -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/mnist: $(BUILD)/main.o $(BUILD)/hermes.o $(BUILD)/par.o $(BUILD)/error.o
+$(BUILD)/mnist: $(BUILD)/main.o $(BUILD)/hermes.o $(BUILD)/par.o $(BUILD)/error.o $(BUILD)/base.o
 	$(CC) $(CFLAGS) $^ -lm -lpthread -o $@
 
 compile: $(BUILD)/mnist
@@ -75,7 +79,7 @@ view: $(BUILD)/mnist download
 	$(BUILD)/mnist view
 
 knn: $(BUILD)/mnist download
-	$(BUILD)/mnist knn
+	$(BUILD)/mnist knn $(K)
 
 nn: $(BUILD)/mnist download
 	$(BUILD)/mnist nn
