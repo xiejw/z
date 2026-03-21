@@ -8,7 +8,8 @@
 #include <unistd.h>
 #endif
 
-size_t forge_n_logical_cpus( void )
+size_t
+forge_n_logical_cpus( void )
 {
 #ifdef __APPLE__
         int    n  = 1;

@@ -58,6 +58,9 @@ fmt:
 $(BUILD)/error.o: error.c error.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+$(BUILD)/progress.o: progress.c progress.h | $(BUILD)
+	$(CC) $(CFLAGS) -c $< -o $@
+
 $(BUILD)/hermes.o: hermes.c hermes.h error.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -70,7 +73,7 @@ $(BUILD)/par.o: par.c par.h base.h error.h | $(BUILD)
 $(BUILD)/main.o: main.c hermes.h par.h error.h | $(BUILD)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD)/mnist: $(BUILD)/main.o $(BUILD)/hermes.o $(BUILD)/par.o $(BUILD)/error.o $(BUILD)/base.o
+$(BUILD)/mnist: $(BUILD)/main.o $(BUILD)/hermes.o $(BUILD)/par.o $(BUILD)/error.o $(BUILD)/base.o $(BUILD)/progress.o
 	$(CC) $(CFLAGS) $^ -lm -lpthread -o $@
 
 compile: $(BUILD)/mnist

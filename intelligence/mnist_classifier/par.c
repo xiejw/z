@@ -2,6 +2,7 @@
 
 #include "par.h"
 #include "base.h"
+#include "progress.h"
 
 #include <pthread.h>
 #include <stdlib.h>
@@ -11,18 +12,42 @@
 //
 
 struct worker {
-        size_t      start, end;
+        size_t start, end;
         void ( *fn )( size_t, void *, const void * );
         void       *dst_out;
         size_t      dst_stride;
         const void *ctx;
 };
 
-static void *worker_run( void *arg )
+static void *
+worker_run( void *arg )
 {
         struct worker *w = arg;
-        for ( size_t i = w->start; i < w->end; i++ )
+
+        int    first_worker = w->start == 0;
+        size_t chunk        = ( w->end - w->start ) / 100;
+        if ( chunk == 0 ) chunk = 1;
+        size_t next = chunk;
+
+        if ( first_worker ) {
+                forge_progress_bar_open( w->end, "progress for 1st chunk" );
+        }
+
+        for ( size_t i = w->start; i < w->end; i++ ) {
                 w->fn( i, (char *)w->dst_out + i * w->dst_stride, w->ctx );
+
+                if ( first_worker ) {
+                        if ( i >= next ) {
+                                forge_progress_bar_advance( i );
+                                next += chunk;
+                        }
+                }
+        }
+
+        if ( first_worker ) {
+                forge_progress_bar_advance( w->end );
+                forge_progress_bar_close( );
+        }
         return NULL;
 }
 
@@ -30,20 +55,16 @@ static void *worker_run( void *arg )
 // ===
 //
 
-int forge_par_map( size_t n,
-                   void ( *fn )( size_t i, void *slot_out, const void *ctx ),
-                   void *dst_out, size_t dst_stride,
-                   const void *ctx,
-                   size_t n_threads,
-                   struct err_stack *stk )
+int
+forge_par_map( size_t n,
+               void ( *fn )( size_t i, void *slot_out, const void *ctx ),
+               void *dst_out, size_t dst_stride, const void *ctx,
+               size_t n_threads, struct err_stack *stk )
 {
-        if ( n == 0 )
-                return 0;
+        if ( n == 0 ) return 0;
 
-        if ( n_threads == 0 )
-                n_threads = forge_n_logical_cpus();
-        if ( n_threads > n )
-                n_threads = n;
+        if ( n_threads == 0 ) n_threads = forge_n_logical_cpus( );
+        if ( n_threads > n ) n_threads = n;
 
         int            rc        = 0;
         size_t         n_started = 0;
@@ -60,14 +81,16 @@ int forge_par_map( size_t n,
 
         size_t chunk = n / n_threads;
         for ( size_t t = 0; t < n_threads; t++ ) {
-                workers[t].start      = t * chunk;
-                workers[t].end        = ( t + 1 == n_threads ) ? n : ( t + 1 ) * chunk;
-                workers[t].fn         = fn;
+                workers[t].start = t * chunk;
+                workers[t].end = ( t + 1 == n_threads ) ? n : ( t + 1 ) * chunk;
+                workers[t].fn  = fn;
                 workers[t].dst_out    = dst_out;
                 workers[t].dst_stride = dst_stride;
                 workers[t].ctx        = ctx;
-                if ( pthread_create( &threads[t], NULL, worker_run, &workers[t] ) != 0 ) {
-                        forge_err_emit( stk, "forge_par_map: pthread_create failed" );
+                if ( pthread_create( &threads[t], NULL, worker_run,
+                                     &workers[t] ) != 0 ) {
+                        forge_err_emit(
+                            stk, "forge_par_map: pthread_create failed" );
                         rc = 1;
                         goto exit;
                 }

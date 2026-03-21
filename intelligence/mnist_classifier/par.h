@@ -20,9 +20,7 @@
  * Returns 0 on success, 1 on error (written into stk). */
 int forge_par_map( size_t n,
                    void ( *fn )( size_t i, void *slot_out, const void *ctx ),
-                   void *dst_out, size_t dst_stride,
-                   const void *ctx,
-                   size_t n_threads,
-                   struct err_stack *stk );
+                   void *dst_out, size_t dst_stride, const void *ctx,
+                   size_t n_threads, struct err_stack *stk );
 
 #endif /* PAR_H */
