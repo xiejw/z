@@ -1,5 +1,7 @@
 ## Curated Project Lists
 
+_NOTE_: This is a mirror site.
+
 ### Intelligence/AI
 
 - **Connect 4** ([c4c](./intelligence/c4c)): A MCTS based AI agent which can
