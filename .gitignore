@@ -1,14 +1,21 @@
+# all
+.build*
+
+# c/cc
+*.o
+a.out
+
 # vim
-*.swp
 *.swo
+*.swp
 
 # config generated files.
 configure.mk
 
-# cc
-.build*
-a.out*
+# mac
+.DS_Store
 
-# ctags
-tags
+# tex
+*.aux
+*.log
 
