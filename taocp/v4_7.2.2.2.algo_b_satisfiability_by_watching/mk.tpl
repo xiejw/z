@@ -1,1 +1,121 @@
-../mk/Makefile.v2
+# vim: ft=make
+# forge:v2
+#
+# Version 2 of common Makefile used in this project
+#
+#
+# === --- Opinioned about the Structure of Code Bases
+#
+#     cmd/   # All binary main files
+#     src/   # All dependendcies
+#
+# === --- Opinioned about Knobs
+#
+# Call side defines MODS for all dependendcies and MAIN_OUT of main binary.
+#
+#     MODS    += ${BUILD_OBJS}/log.o
+#     MODS    += ${BUILD_OBJS}/dlink.o
+#
+#     MAIN_OUT = main
+#     include mk.tpl
+#
+# === --- Templates for tests
+#
+# Use template to define test
+#
+#     $(eval $(call TEST_template,${MAIN_OUT}))
+#
+# Or define a new binary for test
+#
+#     TEST_OUT = dlink_test
+#     $(eval $(call CMD_template,${TEST_OUT}))
+#     $(eval $(call TEST_template,${TEST_OUT}))
+#
+BUILD       = .build
+BUILD_OBJS  = ${BUILD}/objs
+
+UNAME_S    := $(shell uname -s)
+
+
+CXXFLAGS   += -std=c++17
+CXXFLAGS   += -Wall -Werror -pedantic -Wextra -Wfatal-errors -Wconversion
+CXXFLAGS   += -fno-rtti -fno-exceptions
+CXXFLAGS   += -Isrc
+
+SRC_DEPS    += $(wildcard src/*.cc)
+SRC_DEPS    += $(wildcard src/*.h)
+SRC_DEPS    += $(wildcard cmd/*.cc)
+
+ifdef RELEASE
+CXXFLAGS   += -DNDEBUG -O3 -march=native
+CXXFLAGS   += -flto -ffast-math
+
+ifeq ($(UNAME_S),Linux)
+LDFLAGS    += -fuse-ld=lld
+endif
+
+else
+CXXFLAGS   += -g
+endif
+
+ifdef ASAN
+LDFLAGS  += -fsanitize=address
+endif
+
+# === --- Actions----------------------------------------------------------- ===
+
+run: compile
+	${BUILD}/${MAIN_OUT}
+
+release: clean
+	make RELEASE=1 compile
+
+# === --- Templates -------------------------------------------------------- ===
+#
+# === --- Defines a template for cmd
+
+define CMD_template
+
+compile: $${BUILD}/$(1)
+
+$${BUILD}/$(1): $${MODS} $${BUILD}/cmd_$(1).o | $${BUILD}
+	$${CXX} $${LDFLAGS} -o $$@ $$^
+
+endef
+
+# === --- Defines a template for test
+
+define TEST_template
+
+test_$(1): compile $${BUILD}/$(1)
+	printf "\e[42m%*s\e[0m\n" "$$(shell tput cols)" ""
+	$${BUILD}/$(1)
+
+test: test_$(1)
+
+endef
+
+# === --- Rules ------------------------------------------------------------ ===
+
+$(eval $(call CMD_template,${MAIN_OUT}))
+
+${BUILD}/cmd_%.o:  cmd/%.cc ${SRC_DEPS} | ${BUILD}
+	${CXX} ${CXXFLAGS} -o ${shell printf "%-30s" $@} -c $<
+
+${BUILD_OBJS}/%.o: src/%.cc ${SRC_DEPS} | ${BUILD_OBJS}
+	${CXX} ${CXXFLAGS} -o ${shell printf "%-30s" $@} -c $<
+
+# === --- House Keeping ---------------------------------------------------- ===
+
+${BUILD}:
+	@mkdir -p $@
+
+${BUILD_OBJS}: ${BUILD}
+	@mkdir -p $@
+
+fmt:
+	~/Workspace/y/tools/scripts/clang_format_all.sh .
+
+clean:
+	rm -rf ${BUILD}
+
