@@ -17,7 +17,7 @@ TRAIN_LABELS := $(BUILD)/train-labels-idx1-ubyte
 TEST_IMAGES  := $(BUILD)/t10k-images-idx3-ubyte
 TEST_LABELS  := $(BUILD)/t10k-labels-idx1-ubyte
 
-.PHONY: all compile download view knn nn clean
+.PHONY: all compile release test fmt download view knn nn clean
 
 .DEFAULT_GOAL = compile
 
@@ -64,6 +64,13 @@ knn: compile download
 
 nn: compile download
 	$(BUILD)/classifier nn -hidden $(HIDDEN) -lr $(LR) -epochs $(EPOCHS) -batch $(BATCH)
+
+release: compile
+
+test: compile
+
+fmt:
+	go fmt classifier/...
 
 clean:
 	rm -rf $(BUILD)

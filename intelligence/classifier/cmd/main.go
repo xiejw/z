@@ -10,7 +10,7 @@
 package main
 
 import (
-	"classifier/src"
+	classifier "classifier/src"
 	"flag"
 	"fmt"
 	"log"
@@ -63,17 +63,17 @@ func runView(args []string) {
 		fmt.Sscan(fs.Arg(0), &index)
 	}
 
-	label, err := src.LoadOneLabel(trainLabels, index)
+	label, err := classifier.LoadOneLabel(trainLabels, index)
 	if err != nil {
 		log.Fatal(err)
 	}
-	img, err := src.LoadOneImage(trainImages, index)
+	img, err := classifier.LoadOneImage(trainImages, index)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	fmt.Printf("Label: %d  (sample index %d)\n", label, index)
-	src.RenderImage(img)
+	classifier.RenderImage(img)
 }
 
 func runKNN(args []string) {
@@ -81,22 +81,19 @@ func runKNN(args []string) {
 	k := fs.Int("k", 5, "number of neighbours")
 	fs.Parse(args)
 
-	t0 := time.Now()
-	fmt.Println("Loading training set...")
+	t0 := timerStart("Loading training set...")
 	trainImgs, trainLbls, testImgs, testLbls := loadData()
-	fmt.Printf("  load time: %.3f s (%d train, %d test)\n",
-		time.Since(t0).Seconds(), len(trainImgs), len(testImgs))
+	timerStopAndReport(t0, fmt.Sprintf("load time (%d train, %d test)", len(trainImgs), len(testImgs)))
 
-	clf := &src.KNNClassifier{K: *k}
+	clf := &classifier.KNNClassifier{K: *k}
 
-	t1 := time.Now()
-	fmt.Printf("Fitting KNN (k=%d) on %d training samples...\n", *k, len(trainImgs))
+	t1 := timerStart(fmt.Sprintf("Fitting KNN (k=%d) on %d training samples...", *k, len(trainImgs)))
 	if err := clf.Fit(trainImgs, trainLbls); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("  fit time: %.3f s\n", time.Since(t1).Seconds())
+	timerStopAndReport(t1, "fit time")
 
-	src.RunEval(clf, testImgs, testLbls)
+	classifier.RunEval(clf, testImgs, testLbls)
 }
 
 func runNN(args []string) {
@@ -107,38 +104,44 @@ func runNN(args []string) {
 	batch := fs.Int("batch", 64, "mini-batch size")
 	fs.Parse(args)
 
-	t0 := time.Now()
-	fmt.Println("Loading training set...")
+	t0 := timerStart("Loading training set...")
 	trainImgs, trainLbls, testImgs, testLbls := loadData()
-	fmt.Printf("  load time: %.3f s (%d train, %d test)\n",
-		time.Since(t0).Seconds(), len(trainImgs), len(testImgs))
+	timerStopAndReport(t0, fmt.Sprintf("load time (%d train, %d test)", len(trainImgs), len(testImgs)))
 
-	clf := src.NewNNClassifier(*hidden, *lr, *epochs, *batch)
+	clf := classifier.NewNNClassifier(*hidden, *lr, *epochs, *batch)
 
-	t1 := time.Now()
-	fmt.Printf("Training MLP (hidden=%d, lr=%.4f, epochs=%d, batch=%d) on %d samples...\n",
-		*hidden, *lr, *epochs, *batch, len(trainImgs))
+	t1 := timerStart(fmt.Sprintf("Training MLP (hidden=%d, lr=%.4f, epochs=%d, batch=%d) on %d samples...",
+		*hidden, *lr, *epochs, *batch, len(trainImgs)))
 	if err := clf.Fit(trainImgs, trainLbls); err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("  train time: %.3f s\n", time.Since(t1).Seconds())
+	timerStopAndReport(t1, "train time")
 
-	src.RunEval(clf, testImgs, testLbls)
+	classifier.RunEval(clf, testImgs, testLbls)
 }
 
-func loadData() (trainImgs [][src.Pixels]float32, trainLbls []uint8,
-	testImgs [][src.Pixels]float32, testLbls []uint8) {
+func timerStart(msg string) time.Time {
+	fmt.Println(msg)
+	return time.Now()
+}
+
+func timerStopAndReport(t0 time.Time, label string) {
+	fmt.Printf("  %s: %.3f s\n", label, time.Since(t0).Seconds())
+}
+
+func loadData() (trainImgs [][classifier.Pixels]float32, trainLbls []uint8,
+	testImgs [][classifier.Pixels]float32, testLbls []uint8) {
 	var err error
-	if trainImgs, err = src.LoadImages(trainImages); err != nil {
+	if trainImgs, err = classifier.LoadImages(trainImages); err != nil {
 		log.Fatal(err)
 	}
-	if trainLbls, err = src.LoadLabels(trainLabels); err != nil {
+	if trainLbls, err = classifier.LoadLabels(trainLabels); err != nil {
 		log.Fatal(err)
 	}
-	if testImgs, err = src.LoadImages(testImages); err != nil {
+	if testImgs, err = classifier.LoadImages(testImages); err != nil {
 		log.Fatal(err)
 	}
-	if testLbls, err = src.LoadLabels(testLabels); err != nil {
+	if testLbls, err = classifier.LoadLabels(testLabels); err != nil {
 		log.Fatal(err)
 	}
 	return
