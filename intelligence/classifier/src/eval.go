@@ -80,7 +80,7 @@ func RunEval(clf Classifier, images [][Pixels]float32, labels []uint8) {
 		correct, n, float64(correct)/float64(n)*100)
 	fmt.Printf("\nPer-class breakdown:\n")
 	for d := 0; d < Classes; d++ {
-		fmt.Printf("  digit %d: %d/%d (%.2f%%)\n",
+		fmt.Printf("  digit %d: %4d/%4d (%6.2f%%)\n",
 			d, classCorrect[d], classTotal[d],
 			float64(classCorrect[d])/float64(classTotal[d])*100)
 	}

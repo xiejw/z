@@ -50,7 +50,7 @@ func main() {
 func usage() {
 	fmt.Fprintln(os.Stderr, "Usage:")
 	fmt.Fprintln(os.Stderr, "  classifier view [<index>]")
-	fmt.Fprintln(os.Stderr, "  classifier knn  [-k <int>] [-quant]")
+	fmt.Fprintln(os.Stderr, "  classifier knn  [-k <int>] [-bquant]")
 	fmt.Fprintln(os.Stderr, "  classifier nn   [-hidden <int>] [-lr <float>] [-epochs <int>] [-batch <int>]")
 }
 
@@ -78,17 +78,17 @@ func runView(args []string) {
 
 func runKNN(args []string) {
 	fs := flag.NewFlagSet("knn", flag.ExitOnError)
-	k     := fs.Int("k", 5, "number of neighbours")
-	quant := fs.Bool("quant", false, "enable product quantization (16 chunks, 256 codes)")
+	k      := fs.Int("k", 5, "number of neighbours")
+	bquant := fs.Bool("bquant", false, "enable 1-bit quantization (threshold 128, Hamming distance)")
 	fs.Parse(args)
 
 	t0 := timerStart("Loading data...")
 	trainImgs, trainLbls, testImgs, testLbls := loadData()
 	timerStopAndReport(t0, fmt.Sprintf("load time (%d train, %d test)", len(trainImgs), len(testImgs)))
 
-	clf := &classifier.KNNClassifier{K: *k, QuantEnabled: *quant}
+	clf := &classifier.KNNClassifier{K: *k, BitQuantEnabled: *bquant}
 
-	t1 := timerStart(fmt.Sprintf("Fitting KNN (k=%d, quant=%v) on %d training samples...", *k, *quant, len(trainImgs)))
+	t1 := timerStart(fmt.Sprintf("Fitting KNN (k=%d, bquant=%v) on %d training samples...", *k, *bquant, len(trainImgs)))
 	if err := clf.Fit(trainImgs, trainLbls); err != nil {
 		log.Fatal(err)
 	}

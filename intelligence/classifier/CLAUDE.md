@@ -38,12 +38,13 @@ Pixels are normalised to `float32` in `[0.0, 1.0]` at load time (`/ 255.0`).
 
 | Makefile target | Description |
 |---|---|
-| `make download` | Fetch + decompress MNIST files |
-| `make compile`  | Build `.build/classifier` |
-| `make view`     | Render training sample 0 (ASCII art) |
-| `make knn`      | KNN accuracy benchmark (default k=5) |
-| `make nn`       | MLP accuracy benchmark (default hidden=128) |
-| `make clean`    | Delete `.build/` |
+| `make download`   | Fetch + decompress MNIST files |
+| `make compile`    | Build `.build/classifier` |
+| `make view`       | Render training sample 0 (ASCII art) |
+| `make knn`        | KNN accuracy benchmark (default k=5) |
+| `make knn-bquant` | KNN with 1-bit quantization (Hamming distance) |
+| `make nn`         | MLP accuracy benchmark (default hidden=128) |
+| `make clean`      | Delete `.build/` |
 
 ### `view` subcommand
 
@@ -56,11 +57,15 @@ Renders one training sample as ASCII art (default index 0, range 0–59999).
 ### `knn` subcommand
 
 ```
-classifier knn [-k <int>]
+classifier knn [-k <int>] [-bquant]
 ```
 
 Fits KNNClassifier on all 60 000 training samples, evaluates on 10 000 test
 samples.  Default k=5.  Expected accuracy: ~97%.
+
+`-bquant` enables 1-bit quantization: each pixel is thresholded at 128/255, packed
+into 13 uint64 words per image, and Hamming distance (XOR + popcount) is used.
+No training required; fit is a single O(n) binarize pass.  Expected accuracy: ~94–96%.
 
 ### `nn` subcommand
 
