@@ -32,10 +32,6 @@ See [Youtube here](https://youtu.be/tGG8I9GnisM)
 
   Few choices
 
-  - [arm64] Super fast but only look ahead one step.
-
-          docker run --rm -ti xiejw/connect_4_par_pt_lookahead_onestep
-
   - [arm64/amd64] A little slow, but should be a good player
 
           [arm64]
@@ -56,8 +52,6 @@ See [Youtube here](https://youtu.be/tGG8I9GnisM)
 
   - Place state files at `~/Desktop`.
 
-  - Ensure a `C` compiler is available (`clang`).
-
   - With macOS, ensure install python via brew.
 
           brew install python
@@ -65,7 +59,7 @@ See [Youtube here](https://youtu.be/tGG8I9GnisM)
 
   - Ensure Python 3 dependencies are installed
 
-          pip install torch numpy setuptools
+          pip install torch numpy
 
   - Run bootstrap configure process (one time only)
 

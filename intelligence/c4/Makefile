@@ -37,9 +37,6 @@ clean:
 build_docker:
 	make -C misc/docker C4_STATE_FILE=${C4_STATE_FILE} build_docker
 
-build_docker_par:
-	make -C misc/docker C4_TRACED_MODEL_FILE=${C4_TRACED_MODEL_FILE} build_docker_par
-
 
 # OLD NOTES:
 # To create tar.gz for release
