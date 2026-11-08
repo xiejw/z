@@ -3,23 +3,15 @@ run-name: ${{ github.actor }} is running tests for ${{ github.workflow }}
 on: [push]
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     steps:
-      - name: Checkout z
-        uses: actions/checkout@v4
-        with:
-          path: z
-      - uses: ./z/.github/actions/base
+      - uses: actions/checkout@v4
 
-      # === --- Set up Python ---------------------------------------------- ===
-      #
-      - name: Setup python
-        uses: actions/setup-python@v5
+      # run.sh pins torch==2.5.1, which only ships wheels up to Python 3.12.
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      # === --- Set up Python ---------------------------------------------- ===
-      #
-      - working-directory: ${{ github.workspace }}/z/intelligence/${{ github.workflow }}
-        run:  |
-          C4_SANITY_CHECK=1 ./run.sh
+      - name: Run sanity check
+        working-directory: intelligence/c4
+        run: C4_SANITY_CHECK=1 ./run.sh
