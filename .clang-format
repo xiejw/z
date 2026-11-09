@@ -1,4 +1,5 @@
 ---
+# 2026-11 v3
 Language:        Cpp
 # BasedOnStyle:  Google
 # BEGIN xiejw Changed
@@ -96,7 +97,7 @@ IndentCaseLabels: false
 # END xiejw Changed
 IndentPPDirectives: None
 # BEGIN xiejw Changed
-IndentWidth:     8
+IndentWidth:     4
 # END xiejw Changed
 IndentWrappedFunctionNames: false
 JavaScriptQuotes: Leave
